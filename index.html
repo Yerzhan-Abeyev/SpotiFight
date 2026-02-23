@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotiFight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #121212; color: #ffffff; }
+        .spotify-green { color: #1DB954; }
+        .bg-spotify { background-color: #1DB954; }
+        .bg-card { background-color: #181818; }
+        #results-window::-webkit-scrollbar { width: 6px; }
+        #results-window::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-6 font-sans">
+    
+    <header class="w-full text-center py-10">
+        <h1 class="text-5xl font-black spotify-green tracking-tight">SpotiFight</h1>
+    </header>
+
+    <div class="w-full max-w-xl bg-card rounded-2xl p-8 shadow-2xl border border-white/5">
+        <div id="app" class="flex flex-col items-center space-y-6">
+            
+            <div id="word-display" class="text-3xl font-bold hidden mb-2"></div>
+            <div id="timer-container" class="w-full hidden mt-2 mb-4">
+                <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                    <div id="timer-bar" class="bg-spotify h-full w-full transition-all duration-1000 linear"></div>
+                </div>
+    <p id="timer-text" class="text-xs text-gray-500 mt-1 text-right">10s</p>
+</div>
+            <button onclick="startGame()" id="sync-btn" class="bg-spotify text-black font-bold py-4 px-12 rounded-full hover:scale-105 transition-all shadow-lg">
+                Start Game
+            </button>
+
+            <div id="search-container" class="w-full hidden space-y-4">
+                <input type="text" id="search-bar" placeholder="Search for a song..." 
+                       class="w-full p-4 rounded-xl bg-[#282828] text-white border border-white/10 focus:outline-none focus:border-[#1DB954] transition-all">
+                
+                <div id="results-window" class="max-h-60 overflow-y-auto bg-[#121212] rounded-xl border border-white/5">
+                    <ul id="songs-list" class="divide-y divide-white/5">
+                        </ul>
+                </div>
+            </div>
+
+            <div id="loader" class="hidden flex justify-center py-10">
+                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#1DB954]"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let countdown; // Variable to store the timer interval
+
+async function startGame() {
+    const test_word = "sometimes";
+    const btn = document.getElementById('sync-btn');
+    const wordDisplay = document.getElementById('word-display');
+    const searchContainer = document.getElementById('search-container');
+    const timerContainer = document.getElementById('timer-container');
+
+    btn.classList.add('hidden');
+    wordDisplay.innerText = test_word;
+    wordDisplay.classList.remove('hidden');
+    searchContainer.classList.remove('hidden');
+    timerContainer.classList.remove('hidden'); // Show the timer
+    
+    document.getElementById('search-bar').focus();
+
+    // 2. Start the 10-second Timer
+    startTimer(10);
+}
+
+function startTimer(seconds) {
+    const bar = document.getElementById('timer-bar');
+    const text = document.getElementById('timer-text');
+    let timeLeft = seconds;
+    bar.style.width = '100%';
+    text.innerText = `${timeLeft}s`;
+    clearInterval(countdown);
+
+    countdown = setInterval(() => {
+        timeLeft--;
+        
+        // Calculate percentage for the bar width
+        const percent = (timeLeft / seconds) * 100;
+        bar.style.width = `${percent}%`;
+        text.innerText = `${timeLeft}s`;
+
+        // Change color to red when low on time
+        if (timeLeft <= 3) {
+            bar.classList.replace('bg-spotify', 'bg-red-500');
+        }
+
+        if (timeLeft <= 0) {
+            clearInterval(countdown);
+            handleTimeOut();
+        }
+    }, 1000);
+}
+
+function handleTimeOut() {
+    alert("Time's up! Game Over.");
+    // Add logic here to disable the search bar or reset the game
+}
+    </script>
+</body>
+</html>
