@@ -5,105 +5,325 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #121212; color: #ffffff; }
-        .spotify-green { color: #1DB954; }
-        .bg-spotify { background-color: #1DB954; }
-        .bg-card { background-color: #181818; }
-        #results-window::-webkit-scrollbar { width: 6px; }
-        #results-window::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        * { box-sizing: border-box; }
+        body { background-color: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(29,185,84,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(29,185,84,0.025) 1px, transparent 1px);
+            background-size: 40px 40px; pointer-events: none; z-index: 0;
+        }
+        .card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); }
+
+        #word-display {
+            font-family: 'Bebas Neue', sans-serif; font-size: 4.5rem;
+            letter-spacing: 0.12em; line-height: 1;
+            background: linear-gradient(135deg,#1DB954,#17a349);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        #timer-bar { height:100%; border-radius:999px; transition: width 1s linear; background: linear-gradient(90deg,#1DB954,#17a349); }
+
+        #search-bar {
+            background:#1a1a1a; border:1.5px solid rgba(255,255,255,0.08); color:#fff;
+            border-radius:12px; padding:14px 18px; width:100%; font-size:0.95rem;
+            outline:none; transition:border-color 0.2s;
+        }
+        #search-bar:focus { border-color:#1DB954; }
+        #search-bar::placeholder { color:#444; }
+
+        #results-window { max-height:290px; overflow-y:auto; background:#111; border-radius:14px; border:1px solid rgba(255,255,255,0.05); }
+        #results-window::-webkit-scrollbar { width:5px; }
+        #results-window::-webkit-scrollbar-thumb { background:#2a2a2a; border-radius:10px; }
+
+        .song-item {
+            display:flex; align-items:center; gap:14px; padding:11px 16px; cursor:pointer;
+            border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s;
+        }
+        .song-item:last-child { border-bottom:none; }
+        .song-item:hover { background:#1c1c1c; }
+        .song-item img { width:46px; height:46px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+        .song-placeholder { width:46px; height:46px; border-radius:6px; background:#222; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+        .song-title { font-weight:600; font-size:0.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .song-artist { font-size:0.75rem; color:#666; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        .feedback-box { width:100%; padding:18px 20px; border-radius:14px; font-size:1rem; font-weight:600; text-align:center; animation:popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+        .fb-win  { background:#0c2418; border:1.5px solid #1DB954; color:#1DB954; }
+        .fb-lose { background:#2b0d0d; border:1.5px solid #ff4444; color:#ff5555; }
+
+        #sync-btn {
+            background:#1DB954; color:#000; font-weight:700; font-size:0.95rem;
+            padding:14px 44px; border-radius:999px; border:none; cursor:pointer;
+            letter-spacing:0.04em; transition:transform 0.15s, box-shadow 0.2s;
+        }
+        #sync-btn:hover { transform:scale(1.05); box-shadow:0 0 28px rgba(29,185,84,0.35); }
+
+        .dot-loader { display:flex; gap:6px; justify-content:center; padding:22px; }
+        .dot-loader span { width:7px; height:7px; background:#1DB954; border-radius:50%; animation:bounce 1s infinite ease-in-out; }
+        .dot-loader span:nth-child(2) { animation-delay:.15s; }
+        .dot-loader span:nth-child(3) { animation-delay:.3s; }
+        @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+        #empty-state { padding:28px; text-align:center; color:#444; font-size:0.82rem; letter-spacing:0.02em; }
+        .stat-label { font-family:'Bebas Neue',sans-serif; letter-spacing:0.1em; font-size:0.85rem; color:#444; }
+        .stat-val   { font-family:'Bebas Neue',sans-serif; letter-spacing:0.06em; font-size:1.1rem; }
+
+        .note { font-size:0.72rem; color:#444; text-align:center; line-height:1.6; }
+        .note a { color:#1DB954; text-decoration:none; }
+        .note a:hover { text-decoration:underline; }
     </style>
 </head>
-<body class="flex flex-col items-center min-h-screen p-6 font-sans">
-    
-    <header class="w-full text-center py-10">
-        <h1 class="text-5xl font-black spotify-green tracking-tight">SpotiFight</h1>
-    </header>
+<body class="flex flex-col items-center min-h-screen p-5">
 
-    <div class="w-full max-w-xl bg-card rounded-2xl p-8 shadow-2xl border border-white/5">
-        <div id="app" class="flex flex-col items-center space-y-6">
-            
-            <div id="word-display" class="text-3xl font-bold hidden mb-2"></div>
-            <div id="timer-container" class="w-full hidden mt-2 mb-4">
-                <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                    <div id="timer-bar" class="bg-spotify h-full w-full transition-all duration-1000 linear"></div>
-                </div>
-    <p id="timer-text" class="text-xs text-gray-500 mt-1 text-right">10s</p>
+<header class="w-full text-center py-8 relative z-10">
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:3.8rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
+    <p style="color:#333;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;">Find the song · Beat the clock</p>
+</header>
+
+<!-- Score row -->
+<div id="score-area" class="w-full max-w-xl flex justify-center items-center mb-3 px-1 relative z-10" style="display:none;">
+    <div><span class="stat-label">Score </span><span class="stat-val" id="score-val">0</span></div>
 </div>
-            <button onclick="startGame()" id="sync-btn" class="bg-spotify text-black font-bold py-4 px-12 rounded-full hover:scale-105 transition-all shadow-lg">
-                Start Game
-            </button>
 
-            <div id="search-container" class="w-full hidden space-y-4">
-                <input type="text" id="search-bar" placeholder="Search for a song..." 
-                       class="w-full p-4 rounded-xl bg-[#282828] text-white border border-white/10 focus:outline-none focus:border-[#1DB954] transition-all">
-                
-                <div id="results-window" class="max-h-60 overflow-y-auto bg-[#121212] rounded-xl border border-white/5">
-                    <ul id="songs-list" class="divide-y divide-white/5">
-                        </ul>
-                </div>
+<div class="card w-full max-w-xl rounded-2xl p-7 shadow-2xl relative z-10">
+<div id="app" class="flex flex-col items-center gap-5">
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" style="width:100%;" class="flex flex-col items-center gap-5">
+
+        <!-- Word -->
+        <div id="word-container" class="text-center" style="display:none;">
+            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Find a song with the word</p>
+            <div id="word-display"></div>
+        </div>
+
+        <!-- Timer -->
+        <div id="timer-container" class="w-full" style="display:none;">
+            <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
+                <div id="timer-bar" style="width:100%;height:100%;border-radius:999px;transition:width 1s linear;"></div>
             </div>
+            <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">10s</p>
+        </div>
 
-            <div id="loader" class="hidden flex justify-center py-10">
-                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#1DB954]"></div>
+        <!-- Start button -->
+        <button onclick="startGame()" id="sync-btn">▶ Start Game</button>
+
+        <!-- Search -->
+        <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
+            <input type="text" id="search-bar" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
+            <div id="results-window">
+                <div id="empty-state">🎵 Start typing to search songs…</div>
+                <div id="loader-area" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+                <ul id="songs-list"></ul>
             </div>
         </div>
+
+        <!-- Feedback -->
+        <div id="feedback" style="display:none;width:100%;"></div>
+
     </div>
+</div>
+</div>
 
-    <script>
-        let countdown; // Variable to store the timer interval
+<p class="note" style="margin-top:18px;">Powered by Spotify Web API</p>
 
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+
+const CLIENT_ID = ~
+const CLIENT_SECRET = ~
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GAME_WORDS = [
+    'love','night','fire','dream','run','rain','dance',
+    'heart','sometimes','forever','time','sun','gold',
+    'back','away','cool','girl','blue','light','good'
+];
+
+let accessToken    = null;
+let tokenExpiry    = 0;
+let countdown      = null;
+let searchDebounce = null;
+let currentWord    = '';
+let gameActive     = false;
+let score          = 0;
+
+// ── Client Credentials token ──────────────────────────────────────────────────
+async function getAccessToken() {
+    if (accessToken && Date.now() < tokenExpiry) return accessToken;
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Basic ${btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'grant_type=client_credentials'
+    });
+    if (!res.ok) throw new Error('Token fetch failed');
+    const data = await res.json();
+    accessToken = data.access_token;
+    tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+    return accessToken;
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+async function searchSpotify(query) {
+    const token = await getAccessToken();
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=8&market=US`;
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Search failed');
+    return (await res.json()).tracks.items;
+}
+
+// ── Start game ────────────────────────────────────────────────────────────────
 async function startGame() {
-    const test_word = "sometimes";
-    const btn = document.getElementById('sync-btn');
-    const wordDisplay = document.getElementById('word-display');
-    const searchContainer = document.getElementById('search-container');
-    const timerContainer = document.getElementById('timer-container');
+    if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
+        alert('⚠️ Add your Spotify Client ID & Secret at the top of the script!');
+        return;
+    }
+    currentWord = GAME_WORDS[Math.floor(Math.random() * GAME_WORDS.length)];
+    gameActive  = true;
 
-    btn.classList.add('hidden');
-    wordDisplay.innerText = test_word;
-    wordDisplay.classList.remove('hidden');
-    searchContainer.classList.remove('hidden');
-    timerContainer.classList.remove('hidden'); // Show the timer
-    
+    hide('sync-btn'); hide('feedback');
+    show('score-area'); show('word-container'); show('timer-container');
+    showFlex('search-container');
+
+    document.getElementById('word-display').innerText = currentWord.toUpperCase();
+    document.getElementById('search-bar').value = '';
+    document.getElementById('songs-list').innerHTML = '';
+    document.getElementById('empty-state').innerText = '🎵 Start typing to search songs…';
+    document.getElementById('empty-state').style.display = 'block';
+    document.getElementById('loader-area').style.display = 'none';
+
+    const bar = document.getElementById('timer-bar');
+    bar.style.cssText = 'width:100%;height:100%;border-radius:999px;transition:width 1s linear;background:linear-gradient(90deg,#1DB954,#17a349)';
+
     document.getElementById('search-bar').focus();
-
-    // 2. Start the 10-second Timer
+    try { await getAccessToken(); } catch(e) { console.warn(e); }
     startTimer(10);
 }
 
+// ── Timer ─────────────────────────────────────────────────────────────────────
 function startTimer(seconds) {
-    const bar = document.getElementById('timer-bar');
+    const bar  = document.getElementById('timer-bar');
     const text = document.getElementById('timer-text');
-    let timeLeft = seconds;
-    bar.style.width = '100%';
-    text.innerText = `${timeLeft}s`;
+    let t = seconds;
+    text.innerText = `${t}s`;
     clearInterval(countdown);
-
     countdown = setInterval(() => {
-        timeLeft--;
-        
-        // Calculate percentage for the bar width
-        const percent = (timeLeft / seconds) * 100;
-        bar.style.width = `${percent}%`;
-        text.innerText = `${timeLeft}s`;
-
-        // Change color to red when low on time
-        if (timeLeft <= 3) {
-            bar.classList.replace('bg-spotify', 'bg-red-500');
-        }
-
-        if (timeLeft <= 0) {
-            clearInterval(countdown);
-            handleTimeOut();
-        }
+        t--;
+        bar.style.width = `${(t / seconds) * 100}%`;
+        text.innerText  = `${t}s`;
+        if (t <= 3) bar.style.background = 'linear-gradient(90deg,#ff4444,#cc0000)';
+        if (t <= 0) { clearInterval(countdown); if (gameActive) timeOut(); }
     }, 1000);
 }
 
-function handleTimeOut() {
-    alert("Time's up! Game Over.");
-    // Add logic here to disable the search bar or reset the game
+function timeOut() {
+    gameActive = false;
+    endRound('timeout', null);
 }
-    </script>
+
+// ── Search input ──────────────────────────────────────────────────────────────
+function onSearchInput(val) {
+    if (!gameActive) return;
+    clearTimeout(searchDebounce);
+    const q = val.trim();
+    if (!q) {
+        document.getElementById('songs-list').innerHTML = '';
+        document.getElementById('empty-state').innerText = '🎵 Start typing to search songs…';
+        document.getElementById('empty-state').style.display = 'block';
+        document.getElementById('loader-area').style.display = 'none';
+        return;
+    }
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('loader-area').style.display = 'block';
+    document.getElementById('songs-list').innerHTML = '';
+
+    searchDebounce = setTimeout(async () => {
+        try {
+            const tracks = await searchSpotify(q);
+            document.getElementById('loader-area').style.display = 'none';
+            renderResults(tracks);
+        } catch(e) {
+            document.getElementById('loader-area').style.display = 'none';
+            document.getElementById('empty-state').innerText = '⚠️ Search failed.';
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    }, 350);
+}
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResults(tracks) {
+    const list = document.getElementById('songs-list');
+    list.innerHTML = '';
+    if (!tracks.length) {
+        document.getElementById('empty-state').innerText = 'No results found.';
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+    }
+    tracks.forEach(track => {
+        const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
+        const artists = track.artists.map(a => a.name).join(', ');
+        const li = document.createElement('li');
+        li.className = 'song-item';
+        li.innerHTML = `
+            ${art ? `<img src="${art}" alt="">` : `<div class="song-placeholder">🎵</div>`}
+            <div style="min-width:0;flex:1;">
+                <div class="song-title">${esc(track.name)}</div>
+                <div class="song-artist">${esc(artists)}</div>
+            </div>`;
+        li.onclick = () => pickSong(track);
+        list.appendChild(li);
+    });
+}
+
+// ── Pick song ─────────────────────────────────────────────────────────────────
+function pickSong(track) {
+    if (!gameActive) return;
+    clearInterval(countdown);
+    gameActive = false;
+
+    const words = track.name.toLowerCase().split(/\W+/);
+    const won   = words.includes(currentWord.toLowerCase());
+
+    if (won) score += 100;
+    document.getElementById('score-val').innerText = score;
+
+    endRound(won ? 'win' : 'wrong', track);
+}
+
+// ── End round ─────────────────────────────────────────────────────────────────
+function endRound(result, track) {
+    hide('search-container'); hide('timer-container'); hide('word-container');
+
+    const fb = document.getElementById('feedback');
+    fb.style.display = 'block';
+
+    if (result === 'win') {
+        fb.innerHTML = `<div class="feedback-box fb-win">✅ &ldquo;${esc(track.name)}&rdquo; contains <strong>${currentWord}</strong>!</div>`;
+    } else if (result === 'wrong') {
+        fb.innerHTML = `<div class="feedback-box fb-lose">❌ &ldquo;${esc(track.name)}&rdquo; doesn&rsquo;t contain <strong>${currentWord}</strong>.</div>`;
+    } else {
+        fb.innerHTML = `<div class="feedback-box fb-lose">⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.</div>`;
+    }
+
+    const btn = document.getElementById('sync-btn');
+    btn.innerText = '▶ Next Round';
+    btn.style.display = 'block';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function show(id)     { document.getElementById(id).style.display = 'block'; }
+function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
+function hide(id)     { document.getElementById(id).style.display = 'none'; }
+function esc(s)       { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+// Nothing to do — Client Credentials are fetched on first search.
+</script>
 </body>
 </html>
