@@ -33,7 +33,7 @@ async function run() {
         });
 
         if (!res.ok) {
-            console.error(`    ❌ Search failed: HTTP ${res.status} ${res.statusText}`);
+            console.error(`   Search failed: HTTP ${res.status} ${res.statusText}`);
             const body = await res.text();
             console.error(`    Body: ${body.slice(0, 300)}`);
             process.exit(1);
@@ -43,23 +43,23 @@ async function run() {
         const hits = data.response?.hits || [];
 
         if (!hits.length) {
-            console.error('    ❌ No results returned. Try a different track/artist.');
+            console.error('    No results returned. Try a different track/artist.');
             process.exit(1);
         }
 
-        console.log(`    ✅ Got ${hits.length} hit(s)`);
+        console.log(`     Got ${hits.length} hit(s)`);
 
         // Pick the best match
         const lower = TRACK.toLowerCase();
         const best  = hits.find(h => h.result.title.toLowerCase().includes(lower.split(' ')[0]))
                       || hits[0];
 
-        console.log(`    ✅ Best match: "${best.result.title}" by ${best.result.primary_artist.name}`);
+        console.log(`     Best match: "${best.result.title}" by ${best.result.primary_artist.name}`);
         lyricsUrl = best.result.url;
         console.log(`    🔗 Lyrics URL: ${lyricsUrl}\n`);
 
     } catch (e) {
-        console.error(`    ❌ Network error during search: ${e.message}`);
+        console.error(`     Network error during search: ${e.message}`);
         process.exit(1);
     }
 
@@ -75,15 +75,15 @@ async function run() {
         });
 
         if (!res.ok) {
-            console.error(`    ❌ Page fetch failed: HTTP ${res.status} ${res.statusText}`);
+            console.error(`     Page fetch failed: HTTP ${res.status} ${res.statusText}`);
             process.exit(1);
         }
 
         html = await res.text();
-        console.log(`    ✅ Page fetched — ${html.length.toLocaleString()} chars\n`);
+        console.log(`     Page fetched — ${html.length.toLocaleString()} chars\n`);
 
     } catch (e) {
-        console.error(`    ❌ Network error fetching page: ${e.message}`);
+        console.error(`     Network error fetching page: ${e.message}`);
         process.exit(1);
     }
 
@@ -97,13 +97,13 @@ async function run() {
 
         if (!containers.length) {
             const title = doc.querySelector('title')?.textContent || '(no title)';
-            console.error(`    ❌ No [data-lyrics-container] elements found.`);
+            console.error(`     No [data-lyrics-container] elements found.`);
             console.error(`       Page title: "${title}"`);
             console.error(`       Genius may have changed their HTML structure, or served a bot-detection page.`);
             process.exit(1);
         }
 
-        console.log(`    ✅ Found ${containers.length} lyrics container(s)`);
+        console.log(`     Found ${containers.length} lyrics container(s)`);
 
         let raw = '';
         containers.forEach(c => {
@@ -112,13 +112,13 @@ async function run() {
         });
         lyrics = raw.trim();
 
-        console.log(`    ✅ Extracted ${lyrics.length.toLocaleString()} chars, ~${lyrics.split('\n').length} lines`);
+        console.log(`     Extracted ${lyrics.length.toLocaleString()} chars, ~${lyrics.split('\n').length} lines`);
         console.log(`\n    ── Preview (first 300 chars) ──`);
         console.log('    ' + lyrics.slice(0, 300).replace(/\n/g, '\n    '));
         console.log();
 
     } catch (e) {
-        console.error(`    ❌ Parse error: ${e.message}`);
+        console.error(`     Parse error: ${e.message}`);
         process.exit(1);
     }
 
@@ -128,9 +128,9 @@ async function run() {
     const hit = re.test(lyrics);
 
     if (hit) {
-        console.log(`    ✅ FOUND — "${WORD}" appears in the lyrics!\n`);
+        console.log(`     FOUND — "${WORD}" appears in the lyrics!\n`);
     } else {
-        console.log(`    ❌ NOT FOUND — "${WORD}" does not appear in the lyrics.\n`);
+        console.log(`     NOT FOUND — "${WORD}" does not appear in the lyrics.\n`);
     }
 }
 
