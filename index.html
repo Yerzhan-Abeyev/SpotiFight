@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
-        body { background-color: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
         body::before {
             content: ''; position: fixed; inset: 0;
             background-image:
@@ -24,253 +24,322 @@
             background: linear-gradient(135deg,#1DB954,#17a349);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-        #timer-bar { height:100%; border-radius:999px; transition: width 1s linear; background: linear-gradient(90deg,#1DB954,#17a349); }
+        #timer-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#1DB954,#17a349); }
 
         #search-bar {
-            background:#1a1a1a; border:1.5px solid rgba(255,255,255,0.08); color:#fff;
-            border-radius:12px; padding:14px 18px; width:100%; font-size:0.95rem;
-            outline:none; transition:border-color 0.2s;
+            background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
+            border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 0.95rem;
+            outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif;
         }
-        #search-bar:focus { border-color:#1DB954; }
-        #search-bar::placeholder { color:#444; }
+        #search-bar:focus { border-color: #1DB954; }
+        #search-bar::placeholder { color: #444; }
 
-        #results-window { max-height:290px; overflow-y:auto; background:#111; border-radius:14px; border:1px solid rgba(255,255,255,0.05); }
-        #results-window::-webkit-scrollbar { width:5px; }
-        #results-window::-webkit-scrollbar-thumb { background:#2a2a2a; border-radius:10px; }
+        #results-window { max-height: 290px; overflow-y: auto; background: #111; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
+        #results-window::-webkit-scrollbar { width: 5px; }
+        #results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
 
-        .song-item {
-            display:flex; align-items:center; gap:14px; padding:11px 16px; cursor:pointer;
-            border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s;
+        .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+        .song-item:last-child { border-bottom: none; }
+        .song-item:hover { background: #1c1c1c; }
+        .song-item img { width: 46px; height: 46px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .song-placeholder { width: 46px; height: 46px; border-radius: 6px; background: #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+        .song-title { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-artist { font-size: 0.75rem; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Checking box */
+        #checking-box {
+            width: 100%; padding: 14px 16px; border-radius: 14px;
+            background: #111; border: 1.5px solid #222;
+            display: none; align-items: center; gap: 12px;
         }
-        .song-item:last-child { border-bottom:none; }
-        .song-item:hover { background:#1c1c1c; }
-        .song-item img { width:46px; height:46px; border-radius:6px; object-fit:cover; flex-shrink:0; }
-        .song-placeholder { width:46px; height:46px; border-radius:6px; background:#222; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
-        .song-title { font-weight:600; font-size:0.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .song-artist { font-size:0.75rem; color:#666; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        #checking-box img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .ck-info { flex: 1; min-width: 0; }
+        .ck-title { font-weight: 600; font-size: 0.85rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ck-status { font-size: 0.73rem; color: #555; margin-top: 3px; }
+        .ck-status span { animation: bounce 0.9s infinite ease-in-out; display: inline-block; }
+        .ck-status span:nth-child(2) { animation-delay: .15s; }
+        .ck-status span:nth-child(3) { animation-delay: .3s; }
 
-        .feedback-box { width:100%; padding:18px 20px; border-radius:14px; font-size:1rem; font-weight:600; text-align:center; animation:popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
-        @keyframes popIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
-        .fb-win  { background:#0c2418; border:1.5px solid #1DB954; color:#1DB954; }
-        .fb-lose { background:#2b0d0d; border:1.5px solid #ff4444; color:#ff5555; }
+        /* Feedback */
+        .feedback-box { width: 100%; padding: 18px 20px; border-radius: 14px; font-size: 1rem; font-weight: 600; text-align: center; animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+        .fb-win  { background: #0c2418; border: 1.5px solid #1DB954; color: #1DB954; }
+        .fb-lose { background: #2b0d0d; border: 1.5px solid #ff4444; color: #ff5555; }
+        .fb-warn { background: #1e1a0a; border: 1.5px solid #f59e0b; color: #f59e0b; }
 
-        #sync-btn {
-            background:#1DB954; color:#000; font-weight:700; font-size:0.95rem;
-            padding:14px 44px; border-radius:999px; border:none; cursor:pointer;
-            letter-spacing:0.04em; transition:transform 0.15s, box-shadow 0.2s;
+        #start-btn {
+            background: #1DB954; color: #000; font-weight: 700; font-size: 0.95rem;
+            padding: 14px 44px; border-radius: 999px; border: none; cursor: pointer;
+            letter-spacing: 0.04em; transition: transform 0.15s, box-shadow 0.2s; font-family: 'Inter', sans-serif;
         }
-        #sync-btn:hover { transform:scale(1.05); box-shadow:0 0 28px rgba(29,185,84,0.35); }
+        #start-btn:hover { transform: scale(1.05); box-shadow: 0 0 28px rgba(29,185,84,0.35); }
 
-        .dot-loader { display:flex; gap:6px; justify-content:center; padding:22px; }
-        .dot-loader span { width:7px; height:7px; background:#1DB954; border-radius:50%; animation:bounce 1s infinite ease-in-out; }
-        .dot-loader span:nth-child(2) { animation-delay:.15s; }
-        .dot-loader span:nth-child(3) { animation-delay:.3s; }
-        @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+        .dot-loader { display: flex; gap: 6px; justify-content: center; padding: 22px; }
+        .dot-loader span { width: 7px; height: 7px; background: #1DB954; border-radius: 50%; animation: bounce 1s infinite ease-in-out; }
+        .dot-loader span:nth-child(2) { animation-delay: .15s; }
+        .dot-loader span:nth-child(3) { animation-delay: .3s; }
+        @keyframes bounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 
-        #empty-state { padding:28px; text-align:center; color:#444; font-size:0.82rem; letter-spacing:0.02em; }
-        .stat-label { font-family:'Bebas Neue',sans-serif; letter-spacing:0.1em; font-size:0.85rem; color:#444; }
-        .stat-val   { font-family:'Bebas Neue',sans-serif; letter-spacing:0.06em; font-size:1.1rem; }
-
-        .note { font-size:0.72rem; color:#444; text-align:center; line-height:1.6; }
-        .note a { color:#1DB954; text-decoration:none; }
-        .note a:hover { text-decoration:underline; }
+        #empty-state { padding: 28px; text-align: center; color: #444; font-size: 0.82rem; }
+        .stat-label { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; font-size: 0.85rem; color: #444; }
+        .stat-val   { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 1.1rem; }
+        .note { font-size: 0.72rem; color: #333; text-align: center; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
 
-<header class="w-full text-center py-8 relative z-10">
+<header class="w-full max-w-xl text-center py-6 relative z-10">
     <h1 style="font-family:'Bebas Neue',sans-serif;font-size:3.8rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
     <p style="color:#333;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;">Find the song · Beat the clock</p>
 </header>
 
-<!-- Score row -->
-<div id="score-area" class="w-full max-w-xl flex justify-center items-center mb-3 px-1 relative z-10" style="display:none;">
+<div id="score-area" class="w-full max-w-xl flex justify-center mb-3 px-1 relative z-10" style="display:none;">
     <div><span class="stat-label">Score </span><span class="stat-val" id="score-val">0</span></div>
 </div>
 
 <div class="card w-full max-w-xl rounded-2xl p-7 shadow-2xl relative z-10">
-<div id="app" class="flex flex-col items-center gap-5">
+<div class="flex flex-col items-center gap-5">
 
-    <!-- GAME SCREEN -->
-    <div id="game-screen" style="width:100%;" class="flex flex-col items-center gap-5">
-
-        <!-- Word -->
-        <div id="word-container" class="text-center" style="display:none;">
-            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Find a song with the word</p>
-            <div id="word-display"></div>
-        </div>
-
-        <!-- Timer -->
-        <div id="timer-container" class="w-full" style="display:none;">
-            <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
-                <div id="timer-bar" style="width:100%;height:100%;border-radius:999px;transition:width 1s linear;"></div>
-            </div>
-            <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">10s</p>
-        </div>
-
-        <!-- Start button -->
-        <button onclick="startGame()" id="sync-btn">▶ Start Game</button>
-
-        <!-- Search -->
-        <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
-            <input type="text" id="search-bar" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
-            <div id="results-window">
-                <div id="empty-state">🎵 Start typing to search songs…</div>
-                <div id="loader-area" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
-                <ul id="songs-list"></ul>
-            </div>
-        </div>
-
-        <!-- Feedback -->
-        <div id="feedback" style="display:none;width:100%;"></div>
-
+    <div id="word-container" class="text-center" style="display:none;">
+        <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Find a song whose lyrics contain</p>
+        <div id="word-display"></div>
     </div>
+
+    <div id="timer-container" class="w-full" style="display:none;">
+        <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
+            <div id="timer-bar" style="width:100%;height:100%;"></div>
+        </div>
+        <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">30s</p>
+    </div>
+
+    <button id="start-btn" onclick="startRound()">▶ Start Game</button>
+
+    <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
+        <input id="search-bar" type="text" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
+        <div id="results-window">
+            <div id="empty-state">🎵 Start typing to search songs…</div>
+            <div id="loader-area" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+            <ul id="songs-list"></ul>
+        </div>
+    </div>
+
+    <div id="checking-box">
+        <img id="ck-art" src="" alt="">
+        <div class="ck-info">
+            <div class="ck-title" id="ck-title"></div>
+            <div class="ck-status" id="ck-status">Searching Genius<span>.</span><span>.</span><span>.</span></div>
+        </div>
+    </div>
+
+    <div id="feedback" style="display:none;width:100%;"></div>
+
 </div>
 </div>
 
-<p class="note" style="margin-top:18px;">Powered by Spotify Web API</p>
+<p class="note" style="margin-top:18px;">Powered by Spotify &amp; Genius</p>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// ── CONFIG ────────────────────────────────────────────────────────────────────
 
-const CLIENT_ID = ~
-const CLIENT_SECRET = ~
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GAME_WORDS = [
     'love','night','fire','dream','run','rain','dance',
     'heart','sometimes','forever','time','sun','gold',
-    'back','away','cool','girl','blue','light','good'
+    'back','away','cool','girl','blue','light','good',
 ];
+const TIME_LIMIT = 30;
 
-let accessToken    = null;
-let tokenExpiry    = 0;
-let countdown      = null;
-let searchDebounce = null;
+// ── State ─────────────────────────────────────────────────────────────────────
+let spotifyToken   = null;
+let spotifyExpiry  = 0;
 let currentWord    = '';
-let gameActive     = false;
+let roundActive    = false;
+let roundStartedAt = null;
+let timerRAF       = null;
+let searchDebounce = null;
 let score          = 0;
 
-// ── Client Credentials token ──────────────────────────────────────────────────
-async function getAccessToken() {
-    if (accessToken && Date.now() < tokenExpiry) return accessToken;
+// ── Spotify ───────────────────────────────────────────────────────────────────
+async function getSpotifyToken() {
+    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
     const res = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
+        method:  'POST',
         headers: {
-            'Authorization': `Basic ${btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
+            Authorization:  `Basic ${btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`)}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'grant_type=client_credentials'
+        body: 'grant_type=client_credentials',
     });
-    if (!res.ok) throw new Error('Token fetch failed');
-    const data = await res.json();
-    accessToken = data.access_token;
-    tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
-    return accessToken;
+    if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
+    const data   = await res.json();
+    spotifyToken  = data.access_token;
+    spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
+    return spotifyToken;
 }
 
-// ── Search ────────────────────────────────────────────────────────────────────
 async function searchSpotify(query) {
-    const token = await getAccessToken();
-    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=8&market=US`;
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Search failed');
+    const token = await getSpotifyToken();
+    const res   = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=8&market=US`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Spotify search error: ${res.status}`);
     return (await res.json()).tracks.items;
 }
 
-// ── Start game ────────────────────────────────────────────────────────────────
-async function startGame() {
-    if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
-        alert('⚠️ Add your Spotify Client ID & Secret at the top of the script!');
-        return;
-    }
-    currentWord = GAME_WORDS[Math.floor(Math.random() * GAME_WORDS.length)];
-    gameActive  = true;
+// ── Genius lyrics ─────────────────────────────────────────────────────────────
+// Genius blocks direct browser requests (CORS).
+// We try two public proxies in sequence — if both fail we fall back to title check.
 
-    hide('sync-btn'); hide('feedback');
-    show('score-area'); show('word-container'); show('timer-container');
+const PROXIES = [
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+];
+
+async function proxyFetch(targetUrl) {
+    let lastErr;
+    for (const makeProxy of PROXIES) {
+        try {
+            const proxyUrl = makeProxy(targetUrl);
+            const res      = await fetch(proxyUrl);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            // allorigins wraps response in { contents: "..." }
+            // corsproxy.io returns the raw response directly
+            const text = await res.text();
+            let parsed;
+            try { parsed = JSON.parse(text); } catch { return text; }
+            if (parsed && typeof parsed.contents === 'string') return parsed.contents;
+            return text;
+        } catch (e) {
+            lastErr = e;
+        }
+    }
+    throw new Error(`All proxies failed: ${lastErr?.message}`);
+}
+
+async function fetchLyrics(trackName, artist) {
+
+    // Step 1: Search Genius
+    const q      = `${trackName} ${artist}`;
+    const apiUrl = `https://api.genius.com/search?q=${encodeURIComponent(q)}&access_token=${GENIUS_TOKEN}`;
+
+    const searchText = await proxyFetch(apiUrl);
+    const inner      = JSON.parse(searchText);
+    const hits       = inner.response?.hits || [];
+    if (!hits.length) return null;
+
+    // Pick best match — same as genius-test.mjs
+    const lower = trackName.toLowerCase();
+    const best  = hits.find(h => h.result.title.toLowerCase().includes(lower.split(' ')[0]))
+                  || hits[0];
+
+    // Step 2: Fetch lyrics page
+    const html = await proxyFetch(best.result.url);
+
+    // Step 3: Parse — same selector as genius-test.mjs
+    const doc        = new DOMParser().parseFromString(html, 'text/html');
+    const containers = doc.querySelectorAll('[data-lyrics-container="true"]');
+    if (!containers.length) return null;
+
+    let lyrics = '';
+    containers.forEach(c => {
+        c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+        lyrics += (c.textContent || '') + '\n';
+    });
+
+    return lyrics.trim() || null;
+}
+
+// ── Round ─────────────────────────────────────────────────────────────────────
+function startRound() {
+    currentWord    = GAME_WORDS[Math.floor(Math.random() * GAME_WORDS.length)];
+    roundActive    = true;
+    roundStartedAt = Date.now();
+
+    show('score-area');
+    hide('feedback');
+    hide('start-btn');
+    hide('checking-box');
+    show('word-container');
+    show('timer-container');
     showFlex('search-container');
 
-    document.getElementById('word-display').innerText = currentWord.toUpperCase();
-    document.getElementById('search-bar').value = '';
-    document.getElementById('songs-list').innerHTML = '';
-    document.getElementById('empty-state').innerText = '🎵 Start typing to search songs…';
+    document.getElementById('word-display').innerText    = currentWord.toUpperCase();
+    document.getElementById('search-bar').value          = '';
+    document.getElementById('songs-list').innerHTML      = '';
+    document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
     document.getElementById('empty-state').style.display = 'block';
     document.getElementById('loader-area').style.display = 'none';
 
     const bar = document.getElementById('timer-bar');
-    bar.style.cssText = 'width:100%;height:100%;border-radius:999px;transition:width 1s linear;background:linear-gradient(90deg,#1DB954,#17a349)';
+    bar.style.cssText = 'width:100%;height:100%;border-radius:999px;background:linear-gradient(90deg,#1DB954,#17a349);';
 
     document.getElementById('search-bar').focus();
-    try { await getAccessToken(); } catch(e) { console.warn(e); }
-    startTimer(10);
+    runTimer();
 }
 
-// ── Timer ─────────────────────────────────────────────────────────────────────
-function startTimer(seconds) {
+function runTimer() {
+    cancelAnimationFrame(timerRAF);
     const bar  = document.getElementById('timer-bar');
     const text = document.getElementById('timer-text');
-    let t = seconds;
-    text.innerText = `${t}s`;
-    clearInterval(countdown);
-    countdown = setInterval(() => {
-        t--;
-        bar.style.width = `${(t / seconds) * 100}%`;
-        text.innerText  = `${t}s`;
-        if (t <= 3) bar.style.background = 'linear-gradient(90deg,#ff4444,#cc0000)';
-        if (t <= 0) { clearInterval(countdown); if (gameActive) timeOut(); }
-    }, 1000);
+
+    function tick() {
+        if (!roundActive) return;
+        const elapsed   = (Date.now() - roundStartedAt) / 1000;
+        const remaining = Math.max(0, TIME_LIMIT - elapsed);
+        bar.style.width = `${(remaining / TIME_LIMIT) * 100}%`;
+        text.innerText  = `${Math.ceil(remaining)}s`;
+        if (remaining <= 5) bar.style.background = 'linear-gradient(90deg,#ff4444,#cc0000)';
+        if (remaining <= 0) { roundActive = false; endRound('timeout', null); return; }
+        timerRAF = requestAnimationFrame(tick);
+    }
+    timerRAF = requestAnimationFrame(tick);
 }
 
-function timeOut() {
-    gameActive = false;
-    endRound('timeout', null);
-}
-
-// ── Search input ──────────────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────────────────────
 function onSearchInput(val) {
-    if (!gameActive) return;
     clearTimeout(searchDebounce);
     const q = val.trim();
     if (!q) {
-        document.getElementById('songs-list').innerHTML = '';
-        document.getElementById('empty-state').innerText = '🎵 Start typing to search songs…';
+        document.getElementById('songs-list').innerHTML      = '';
+        document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
         document.getElementById('empty-state').style.display = 'block';
         document.getElementById('loader-area').style.display = 'none';
         return;
     }
     document.getElementById('empty-state').style.display = 'none';
     document.getElementById('loader-area').style.display = 'block';
-    document.getElementById('songs-list').innerHTML = '';
+    document.getElementById('songs-list').innerHTML      = '';
 
     searchDebounce = setTimeout(async () => {
         try {
             const tracks = await searchSpotify(q);
             document.getElementById('loader-area').style.display = 'none';
             renderResults(tracks);
-        } catch(e) {
+        } catch {
             document.getElementById('loader-area').style.display = 'none';
-            document.getElementById('empty-state').innerText = '⚠️ Search failed.';
+            document.getElementById('empty-state').innerText     = '⚠️ Spotify search failed.';
             document.getElementById('empty-state').style.display = 'block';
         }
     }, 350);
 }
 
-// ── Render results ────────────────────────────────────────────────────────────
 function renderResults(tracks) {
     const list = document.getElementById('songs-list');
     list.innerHTML = '';
     if (!tracks.length) {
-        document.getElementById('empty-state').innerText = 'No results found.';
+        document.getElementById('empty-state').innerText     = 'No results found.';
         document.getElementById('empty-state').style.display = 'block';
         return;
     }
     tracks.forEach(track => {
         const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
         const artists = track.artists.map(a => a.name).join(', ');
-        const li = document.createElement('li');
-        li.className = 'song-item';
-        li.innerHTML = `
+        const li      = document.createElement('li');
+        li.className  = 'song-item';
+        li.innerHTML  = `
             ${art ? `<img src="${art}" alt="">` : `<div class="song-placeholder">🎵</div>`}
             <div style="min-width:0;flex:1;">
                 <div class="song-title">${esc(track.name)}</div>
@@ -281,38 +350,100 @@ function renderResults(tracks) {
     });
 }
 
-// ── Pick song ─────────────────────────────────────────────────────────────────
-function pickSong(track) {
-    if (!gameActive) return;
-    clearInterval(countdown);
-    gameActive = false;
+// ── Pick song → Genius lyrics check ──────────────────────────────────────────
+async function pickSong(track) {
+    if (!roundActive && timerRAF === null) return; // already picked
+    cancelAnimationFrame(timerRAF);
+    timerRAF = null;
+    roundActive = false;
 
-    const words = track.name.toLowerCase().split(/\W+/);
-    const won   = words.includes(currentWord.toLowerCase());
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
 
-    if (won) score += 100;
-    document.getElementById('score-val').innerText = score;
+    // Show checking UI
+    const art = track.album.images[1]?.url || track.album.images[0]?.url || '';
+    document.getElementById('ck-art').src         = art;
+    document.getElementById('ck-title').innerText  = track.name;
+    document.getElementById('ck-status').innerHTML = 'Searching Genius<span>.</span><span>.</span><span>.</span>';
+    document.getElementById('checking-box').style.display = 'flex';
 
-    endRound(won ? 'win' : 'wrong', track);
+    const trackName = track.name;
+    const artist    = track.artists.map(a => a.name).join(', ');
+
+    try {
+        const lyrics = await fetchLyrics(trackName, artist);
+
+        hide('checking-box');
+
+        if (lyrics === null) {
+            // Genius had no result or couldn't parse — skip without penalty
+            endRound('no-lyrics', track);
+            return;
+        }
+
+        // Step 4: Word check — same regex as genius-test.mjs
+        const re  = new RegExp(`\\b${currentWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        const won = re.test(lyrics);
+
+        if (won) score += 100;
+        document.getElementById('score-val').innerText = score;
+        endRound(won ? 'win' : 'wrong', track);
+
+    } catch (e) {
+        console.error(e);
+        hide('checking-box');
+        endRound('error', track);
+    }
 }
 
 // ── End round ─────────────────────────────────────────────────────────────────
 function endRound(result, track) {
-    hide('search-container'); hide('timer-container'); hide('word-container');
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
+    hide('checking-box');
 
-    const fb = document.getElementById('feedback');
+    const fb   = document.getElementById('feedback');
     fb.style.display = 'block';
+    const name = track ? `&ldquo;${esc(track.name)}&rdquo;` : '';
 
     if (result === 'win') {
-        fb.innerHTML = `<div class="feedback-box fb-win">✅ &ldquo;${esc(track.name)}&rdquo; contains <strong>${currentWord}</strong>!</div>`;
+        fb.innerHTML = `<div class="feedback-box fb-win">
+            ✅ ${name} contains <strong>${currentWord}</strong> in its lyrics!
+        </div>`;
     } else if (result === 'wrong') {
-        fb.innerHTML = `<div class="feedback-box fb-lose">❌ &ldquo;${esc(track.name)}&rdquo; doesn&rsquo;t contain <strong>${currentWord}</strong>.</div>`;
+        fb.innerHTML = `<div class="feedback-box fb-lose">
+            ❌ ${name} doesn&rsquo;t contain <strong>${currentWord}</strong> in its lyrics.
+        </div>`;
+    } else if (result === 'no-lyrics') {
+        // Reset timer and let player try again — no penalty
+        fb.innerHTML = `<div class="feedback-box fb-warn">
+            ⚠️ Couldn&rsquo;t find lyrics for ${name} on Genius. Pick another song!
+        </div>`;
+        setTimeout(() => {
+            hide('feedback');
+            show('word-container');
+            show('timer-container');
+            showFlex('search-container');
+            roundActive    = true;
+            roundStartedAt = Date.now();
+            runTimer();
+            document.getElementById('search-bar').focus();
+        }, 1800);
+        return;
+    } else if (result === 'timeout') {
+        fb.innerHTML = `<div class="feedback-box fb-lose">
+            ⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
+        </div>`;
     } else {
-        fb.innerHTML = `<div class="feedback-box fb-lose">⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.</div>`;
+        fb.innerHTML = `<div class="feedback-box fb-warn">
+            ⚠️ Genius lookup failed. Try again.
+        </div>`;
     }
 
-    const btn = document.getElementById('sync-btn');
-    btn.innerText = '▶ Next Round';
+    const btn = document.getElementById('start-btn');
+    btn.innerText     = '▶ Next Round';
     btn.style.display = 'block';
 }
 
@@ -320,10 +451,7 @@ function endRound(result, track) {
 function show(id)     { document.getElementById(id).style.display = 'block'; }
 function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
-function esc(s)       { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-// Nothing to do — Client Credentials are fetched on first search.
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>
