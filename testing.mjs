@@ -8,7 +8,7 @@
 //   4. Check for a word
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-const GENIUS_TOKEN = "l77UIFs5KEbatmo6Vr3EypIPaF_Eqir1-2h8R-nsutE6jgqTRbM8YJE2RD1LFghU";
+
 const TRACK        = 'Glimpse of Us';
 const ARTIST       = 'Joji';
 const WORD         = 'fine';
