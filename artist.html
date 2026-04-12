@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotiFight – Local Songs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(29,185,84,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(29,185,84,0.025) 1px, transparent 1px);
+            background-size: 40px 40px; pointer-events: none; z-index: 0;
+        }
+        .card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); }
+
+        /* ── Search inputs ── */
+        .search-input {
+            background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
+            border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 0.95rem;
+            outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .search-input:focus { border-color: #1DB954; }
+        .search-input::placeholder { color: #444; }
+
+        /* ── Results windows ── */
+        .results-window { max-height: 320px; overflow-y: auto; background: #111; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
+        .results-window::-webkit-scrollbar { width: 5px; }
+        .results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
+
+        /* ── Artist result items ── */
+        .artist-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+        .artist-item:last-child { border-bottom: none; }
+        .artist-item:hover { background: #1c1c1c; }
+        .artist-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .artist-placeholder { width: 50px; height: 50px; border-radius: 50%; background: #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .artist-name-text { font-weight: 600; font-size: 0.9rem; }
+        .artist-genre { font-size: 0.72rem; color: #555; margin-top: 2px; }
+
+        /* ── Song result items (same as index.html) ── */
+        .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+        .song-item:last-child { border-bottom: none; }
+        .song-item:hover { background: #1c1c1c; }
+        .song-item img { width: 46px; height: 46px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .song-placeholder { width: 46px; height: 46px; border-radius: 6px; background: #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+        .song-title { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-artist { font-size: 0.75rem; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ── Empty/loader states ── */
+        .empty-state { padding: 24px; text-align: center; color: #444; font-size: 0.82rem; }
+        .dot-loader { display: flex; gap: 6px; justify-content: center; padding: 22px; }
+        .dot-loader span { width: 7px; height: 7px; background: #1DB954; border-radius: 50%; animation: bounce 1s infinite ease-in-out; }
+        .dot-loader span:nth-child(2) { animation-delay: .15s; }
+        .dot-loader span:nth-child(3) { animation-delay: .3s; }
+        @keyframes bounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+        /* ── Loading view ── */
+        .load-artist-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(29,185,84,0.3); }
+        .load-artist-name { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.1em; color: #fff; margin-top: 10px; }
+        .track-status-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.82rem; color: #555; }
+        .track-status-item:last-child { border-bottom: none; }
+        .ts-icon { width: 18px; text-align: center; font-size: 0.85rem; flex-shrink: 0; }
+        .ts-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ── Artist context bar (in game view) ── */
+        #artist-ctx {
+            display: flex; align-items: center; gap: 10px;
+            background: #111; border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; padding: 10px 14px; width: 100%;
+        }
+        #ctx-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        #ctx-label { font-size: 0.65rem; color: #444; letter-spacing: 0.15em; text-transform: uppercase; }
+        #ctx-name { font-weight: 600; font-size: 0.88rem; line-height: 1.2; }
+        #change-btn {
+            margin-left: auto; flex-shrink: 0;
+            background: transparent; border: 1px solid #222; color: #555;
+            font-size: 0.72rem; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: border-color 0.15s, color 0.15s;
+        }
+        #change-btn:hover { border-color: #444; color: #aaa; }
+
+        /* ── Game elements (mirrors index.html) ── */
+        #word-display {
+            font-family: 'Bebas Neue', sans-serif; font-size: 4.5rem;
+            letter-spacing: 0.12em; line-height: 1;
+            background: linear-gradient(135deg,#1DB954,#17a349);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        #word-display.medium { background: linear-gradient(135deg,#f59e0b,#d97706); -webkit-background-clip: text; background-clip: text; }
+        #word-display.hard   { background: linear-gradient(135deg,#ff5555,#cc2222); -webkit-background-clip: text; background-clip: text; }
+        #timer-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#1DB954,#17a349); }
+
+        #checking-box {
+            width: 100%; padding: 14px 16px; border-radius: 14px;
+            background: #111; border: 1.5px solid #222;
+            display: none; align-items: center; gap: 12px;
+        }
+        #checking-box img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .ck-info { flex: 1; min-width: 0; }
+        .ck-title-el { font-weight: 600; font-size: 0.85rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ck-status { font-size: 0.73rem; color: #555; margin-top: 3px; }
+        .ck-status span { animation: bounce 0.9s infinite ease-in-out; display: inline-block; }
+        .ck-status span:nth-child(2) { animation-delay: .15s; }
+        .ck-status span:nth-child(3) { animation-delay: .3s; }
+
+        .feedback-box { width: 100%; padding: 18px 20px; border-radius: 14px; font-size: 1rem; font-weight: 600; text-align: center; animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+        .fb-win  { background: #0c2418; border: 1.5px solid #1DB954; color: #1DB954; }
+        .fb-lose { background: #2b0d0d; border: 1.5px solid #ff4444; color: #ff5555; }
+        .fb-warn { background: #1e1a0a; border: 1.5px solid #f59e0b; color: #f59e0b; }
+
+        #start-btn {
+            background: #1DB954; color: #000; font-weight: 700; font-size: 0.95rem;
+            padding: 14px 44px; border-radius: 999px; border: none; cursor: pointer;
+            letter-spacing: 0.04em; transition: transform 0.15s, box-shadow 0.2s; font-family: 'Inter', sans-serif;
+        }
+        #start-btn:hover { transform: scale(1.05); box-shadow: 0 0 28px rgba(29,185,84,0.35); }
+
+        .stat-label { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; font-size: 0.8rem; color: #444; }
+        .stat-val   { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 1.15rem; }
+        .stat-divider { width: 1px; background: #222; height: 28px; }
+        .diff-badge { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; font-size: 0.8rem; padding: 2px 10px; border-radius: 999px; }
+        .diff-easy   { background: #0c2418; color: #1DB954; border: 1px solid #1DB954; }
+        .diff-medium { background: #1e1208; color: #f59e0b; border: 1px solid #f59e0b; }
+        .diff-hard   { background: #2b0d0d; color: #ff5555; border: 1px solid #ff5555; }
+        .go-title { font-family: 'Bebas Neue', sans-serif; font-size: 3.8rem; color: #ff4444; letter-spacing: 0.12em; line-height: 1; }
+        .go-score { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.08em; color: #fff; }
+
+        .back-link { font-size: 0.75rem; color: #333; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; align-self: flex-start; transition: color 0.15s; }
+        .back-link:hover { color: #666; }
+        .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-5">
+
+<!-- ══════════════════════════════════════════════
+     VIEW 1: Artist Selection
+     ══════════════════════════════════════════════ -->
+<div id="view-select" class="w-full max-w-xl flex flex-col items-center gap-5 relative z-10">
+
+    <div class="w-full flex items-center justify-between pt-4 pb-2">
+        <a href="home.html" class="back-link">&#8592; Modes</a>
+        <div style="text-align:right;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</div>
+            <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
+        </div>
+    </div>
+
+    <div class="card w-full rounded-2xl p-7 shadow-2xl">
+        <div class="flex flex-col gap-4">
+            <div>
+                <p style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;margin-bottom:4px;">Choose Your Artist</p>
+                <p style="font-size:0.78rem;color:#444;line-height:1.5;">We'll analyze their top songs and build a word list just for them.</p>
+            </div>
+            <input id="artist-bar" class="search-input" type="text" placeholder="Search for an artist…" autocomplete="off" oninput="onArtistInput(this.value)">
+            <div class="results-window">
+                <div id="artist-empty" class="empty-state">Search for an artist to begin…</div>
+                <div id="artist-loader" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+                <ul id="artist-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIEW 2: Lyrics Analysis Loading
+     ══════════════════════════════════════════════ -->
+<div id="view-loading" class="w-full max-w-xl flex flex-col items-center gap-5 relative z-10" style="display:none;">
+
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:#1DB954;line-height:1;margin-top:1.5rem;">SpotiFight</div>
+
+    <div class="card w-full rounded-2xl p-7 shadow-2xl" style="text-align:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px;">
+            <img id="load-img" class="load-artist-img" src="" alt="">
+            <div id="load-name" class="load-artist-name"></div>
+            <div style="font-size:0.75rem;color:#444;letter-spacing:0.15em;text-transform:uppercase;">Analyzing catalog…</div>
+        </div>
+
+        <div id="track-list" style="text-align:left;margin-bottom:16px;"></div>
+
+        <div id="load-status-text" style="font-size:0.78rem;color:#555;min-height:20px;"></div>
+        <div id="load-dots" class="dot-loader" style="padding:14px;"><span></span><span></span><span></span></div>
+    </div>
+
+    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIEW 3: Game
+     ══════════════════════════════════════════════ -->
+<div id="view-game" class="w-full max-w-xl flex flex-col items-center relative z-10" style="display:none;">
+
+    <header class="w-full text-center py-5">
+        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
+        <p style="color:#2a2a2a;font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:3px;">Word in lyrics &middot; Not in title &middot; No mistakes</p>
+    </header>
+
+    <!-- Artist context bar -->
+    <div id="artist-ctx" style="margin-bottom:12px;">
+        <img id="ctx-img" src="" alt="">
+        <div>
+            <div id="ctx-label">Artist</div>
+            <div id="ctx-name"></div>
+        </div>
+        <button id="change-btn" onclick="changeArtist()">Change artist</button>
+    </div>
+
+    <!-- Stats -->
+    <div id="score-area" style="display:none;width:100%;margin-bottom:12px;">
+        <div style="display:flex;justify-content:center;align-items:center;gap:20px;">
+            <div style="text-align:center;">
+                <div class="stat-label">Score</div>
+                <div class="stat-val" id="score-val">0</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div style="text-align:center;">
+                <div class="stat-label">Streak</div>
+                <div class="stat-val" id="streak-val">0</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div style="text-align:center;">
+                <div class="stat-label">Level</div>
+                <div style="margin-top:3px;"><span id="diff-badge" class="diff-badge diff-easy">EASY</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game card -->
+    <div class="card w-full rounded-2xl p-7 shadow-2xl" style="margin-bottom:16px;">
+    <div class="flex flex-col items-center gap-5">
+
+        <div id="word-container" class="text-center" style="display:none;">
+            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Must be in lyrics &mdash; must NOT be in title</p>
+            <div id="word-display"></div>
+        </div>
+
+        <div id="timer-container" class="w-full" style="display:none;">
+            <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
+                <div id="timer-bar"></div>
+            </div>
+            <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">30s</p>
+        </div>
+
+        <button id="start-btn" onclick="startGame()">&#9654; Start Game</button>
+
+        <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
+            <input id="search-bar" class="search-input" type="text" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
+            <div class="results-window">
+                <div id="empty-state" class="empty-state">🎵 Start typing to search songs…</div>
+                <div id="loader-area" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+                <ul id="songs-list"></ul>
+            </div>
+        </div>
+
+        <div id="checking-box">
+            <img id="ck-art" src="" alt="">
+            <div class="ck-info">
+                <div class="ck-title-el" id="ck-title"></div>
+                <div class="ck-status" id="ck-status">Checking lyrics<span>.</span><span>.</span><span>.</span></div>
+            </div>
+        </div>
+
+        <div id="feedback" style="display:none;width:100%;"></div>
+        <div id="game-over-box" style="display:none;width:100%;text-align:center;"></div>
+
+    </div>
+    </div>
+
+    <p class="note" style="margin-bottom:16px;">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<script>
+// ── CREDENTIALS ───────────────────────────────────────────────────────────────
+const SPOTIFY_CLIENT_ID="61a21dd699ab4da28ab58fe5b809278a" 
+const SPOTIFY_CLIENT_SECRET="e53f1699efab481eb1ec6c25f1112585"
+
+// ── STOP WORDS ────────────────────────────────────────────────────────────────
+// Keep this list minimal so pronouns ('you','her','him','they'),
+// fillers ('yeah','hey','whoa') and meaningful conjunctions ('if','when','why')
+// can surface naturally in the artist's word pool.
+const STOP_WORDS = new Set([
+    // Articles
+    'the','a','an',
+    // Pure structural prepositions (no lyrical/directional meaning)
+    'of','with','by','at','in','on','to','for','into','from',
+    'through','between','during','above','below','within','without',
+    'upon','along','beside','beneath','throughout','toward',
+    // Basic conjunctions (structural glue only)
+    'and','but','or','nor','as','than','because','although','though',
+    // Auxiliary / linking verbs
+    'is','are','was','were','be','been','being',
+    'have','has','had','do','does','did',
+    'will','would','could','should','may','might','shall','must','can','am',
+    // Demonstratives & relative pronouns (not expressive on their own)
+    'this','that','these','those','which','who','whom','whose',
+    // Pure vocal noise / non-words (filtered regardless of frequency)
+    'ooh','wow','huh','aye','yea','woah','ugh','oooh','ohh','ahh','nah','mhm',
+    // Contracted auxiliary verbs
+    'dont','cant','wont','isnt','arent','wasnt','werent',
+    'hasnt','havent','hadnt','wouldnt','couldnt','shouldnt','doesnt','didnt',
+    // Informal contractions that aren't real words
+    'gonna','wanna','gotta','lemme','gimme',
+]);
+// Note: pronouns (you/her/him/they/them/your/their), fillers (yeah/hey/whoa/oh),
+// meaningful conjunctions (if/so/yet/when/where/why/how/since/until/while),
+// and adverbs (not/just/only/even/still/again/never/always) are intentionally
+// NOT filtered — they reflect an artist's signature voice and make valid game words.
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const TIME_LIMIT    = 30;
+const STREAK_MEDIUM = 5;
+const STREAK_HARD   = 10;
+const SCORE_CONFIG  = {
+    easy:   { base: 100, timeBonus: 2  },
+    medium: { base: 250, timeBonus: 5  },
+    hard:   { base: 500, timeBonus: 10 },
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let spotifyToken    = null;
+let spotifyExpiry   = 0;
+let selectedArtist  = null;   // { id, name, image }
+let artistWordPool  = null;   // { easy:[], medium:[], hard:[] }
+let currentWord     = '';
+let roundActive     = false;
+let roundStartedAt  = null;
+let pauseStart      = null;
+let timerRAF        = null;
+let searchDebounce  = null;
+let artistDebounce  = null;
+let score           = 0;
+let streak          = 0;
+let usedWords       = new Set();
+
+// ── LYRICS TOKENIZER ─────────────────────────────────────────────────────────
+function tokenize(text) {
+    return text
+        .toLowerCase()
+        .replace(/[''`]/g, '')          // strip apostrophes → contractions collapse (don't → dont)
+        .replace(/[^a-z\s]/g, ' ')      // keep only letters and spaces
+        .split(/\s+/)
+        .filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+}
+
+// ── WORD POOL BUILDER ─────────────────────────────────────────────────────────
+// Score = (how many songs it appears in) × 10  +  (total occurrences)
+// → words that are signature across multiple songs rank highest (easy)
+function buildWordPool(freq, songCount) {
+    let candidates = Object.keys(freq)
+        .filter(w => freq[w] >= 2)
+        .sort((a, b) => {
+            const sA = (songCount[a] || 0) * 10 + freq[a];
+            const sB = (songCount[b] || 0) * 10 + freq[b];
+            return sB - sA;
+        });
+
+    // If too few words passing the threshold, relax to freq >= 1
+    if (candidates.length < 15) {
+        candidates = Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
+    }
+
+    const easyEnd  = Math.min(20, Math.ceil(candidates.length * 0.35));
+    const medEnd   = Math.min(easyEnd + 20, easyEnd + Math.ceil(candidates.length * 0.35));
+
+    return {
+        easy:   candidates.slice(0, easyEnd),
+        medium: candidates.slice(easyEnd, medEnd),
+        hard:   candidates.slice(medEnd, medEnd + 15),
+    };
+}
+
+// ── SPOTIFY ───────────────────────────────────────────────────────────────────
+async function getSpotifyToken() {
+    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+            Authorization: `Basic ${btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`)}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) throw new Error(`Token error: ${res.status}`);
+    const data    = await res.json();
+    spotifyToken  = data.access_token;
+    spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
+    return spotifyToken;
+}
+
+async function searchArtists(query) {
+    const token = await getSpotifyToken();
+    const res   = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=5&market=US`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Artist search error: ${res.status}`);
+    return (await res.json()).artists.items;
+}
+
+async function getTopTracks(artistId, artistName) {
+    // /artists/{id}/top-tracks requires user OAuth; use plain search instead.
+    // High limit (50) gives the client-side ID filter enough candidates to work with.
+    const token = await getSpotifyToken();
+    const res   = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=track&limit=50`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Top tracks error: ${res.status}`);
+    return (await res.json()).tracks.items
+        .filter(t => t.artists.some(a => a.id === artistId))   // exact artist match
+        .sort((a, b) => b.popularity - a.popularity)            // most popular first
+        .slice(0, 7);
+}
+
+// Search tracks filtered to the selected artist
+async function searchArtistTracks(query) {
+    const token = await getSpotifyToken();
+    // Include artist name in query to bias results, then filter client-side
+    const q   = `${query} ${selectedArtist.name}`;
+    const res = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=12&market=US`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Track search error: ${res.status}`);
+    const tracks = (await res.json()).tracks.items;
+    return tracks.filter(t => t.artists.some(a => a.id === selectedArtist.id));
+}
+
+// ── LYRICS ────────────────────────────────────────────────────────────────────
+async function fetchLyrics(trackName, artist) {
+    const cleanTitle  = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
+    const cleanArtist = artist.split(',')[0].trim();
+    try {
+        const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.lyrics || null;
+    } catch {
+        return null;
+    }
+}
+
+// ── ARTIST SEARCH UI ──────────────────────────────────────────────────────────
+function onArtistInput(val) {
+    clearTimeout(artistDebounce);
+    const q = val.trim();
+    if (!q) {
+        document.getElementById('artist-list').innerHTML  = '';
+        document.getElementById('artist-empty').innerText = 'Search for an artist to begin…';
+        document.getElementById('artist-empty').style.display = 'block';
+        document.getElementById('artist-loader').style.display = 'none';
+        return;
+    }
+    document.getElementById('artist-empty').style.display  = 'none';
+    document.getElementById('artist-loader').style.display = 'block';
+    document.getElementById('artist-list').innerHTML = '';
+
+    artistDebounce = setTimeout(async () => {
+        try {
+            const artists = await searchArtists(q);
+            document.getElementById('artist-loader').style.display = 'none';
+            renderArtists(artists);
+        } catch {
+            document.getElementById('artist-loader').style.display = 'none';
+            document.getElementById('artist-empty').innerText      = '⚠️ Spotify search failed.';
+            document.getElementById('artist-empty').style.display  = 'block';
+        }
+    }, 350);
+}
+
+function renderArtists(artists) {
+    const list = document.getElementById('artist-list');
+    list.innerHTML = '';
+    if (!artists.length) {
+        document.getElementById('artist-empty').innerText     = 'No artists found.';
+        document.getElementById('artist-empty').style.display = 'block';
+        return;
+    }
+    artists.forEach(artist => {
+        const img    = artist.images?.[2]?.url || artist.images?.[0]?.url || '';
+        const genres = artist.genres?.slice(0, 2).join(', ') || '';
+        const li     = document.createElement('li');
+        li.className = 'artist-item';
+        li.innerHTML = `
+            ${img ? `<img class="artist-avatar" src="${img}" alt="">` : `<div class="artist-placeholder">🎤</div>`}
+            <div style="min-width:0;flex:1;">
+                <div class="artist-name-text">${esc(artist.name)}</div>
+                ${genres ? `<div class="artist-genre">${esc(genres)}</div>` : ''}
+            </div>`;
+        li.onclick = () => pickArtist(artist);
+        list.appendChild(li);
+    });
+}
+
+// ── CATALOG ANALYSIS ──────────────────────────────────────────────────────────
+async function pickArtist(artist) {
+    const img = artist.images?.[1]?.url || artist.images?.[0]?.url || '';
+    selectedArtist = { id: artist.id, name: artist.name, image: img };
+
+    // Transition to loading view
+    showView('view-loading');
+    const loadImg  = document.getElementById('load-img');
+    const loadName = document.getElementById('load-name');
+    loadImg.src       = img;
+    loadImg.style.display = img ? 'block' : 'none';
+    loadName.innerText = artist.name;
+    document.getElementById('load-status-text').innerText = '';
+    document.getElementById('load-dots').style.display   = 'flex';
+    document.getElementById('track-list').innerHTML = '';
+
+    try {
+        const tracks = await getTopTracks(artist.id, artist.name);
+
+        // Render track list with pending status
+        const trackList = document.getElementById('track-list');
+        trackList.innerHTML = tracks.map((t, i) => `
+            <div class="track-status-item">
+                <span class="ts-icon" id="ts-${i}" style="color:#333;">&#8226;</span>
+                <span class="ts-name">${esc(t.name)}</span>
+            </div>`).join('');
+
+        // Fetch lyrics and build frequency maps
+        const freq      = {};
+        const songCount = {};
+        let   success   = 0;
+
+        for (let i = 0; i < tracks.length; i++) {
+            const track = tracks[i];
+            const icon  = document.getElementById(`ts-${i}`);
+            icon.innerText   = '⟳';
+            icon.style.color = '#555';
+
+            const lyrics = await fetchLyrics(track.name, track.artists[0].name);
+
+            if (lyrics) {
+                const words      = tokenize(lyrics);
+                const seenInSong = new Set();
+                for (const w of words) {
+                    freq[w] = (freq[w] || 0) + 1;
+                    if (!seenInSong.has(w)) {
+                        songCount[w] = (songCount[w] || 0) + 1;
+                        seenInSong.add(w);
+                    }
+                }
+                success++;
+                icon.innerText   = '✓';
+                icon.style.color = '#1DB954';
+            } else {
+                icon.innerText   = '✗';
+                icon.style.color = '#ff4444';
+            }
+        }
+
+        if (success === 0) {
+            showAnalysisError("Couldn't find lyrics for this artist. Try a different one.");
+            return;
+        }
+
+        artistWordPool = buildWordPool(freq, songCount);
+
+        if (artistWordPool.easy.length < 5) {
+            showAnalysisError("Not enough lyrics data for this artist. Try another.");
+            return;
+        }
+
+        const total = artistWordPool.easy.length + artistWordPool.medium.length + artistWordPool.hard.length;
+        document.getElementById('load-dots').style.display      = 'none';
+        document.getElementById('load-status-text').innerText   =
+            `Ready — ${total} words found across ${success} song${success > 1 ? 's' : ''}.`;
+        document.getElementById('load-status-text').style.color = '#1DB954';
+
+        setTimeout(() => {
+            showView('view-game');
+            // Populate artist context bar
+            const ctxImg  = document.getElementById('ctx-img');
+            ctxImg.src    = img;
+            ctxImg.style.display = img ? 'block' : 'none';
+            document.getElementById('ctx-name').innerText = artist.name;
+            startGame();
+        }, 1400);
+
+    } catch (e) {
+        console.error(e);
+        showAnalysisError('Something went wrong. Please try again.');
+    }
+}
+
+function showAnalysisError(msg) {
+    document.getElementById('load-dots').style.display      = 'none';
+    document.getElementById('load-status-text').innerText   = '⚠️ ' + msg;
+    document.getElementById('load-status-text').style.color = '#f59e0b';
+
+    setTimeout(() => showView('view-select'), 3000);
+}
+
+function changeArtist() {
+    // Stop any active round
+    cancelAnimationFrame(timerRAF);
+    timerRAF    = null;
+    roundActive = false;
+
+    selectedArtist = null;
+    artistWordPool = null;
+    document.getElementById('artist-bar').value = '';
+    document.getElementById('artist-list').innerHTML  = '';
+    document.getElementById('artist-empty').innerText = 'Search for an artist to begin…';
+    document.getElementById('artist-empty').style.display = 'block';
+
+    showView('view-select');
+}
+
+// ── VIEW SWITCHER ─────────────────────────────────────────────────────────────
+function showView(id) {
+    ['view-select','view-loading','view-game'].forEach(v => {
+        document.getElementById(v).style.display = v === id ? 'flex' : 'none';
+    });
+}
+
+// ── DIFFICULTY ────────────────────────────────────────────────────────────────
+function getDifficulty() {
+    if (streak >= STREAK_HARD)   return 'hard';
+    if (streak >= STREAK_MEDIUM) return 'medium';
+    return 'easy';
+}
+
+function pickWord() {
+    const diff  = getDifficulty();
+    // Priority order: try the target tier first, fall back if empty
+    const order = diff === 'hard'   ? ['hard','medium','easy']
+                : diff === 'medium' ? ['medium','easy','hard']
+                :                     ['easy','medium','hard'];
+
+    for (const tier of order) {
+        const pool      = artistWordPool[tier] || [];
+        let   available = pool.filter(w => !usedWords.has(w));
+        if (available.length === 0 && pool.length > 0) {
+            // Refill this tier
+            pool.forEach(w => usedWords.delete(w));
+            available = pool.slice();
+        }
+        if (available.length > 0) {
+            const word = available[Math.floor(Math.random() * available.length)];
+            usedWords.add(word);
+            return word;
+        }
+    }
+    // Absolute fallback
+    const all = [...artistWordPool.easy, ...artistWordPool.medium, ...artistWordPool.hard];
+    return all[Math.floor(Math.random() * all.length)] || 'music';
+}
+
+function updateDiffBadge() {
+    const diff  = getDifficulty();
+    const badge = document.getElementById('diff-badge');
+    badge.className = `diff-badge diff-${diff}`;
+    badge.innerText = diff.toUpperCase();
+    const wd = document.getElementById('word-display');
+    wd.className = diff;
+}
+
+// ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
+function startGame() {
+    score  = 0;
+    streak = 0;
+    usedWords.clear();
+    document.getElementById('score-val').innerText  = '0';
+    document.getElementById('streak-val').innerText = '0';
+    document.getElementById('score-area').style.display = 'block';
+    updateDiffBadge();
+    hide('game-over-box');
+
+    const btn     = document.getElementById('start-btn');
+    btn.innerHTML = '&#9654; Start Game';
+    btn.onclick   = startRound;
+    btn.style.display = 'block';
+}
+
+function startRound() {
+    currentWord    = pickWord();
+    roundActive    = true;
+    roundStartedAt = Date.now();
+    pauseStart     = null;
+
+    hide('feedback');
+    hide('start-btn');
+    hide('checking-box');
+    hide('game-over-box');
+    show('word-container');
+    show('timer-container');
+    showFlex('search-container');
+
+    const wd = document.getElementById('word-display');
+    wd.innerText  = currentWord.toUpperCase();
+    wd.className  = getDifficulty();
+
+    document.getElementById('search-bar').value          = '';
+    document.getElementById('songs-list').innerHTML      = '';
+    document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
+    document.getElementById('empty-state').style.display = 'block';
+    document.getElementById('loader-area').style.display = 'none';
+
+    const bar = document.getElementById('timer-bar');
+    bar.style.cssText = 'width:100%;height:100%;border-radius:999px;background:linear-gradient(90deg,#1DB954,#17a349);';
+
+    document.getElementById('search-bar').focus();
+    runTimer();
+}
+
+function runTimer() {
+    cancelAnimationFrame(timerRAF);
+    const bar  = document.getElementById('timer-bar');
+    const text = document.getElementById('timer-text');
+
+    function tick() {
+        if (!roundActive) return;
+        const elapsed   = (Date.now() - roundStartedAt) / 1000;
+        const remaining = Math.max(0, TIME_LIMIT - elapsed);
+        bar.style.width = `${(remaining / TIME_LIMIT) * 100}%`;
+        text.innerText  = `${Math.ceil(remaining)}s`;
+        if (remaining <= 5) bar.style.background = 'linear-gradient(90deg,#ff4444,#cc0000)';
+        if (remaining <= 0) { roundActive = false; endRound('timeout', null); return; }
+        timerRAF = requestAnimationFrame(tick);
+    }
+    timerRAF = requestAnimationFrame(tick);
+}
+
+// ── SEARCH (artist-filtered) ──────────────────────────────────────────────────
+function onSearchInput(val) {
+    clearTimeout(searchDebounce);
+    const q = val.trim();
+    if (!q) {
+        document.getElementById('songs-list').innerHTML      = '';
+        document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
+        document.getElementById('empty-state').style.display = 'block';
+        document.getElementById('loader-area').style.display = 'none';
+        return;
+    }
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('loader-area').style.display = 'block';
+    document.getElementById('songs-list').innerHTML      = '';
+
+    searchDebounce = setTimeout(async () => {
+        try {
+            const tracks = await searchArtistTracks(q);
+            document.getElementById('loader-area').style.display = 'none';
+            if (tracks.length === 0) {
+                document.getElementById('empty-state').innerText     = `No songs by ${selectedArtist.name} found.`;
+                document.getElementById('empty-state').style.display = 'block';
+            } else {
+                renderResults(tracks);
+            }
+        } catch {
+            document.getElementById('loader-area').style.display = 'none';
+            document.getElementById('empty-state').innerText     = '⚠️ Spotify search failed.';
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    }, 350);
+}
+
+function renderResults(tracks) {
+    const list = document.getElementById('songs-list');
+    list.innerHTML = '';
+    tracks.forEach(track => {
+        const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
+        const artists = track.artists.map(a => a.name).join(', ');
+        const li      = document.createElement('li');
+        li.className  = 'song-item';
+        li.innerHTML  = `
+            ${art ? `<img src="${art}" alt="">` : `<div class="song-placeholder">🎵</div>`}
+            <div style="min-width:0;flex:1;">
+                <div class="song-title">${esc(track.name)}</div>
+                <div class="song-artist">${esc(artists)}</div>
+            </div>`;
+        li.onclick = () => pickSong(track);
+        list.appendChild(li);
+    });
+}
+
+// ── PICK SONG ─────────────────────────────────────────────────────────────────
+async function pickSong(track) {
+    if (!roundActive) return;
+    cancelAnimationFrame(timerRAF);
+    timerRAF    = null;
+    roundActive = false;
+    pauseStart  = Date.now();
+
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
+
+    const art = track.album.images[1]?.url || track.album.images[0]?.url || '';
+    document.getElementById('ck-art').src         = art;
+    document.getElementById('ck-title').innerText  = track.name;
+    document.getElementById('ck-status').innerHTML = 'Checking lyrics<span>.</span><span>.</span><span>.</span>';
+    document.getElementById('checking-box').style.display = 'flex';
+
+    // Rule: word must NOT be in the title
+    if (wordInText(currentWord, track.name)) {
+        hide('checking-box');
+        endRound('word-in-title', track);
+        return;
+    }
+
+    const trackName = track.name;
+    const artist    = track.artists.map(a => a.name).join(', ');
+
+    try {
+        const lyrics = await fetchLyrics(trackName, artist);
+        hide('checking-box');
+
+        if (lyrics === null) { endRound('no-lyrics', track); return; }
+
+        // Adjust for paused time so timer continues correctly on retry
+        const pausedDuration = Date.now() - pauseStart;
+        roundStartedAt += pausedDuration;
+
+        const elapsedSec   = (Date.now() - roundStartedAt) / 1000;
+        const remainingSec = Math.max(0, TIME_LIMIT - elapsedSec);
+
+        if (wordInText(currentWord, lyrics)) {
+            const diff   = getDifficulty();
+            const cfg    = SCORE_CONFIG[diff];
+            const points = cfg.base + Math.floor(remainingSec * cfg.timeBonus);
+            score  += points;
+            streak += 1;
+            document.getElementById('score-val').innerText  = score;
+            document.getElementById('streak-val').innerText = streak;
+            updateDiffBadge();
+            endRound('win', track, points);
+        } else {
+            endRound('wrong', track);
+        }
+
+    } catch (e) {
+        console.error(e);
+        hide('checking-box');
+        endRound('error', track);
+    }
+}
+
+// ── END ROUND ─────────────────────────────────────────────────────────────────
+function endRound(result, track, pointsEarned) {
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
+    hide('checking-box');
+
+    const fb   = document.getElementById('feedback');
+    const name = track ? `&ldquo;${esc(track.name)}&rdquo;` : '';
+
+    if (result === 'win') {
+        fb.innerHTML = `<div class="feedback-box fb-win">
+            ✅ ${name} has <strong>${currentWord}</strong> in its lyrics!
+            <div style="font-size:0.78rem;font-weight:400;opacity:0.7;margin-top:4px;">+${pointsEarned} pts</div>
+        </div>`;
+        fb.style.display = 'block';
+        const btn = document.getElementById('start-btn');
+        btn.innerHTML = '&#9654; Next Round';
+        btn.onclick   = startRound;
+        btn.style.display = 'block';
+
+    } else if (result === 'no-lyrics' || result === 'error') {
+        const msg = result === 'no-lyrics'
+            ? `⚠️ Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
+            : `⚠️ Lyrics lookup failed. Pick another song!`;
+        fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
+        fb.style.display = 'block';
+        setTimeout(() => {
+            hide('feedback');
+            roundStartedAt += 1800;   // don't penalise player for retry delay
+            show('word-container');
+            show('timer-container');
+            showFlex('search-container');
+            roundActive = true;
+            runTimer();
+            document.getElementById('search-bar').focus();
+        }, 1800);
+
+    } else {
+        // GAME OVER
+        let reasonHtml = '';
+        if (result === 'word-in-title') {
+            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
+                ❌ <strong>${esc(track.name)}</strong> has <strong>${currentWord}</strong> in its title!<br>
+                <span style="font-size:0.8rem;font-weight:400;">The word must be in the lyrics only.</span>
+            </div>`;
+        } else if (result === 'wrong') {
+            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
+                ❌ ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
+            </div>`;
+        } else if (result === 'timeout') {
+            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
+                ⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
+            </div>`;
+        }
+        fb.innerHTML     = reasonHtml;
+        fb.style.display = 'block';
+        showGameOver();
+    }
+}
+
+function showGameOver() {
+    const diff      = getDifficulty();
+    const diffLabel = diff.toUpperCase();
+    const box       = document.getElementById('game-over-box');
+    box.innerHTML = `
+        <div class="go-title">GAME OVER</div>
+        <div class="go-score" style="margin:10px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
+        <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:20px;">
+            <span>Streak &nbsp;<strong style="color:#ccc;">${streak}</strong></span>
+            <span>Level reached &nbsp;<span class="diff-badge diff-${diff}">${diffLabel}</span></span>
+        </div>`;
+    box.style.display = 'block';
+
+    const btn     = document.getElementById('start-btn');
+    btn.innerHTML = '&#9654; Play Again';
+    btn.onclick   = startGame;
+    btn.style.display = 'block';
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function wordInText(word, text) {
+    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    return re.test(text);
+}
+function show(id)     { document.getElementById(id).style.display = 'block'; }
+function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
+function hide(id)     { document.getElementById(id).style.display = 'none'; }
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

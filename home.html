@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotiFight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(29,185,84,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(29,185,84,0.025) 1px, transparent 1px);
+            background-size: 40px 40px; pointer-events: none; z-index: 0;
+        }
+
+        .mode-card {
+            display: flex; align-items: center; gap: 22px;
+            padding: 26px 28px; border-radius: 18px;
+            background: linear-gradient(145deg, #181818, #111);
+            border: 1px solid rgba(255,255,255,0.06);
+            text-decoration: none; color: inherit;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .mode-card:not(.disabled):hover {
+            transform: translateY(-3px);
+            border-color: #1DB954;
+            box-shadow: 0 8px 40px rgba(29,185,84,0.12);
+        }
+        .mode-card.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+        .mode-num {
+            font-family: 'Bebas Neue', sans-serif; font-size: 3.2rem;
+            color: rgba(255,255,255,0.05); line-height: 1;
+            width: 48px; text-align: center; flex-shrink: 0;
+        }
+        .mode-tag {
+            font-size: 0.62rem; letter-spacing: 0.28em; text-transform: uppercase;
+            color: #1DB954; margin-bottom: 5px;
+        }
+        .mode-title {
+            font-family: 'Bebas Neue', sans-serif; font-size: 1.85rem;
+            letter-spacing: 0.08em; line-height: 1;
+        }
+        .mode-desc { font-size: 0.8rem; color: #444; margin-top: 6px; line-height: 1.45; }
+
+        .mode-arrow {
+            margin-left: auto; flex-shrink: 0;
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.25);
+            display: flex; align-items: center; justify-content: center;
+            color: #1DB954; font-size: 1rem;
+        }
+        .soon-badge {
+            margin-left: auto; flex-shrink: 0;
+            font-family: 'Bebas Neue', sans-serif; font-size: 0.7rem; letter-spacing: 0.18em;
+            background: #141414; color: #2a2a2a; border: 1px solid #1e1e1e;
+            padding: 5px 12px; border-radius: 999px;
+        }
+
+        .divider { width: 100%; height: 1px; background: rgba(255,255,255,0.04); }
+        .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-5">
+
+<header class="w-full max-w-xl text-center py-8 relative z-10">
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:4rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
+    <p style="color:#2e2e2e;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;margin-top:6px;">Word in lyrics &middot; Not in title &middot; No mistakes</p>
+</header>
+
+<div class="w-full max-w-xl flex flex-col gap-4 relative z-10 pb-10">
+
+    <!-- Global Songs -->
+    <a href="index.html" class="mode-card">
+        <div class="mode-num">01</div>
+        <div style="min-width:0;flex:1;">
+            <div class="mode-tag">Worldwide</div>
+            <div class="mode-title">Global Songs</div>
+            <div class="mode-desc">Find any song in the world whose lyrics contain the word — but not its title.</div>
+        </div>
+        <div class="mode-arrow">&#8594;</div>
+    </a>
+
+    <!-- Local / Artist Mode -->
+    <a href="artist.html" class="mode-card">
+        <div class="mode-num">02</div>
+        <div style="min-width:0;flex:1;">
+            <div class="mode-tag">Artist Focus</div>
+            <div class="mode-title">Local Songs</div>
+            <div class="mode-desc">Pick an artist and guess only from their catalog. Stay in their world.</div>
+        </div>
+        <div class="mode-arrow">&#8594;</div>
+    </a>
+
+    <!-- Online Duel (disabled) -->
+    <div class="mode-card disabled">
+        <div class="mode-num">03</div>
+        <div style="min-width:0;flex:1;">
+            <div class="mode-tag" style="color:#2a2a2a;">Head-to-Head</div>
+            <div class="mode-title">Online Duel</div>
+            <div class="mode-desc">Challenge a friend in real-time. Who knows more songs?</div>
+        </div>
+        <div class="soon-badge">SOON</div>
+    </div>
+
+</div>
+
+<p class="note relative z-10">Powered by Spotify &amp; lyrics.ovh</p>
+
+</body>
+</html>

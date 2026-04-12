@@ -26,17 +26,17 @@
         }
         #timer-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#1DB954,#17a349); }
 
-        #search-bar {
+        .search-input {
             background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
             border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 0.95rem;
             outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif;
         }
-        #search-bar:focus { border-color: #1DB954; }
-        #search-bar::placeholder { color: #444; }
+        .search-input:focus { border-color: #1DB954; }
+        .search-input::placeholder { color: #444; }
 
-        #results-window { max-height: 290px; overflow-y: auto; background: #111; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
-        #results-window::-webkit-scrollbar { width: 5px; }
-        #results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
+        .results-window { max-height: 290px; overflow-y: auto; background: #111; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
+        .results-window::-webkit-scrollbar { width: 5px; }
+        .results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
 
         .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
         .song-item:last-child { border-bottom: none; }
@@ -80,28 +80,70 @@
         .dot-loader span:nth-child(3) { animation-delay: .3s; }
         @keyframes bounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 
-        #empty-state { padding: 28px; text-align: center; color: #444; font-size: 0.82rem; }
-        .stat-label { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; font-size: 0.85rem; color: #444; }
-        .stat-val   { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 1.1rem; }
-        .note { font-size: 0.72rem; color: #333; text-align: center; }
+        .empty-state { padding: 28px; text-align: center; color: #444; font-size: 0.82rem; }
+        .back-link { font-size: 0.72rem; color: #333; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: color 0.15s; }
+        .back-link:hover { color: #666; }
+        .stat-label { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; font-size: 0.8rem; color: #444; }
+        .stat-val   { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 1.15rem; }
+        .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
+        .stat-divider { width: 1px; background: #222; height: 28px; }
+
+        /* Difficulty badges */
+        .diff-badge { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; font-size: 0.8rem; padding: 2px 10px; border-radius: 999px; }
+        .diff-easy   { background: #0c2418; color: #1DB954; border: 1px solid #1DB954; }
+        .diff-medium { background: #1e1208; color: #f59e0b; border: 1px solid #f59e0b; }
+        .diff-hard   { background: #2b0d0d; color: #ff5555; border: 1px solid #ff5555; }
+
+        /* Word container difficulty tint on hard */
+        #word-display.hard {
+            background: linear-gradient(135deg,#ff5555,#cc2222);
+            -webkit-background-clip: text; background-clip: text;
+        }
+        #word-display.medium {
+            background: linear-gradient(135deg,#f59e0b,#d97706);
+            -webkit-background-clip: text; background-clip: text;
+        }
+
+        /* Game over */
+        .go-title { font-family: 'Bebas Neue', sans-serif; font-size: 3.8rem; color: #ff4444; letter-spacing: 0.12em; line-height: 1; }
+        .go-score { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.08em; color: #fff; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
 
-<header class="w-full max-w-xl text-center py-6 relative z-10">
-    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:3.8rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
-    <p style="color:#333;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:4px;">Find the song · Beat the clock</p>
-</header>
+<div class="w-full max-w-xl flex items-center justify-between pt-4 pb-2 relative z-10">
+    <a href="home.html" class="back-link">&#8592; Modes</a>
+    <div style="text-align:right;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</div>
+        <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Global Songs</div>
+    </div>
+</div>
 
-<div id="score-area" class="w-full max-w-xl flex justify-center mb-3 px-1 relative z-10" style="display:none;">
-    <div><span class="stat-label">Score </span><span class="stat-val" id="score-val">0</span></div>
+<!-- Stats bar (shown during game) -->
+<div id="score-area" class="w-full max-w-xl mb-3 px-1 relative z-10" style="display:none;">
+    <div style="display:flex;justify-content:center;align-items:center;gap:20px;">
+        <div style="text-align:center;">
+            <div class="stat-label">Score</div>
+            <div class="stat-val" id="score-val">0</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div style="text-align:center;">
+            <div class="stat-label">Streak</div>
+            <div class="stat-val" id="streak-val">0</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div style="text-align:center;">
+            <div class="stat-label">Level</div>
+            <div style="margin-top:3px;"><span id="diff-badge" class="diff-badge diff-easy">EASY</span></div>
+        </div>
+    </div>
 </div>
 
 <div class="card w-full max-w-xl rounded-2xl p-7 shadow-2xl relative z-10">
 <div class="flex flex-col items-center gap-5">
 
     <div id="word-container" class="text-center" style="display:none;">
-        <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Find a song whose lyrics contain</p>
+        <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Must be in lyrics &mdash; must NOT be in title</p>
         <div id="word-display"></div>
     </div>
 
@@ -112,12 +154,12 @@
         <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">30s</p>
     </div>
 
-    <button id="start-btn" onclick="startRound()">▶ Start Game</button>
+    <button id="start-btn" onclick="startGame()">&#9654; Start Game</button>
 
     <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
-        <input id="search-bar" type="text" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
-        <div id="results-window">
-            <div id="empty-state">🎵 Start typing to search songs…</div>
+        <input id="search-bar" class="search-input" type="text" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
+        <div id="results-window" class="results-window">
+            <div id="empty-state" class="empty-state">🎵 Start typing to search songs…</div>
             <div id="loader-area" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
             <ul id="songs-list"></ul>
         </div>
@@ -127,40 +169,108 @@
         <img id="ck-art" src="" alt="">
         <div class="ck-info">
             <div class="ck-title" id="ck-title"></div>
-            <div class="ck-status" id="ck-status">Searching Genius<span>.</span><span>.</span><span>.</span></div>
+            <div class="ck-status" id="ck-status">Checking lyrics<span>.</span><span>.</span><span>.</span></div>
         </div>
     </div>
 
     <div id="feedback" style="display:none;width:100%;"></div>
 
+    <div id="game-over-box" style="display:none;width:100%;text-align:center;"></div>
+
 </div>
 </div>
 
-<p class="note" style="margin-top:18px;">Powered by Spotify &amp; Genius</p>
+<p class="note" style="margin-top:18px;">Powered by Spotify &amp; lyrics.ovh</p>
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-const GAME_WORDS = [
-    'love','night','fire','dream','run','rain','dance',
-    'heart','sometimes','forever','time','sun','gold',
-    'back','away','cool','girl','blue','light','good',
+// ── WORD BANKS ────────────────────────────────────────────────────────────────
+// Easy (80): words that appear in an enormous number of songs — easy to find a match
+const WORDS_EASY = [
+    'love',    'heart',   'baby',    'night',   'feel',    'life',    'time',    'know',
+    'need',    'come',    'back',    'say',     'want',    'stay',    'fall',    'give',
+    'take',    'make',    'never',   'always',  'forever', 'dream',   'fire',    'rain',
+    'light',   'dark',    'day',    'mind',    'home',    'run',     'dance',   'eyes',
+    'tears',   'smile',   'hold',    'gone',    'miss',    'cry',     'away',    'free',
+    'hurt',    'save',    'lost',    'find',    'leave',   'wait',    'tell',    'walk',
+    'sing',    'live',    'die',     'wish',    'hope',    'far',     'world',   'road',
+    'stars',   'sky',     'hands',   'face',    'name',    'days',    'pain',    'true',
+    'real',    'good',    'hard',    'yeah',    'high',    'low',     'cold',    'break',
+    'wrong',   'fly',     'fight',   'strong',  'long',    'loud',    'young',   'breath',
+    'you',     'her',     'him',     'hey',     'get',     'let',     'out',     'your',
+    'us',      'together','one',     'beautiful',
 ];
-const TIME_LIMIT = 30;
 
-// ── State ─────────────────────────────────────────────────────────────────────
+// Medium (40): words that appear in lyrics but take more thought to find
+const WORDS_MEDIUM = [
+    'broken',    'breathe',   'chase',     'scream',    'fade',      'shine',     'trust',     'shame',
+    'ghost',     'hollow',    'empty',     'brave',     'wild',      'thunder',   'blood',     'shadow',
+    'echo',      'wound',     'scar',      'battle',    'sacrifice', 'surrender', 'devotion',  'survive',
+    'whisper',   'wander',    'rebel',     'collide',   'drown',     'haunt',     'ignite',    'crumble',
+    'shatter',   'hunger',    'restless',  'reckless',  'bleed',     'crawl',     'burn',      'rise',
+];
+
+// Hard (20): uncommon words that still appear in some song lyrics
+const WORDS_HARD = [
+    'labyrinth',  'phantom',    'inferno',    'requiem',    'asylum',
+    'elegy',      'tempest',    'silhouette', 'epitaph',    'vendetta',
+    'enigma',     'absolution', 'melancholy', 'oblivion',   'purgatory',
+    'covenant',   'paradox',    'catharsis',  'exile',      'abyss',
+];
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const TIME_LIMIT    = 30;
+const STREAK_MEDIUM = 5;
+const STREAK_HARD   = 10;
+const SPOTIFY_CLIENT_ID="61a21dd699ab4da28ab58fe5b809278a" 
+const SPOTIFY_CLIENT_SECRET="e53f1699efab481eb1ec6c25f1112585"
+
+const SCORE_CONFIG = {
+    easy:   { base: 100, timeBonus: 2  },   // max 160 pts
+    medium: { base: 250, timeBonus: 5  },   // max 400 pts
+    hard:   { base: 500, timeBonus: 10 },   // max 800 pts
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
 let spotifyToken   = null;
 let spotifyExpiry  = 0;
 let currentWord    = '';
 let roundActive    = false;
 let roundStartedAt = null;
+let pauseStart     = null;   // tracks when timer was paused (for no-lyrics retry)
 let timerRAF       = null;
 let searchDebounce = null;
 let score          = 0;
+let streak         = 0;
+let usedWords      = new Set();
 
-// ── Spotify ───────────────────────────────────────────────────────────────────
+// ── DIFFICULTY ────────────────────────────────────────────────────────────────
+function getDifficulty() {
+    if (streak >= STREAK_HARD)   return 'hard';
+    if (streak >= STREAK_MEDIUM) return 'medium';
+    return 'easy';
+}
+
+function pickWord() {
+    const diff = getDifficulty();
+    const pool = diff === 'hard' ? WORDS_HARD : diff === 'medium' ? WORDS_MEDIUM : WORDS_EASY;
+    let available = pool.filter(w => !usedWords.has(w));
+    if (available.length === 0) { pool.forEach(w => usedWords.delete(w)); available = pool.slice(); }
+    const word = available[Math.floor(Math.random() * available.length)];
+    usedWords.add(word);
+    return word;
+}
+
+function updateDiffBadge() {
+    const diff  = getDifficulty();
+    const badge = document.getElementById('diff-badge');
+    badge.className = `diff-badge diff-${diff}`;
+    badge.innerText = diff.toUpperCase();
+
+    const wd = document.getElementById('word-display');
+    wd.className = diff;   // easy / medium / hard — drives CSS gradient
+}
+
+// ── SPOTIFY ───────────────────────────────────────────────────────────────────
 async function getSpotifyToken() {
     if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
     const res = await fetch('https://accounts.spotify.com/api/token', {
@@ -172,7 +282,7 @@ async function getSpotifyToken() {
         body: 'grant_type=client_credentials',
     });
     if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
-    const data   = await res.json();
+    const data    = await res.json();
     spotifyToken  = data.access_token;
     spotifyExpiry = Date.now() + (data.expires_in - 60) * 1000;
     return spotifyToken;
@@ -188,85 +298,64 @@ async function searchSpotify(query) {
     return (await res.json()).tracks.items;
 }
 
-// ── Genius lyrics ─────────────────────────────────────────────────────────────
-// Genius blocks direct browser requests (CORS).
-// We try two public proxies in sequence — if both fail we fall back to title check.
-
-const PROXIES = [
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-];
-
-async function proxyFetch(targetUrl) {
-    let lastErr;
-    for (const makeProxy of PROXIES) {
-        try {
-            const proxyUrl = makeProxy(targetUrl);
-            const res      = await fetch(proxyUrl);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            // allorigins wraps response in { contents: "..." }
-            // corsproxy.io returns the raw response directly
-            const text = await res.text();
-            let parsed;
-            try { parsed = JSON.parse(text); } catch { return text; }
-            if (parsed && typeof parsed.contents === 'string') return parsed.contents;
-            return text;
-        } catch (e) {
-            lastErr = e;
-        }
-    }
-    throw new Error(`All proxies failed: ${lastErr?.message}`);
-}
-
+// ── LYRICS ────────────────────────────────────────────────────────────────────
 async function fetchLyrics(trackName, artist) {
-
-    // Step 1: Search Genius
-    const q      = `${trackName} ${artist}`;
-    const apiUrl = `https://api.genius.com/search?q=${encodeURIComponent(q)}&access_token=${GENIUS_TOKEN}`;
-
-    const searchText = await proxyFetch(apiUrl);
-    const inner      = JSON.parse(searchText);
-    const hits       = inner.response?.hits || [];
-    if (!hits.length) return null;
-
-    // Pick best match — same as genius-test.mjs
-    const lower = trackName.toLowerCase();
-    const best  = hits.find(h => h.result.title.toLowerCase().includes(lower.split(' ')[0]))
-                  || hits[0];
-
-    // Step 2: Fetch lyrics page
-    const html = await proxyFetch(best.result.url);
-
-    // Step 3: Parse — same selector as genius-test.mjs
-    const doc        = new DOMParser().parseFromString(html, 'text/html');
-    const containers = doc.querySelectorAll('[data-lyrics-container="true"]');
-    if (!containers.length) return null;
-
-    let lyrics = '';
-    containers.forEach(c => {
-        c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-        lyrics += (c.textContent || '') + '\n';
-    });
-
-    return lyrics.trim() || null;
+    const cleanTitle  = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
+    const cleanArtist = artist.split(',')[0].trim();
+    try {
+        const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.lyrics || null;
+    } catch (e) {
+        console.error('lyrics.ovh failed:', e);
+        return null;
+    }
 }
 
-// ── Round ─────────────────────────────────────────────────────────────────────
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function wordInText(word, text) {
+    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    return re.test(text);
+}
+
+function show(id)     { document.getElementById(id).style.display = 'block'; }
+function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
+function hide(id)     { document.getElementById(id).style.display = 'none'; }
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
+function startGame() {
+    score  = 0;
+    streak = 0;
+    usedWords.clear();
+    document.getElementById('score-val').innerText  = '0';
+    document.getElementById('streak-val').innerText = '0';
+    document.getElementById('score-area').style.display = 'flex';
+    updateDiffBadge();
+    hide('game-over-box');
+    startRound();
+}
+
 function startRound() {
-    currentWord    = GAME_WORDS[Math.floor(Math.random() * GAME_WORDS.length)];
+    currentWord    = pickWord();
     roundActive    = true;
     roundStartedAt = Date.now();
+    pauseStart     = null;
 
-    show('score-area');
     hide('feedback');
     hide('start-btn');
     hide('checking-box');
+    hide('game-over-box');
     show('word-container');
     show('timer-container');
     showFlex('search-container');
 
-    document.getElementById('word-display').innerText    = currentWord.toUpperCase();
+    const wd = document.getElementById('word-display');
+    wd.innerText = currentWord.toUpperCase();
+    wd.className = getDifficulty();
+
     document.getElementById('search-bar').value          = '';
     document.getElementById('songs-list').innerHTML      = '';
     document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
@@ -298,7 +387,7 @@ function runTimer() {
     timerRAF = requestAnimationFrame(tick);
 }
 
-// ── Search ────────────────────────────────────────────────────────────────────
+// ── SEARCH ────────────────────────────────────────────────────────────────────
 function onSearchInput(val) {
     clearTimeout(searchDebounce);
     const q = val.trim();
@@ -350,45 +439,66 @@ function renderResults(tracks) {
     });
 }
 
-// ── Pick song → Genius lyrics check ──────────────────────────────────────────
+// ── PICK SONG ─────────────────────────────────────────────────────────────────
 async function pickSong(track) {
-    if (!roundActive && timerRAF === null) return; // already picked
+    if (!roundActive) return;
+
+    // Pause the timer while we check
     cancelAnimationFrame(timerRAF);
-    timerRAF = null;
+    timerRAF   = null;
     roundActive = false;
+    pauseStart  = Date.now();
 
     hide('search-container');
     hide('timer-container');
     hide('word-container');
 
-    // Show checking UI
     const art = track.album.images[1]?.url || track.album.images[0]?.url || '';
     document.getElementById('ck-art').src         = art;
     document.getElementById('ck-title').innerText  = track.name;
-    document.getElementById('ck-status').innerHTML = 'Searching Genius<span>.</span><span>.</span><span>.</span>';
+    document.getElementById('ck-status').innerHTML = 'Checking lyrics<span>.</span><span>.</span><span>.</span>';
     document.getElementById('checking-box').style.display = 'flex';
+
+    // Rule 1: word must NOT appear in the title
+    if (wordInText(currentWord, track.name)) {
+        hide('checking-box');
+        endRound('word-in-title', track);
+        return;
+    }
 
     const trackName = track.name;
     const artist    = track.artists.map(a => a.name).join(', ');
 
     try {
         const lyrics = await fetchLyrics(trackName, artist);
-
         hide('checking-box');
 
         if (lyrics === null) {
-            // Genius had no result or couldn't parse — skip without penalty
+            // No lyrics found — let player retry, resume timer where it left off
             endRound('no-lyrics', track);
             return;
         }
 
-        // Step 4: Word check — same regex as genius-test.mjs
-        const re  = new RegExp(`\\b${currentWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-        const won = re.test(lyrics);
+        // Compute remaining time (exclude time spent on the API call)
+        const pausedDuration = Date.now() - pauseStart;
+        roundStartedAt += pausedDuration;   // shift start so elapsed doesn't count paused time
+        const elapsedSec   = (Date.now() - roundStartedAt) / 1000;
+        const remainingSec = Math.max(0, TIME_LIMIT - elapsedSec);
 
-        if (won) score += 100;
-        document.getElementById('score-val').innerText = score;
-        endRound(won ? 'win' : 'wrong', track);
+        if (wordInText(currentWord, lyrics)) {
+            // WIN
+            const diff   = getDifficulty();
+            const cfg    = SCORE_CONFIG[diff];
+            const points = cfg.base + Math.floor(remainingSec * cfg.timeBonus);
+            score  += points;
+            streak += 1;
+            document.getElementById('score-val').innerText  = score;
+            document.getElementById('streak-val').innerText = streak;
+            updateDiffBadge();
+            endRound('win', track, points);
+        } else {
+            endRound('wrong', track);
+        }
 
     } catch (e) {
         console.error(e);
@@ -397,61 +507,93 @@ async function pickSong(track) {
     }
 }
 
-// ── End round ─────────────────────────────────────────────────────────────────
-function endRound(result, track) {
+// ── END ROUND ─────────────────────────────────────────────────────────────────
+function endRound(result, track, pointsEarned) {
     hide('search-container');
     hide('timer-container');
     hide('word-container');
     hide('checking-box');
 
     const fb   = document.getElementById('feedback');
-    fb.style.display = 'block';
     const name = track ? `&ldquo;${esc(track.name)}&rdquo;` : '';
 
     if (result === 'win') {
         fb.innerHTML = `<div class="feedback-box fb-win">
-            ✅ ${name} contains <strong>${currentWord}</strong> in its lyrics!
+            ✅ ${name} has <strong>${currentWord}</strong> in its lyrics!
+            <div style="font-size:0.78rem;font-weight:400;opacity:0.7;margin-top:4px;">+${pointsEarned} pts</div>
         </div>`;
-    } else if (result === 'wrong') {
-        fb.innerHTML = `<div class="feedback-box fb-lose">
-            ❌ ${name} doesn&rsquo;t contain <strong>${currentWord}</strong> in its lyrics.
-        </div>`;
-    } else if (result === 'no-lyrics') {
-        // Reset timer and let player try again — no penalty
-        fb.innerHTML = `<div class="feedback-box fb-warn">
-            ⚠️ Couldn&rsquo;t find lyrics for ${name} on Genius. Pick another song!
-        </div>`;
+        fb.style.display = 'block';
+
+        const btn     = document.getElementById('start-btn');
+        btn.innerHTML = '&#9654; Next Round';
+        btn.onclick   = startRound;
+        btn.style.display = 'block';
+
+    } else if (result === 'no-lyrics' || result === 'error') {
+        const msg = result === 'no-lyrics'
+            ? `⚠️ Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
+            : `⚠️ Lyrics lookup failed. Pick another song!`;
+        fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
+        fb.style.display = 'block';
+
+        // Resume round with timer continuing from where it was
         setTimeout(() => {
             hide('feedback');
+            // Adjust roundStartedAt to account for the display delay
+            roundStartedAt += 1800;
             show('word-container');
             show('timer-container');
             showFlex('search-container');
-            roundActive    = true;
-            roundStartedAt = Date.now();
+            roundActive = true;
             runTimer();
             document.getElementById('search-bar').focus();
         }, 1800);
-        return;
-    } else if (result === 'timeout') {
-        fb.innerHTML = `<div class="feedback-box fb-lose">
-            ⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
-        </div>`;
-    } else {
-        fb.innerHTML = `<div class="feedback-box fb-warn">
-            ⚠️ Genius lookup failed. Try again.
-        </div>`;
-    }
 
-    const btn = document.getElementById('start-btn');
-    btn.innerText     = '▶ Next Round';
-    btn.style.display = 'block';
+    } else {
+        // GAME OVER: wrong, word-in-title, or timeout
+        let reasonHtml = '';
+        if (result === 'word-in-title') {
+            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
+                ❌ <strong>${esc(track.name)}</strong> has <strong>${currentWord}</strong> in its title!<br>
+                <span style="font-size:0.8rem;font-weight:400;">The word must be in the lyrics only.</span>
+            </div>`;
+        } else if (result === 'wrong') {
+            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
+                ❌ ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
+            </div>`;
+        } else if (result === 'timeout') {
+            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
+                ⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
+            </div>`;
+        }
+
+        fb.innerHTML     = reasonHtml;
+        fb.style.display = 'block';
+
+        showGameOver();
+    }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function show(id)     { document.getElementById(id).style.display = 'block'; }
-function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
-function hide(id)     { document.getElementById(id).style.display = 'none'; }
-function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showGameOver() {
+    const diff       = getDifficulty();
+    const diffLabel  = diff.toUpperCase();
+
+    const box = document.getElementById('game-over-box');
+    box.innerHTML = `
+        <div class="go-title">GAME OVER</div>
+        <div class="go-score" style="margin:10px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
+        <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:20px;">
+            <span>Streak &nbsp;<strong style="color:#ccc;">${streak}</strong></span>
+            <span>Level reached &nbsp;<span class="diff-badge diff-${diff}">${diffLabel}</span></span>
+        </div>
+    `;
+    box.style.display = 'block';
+
+    const btn     = document.getElementById('start-btn');
+    btn.innerHTML = '&#9654; Play Again';
+    btn.onclick   = startGame;
+    btn.style.display = 'block';
+}
 </script>
 </body>
 </html>
