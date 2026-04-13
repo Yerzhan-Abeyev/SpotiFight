@@ -355,34 +355,35 @@ const STOP_WORDS = new Set([
 // NOT filtered — they reflect an artist's signature voice and make valid game words.
 
 // ── PRESET SONG CATALOG ───────────────────────────────────────────────────────
+// Songs are ordered by popularity (most popular first) so top 5–7 are always the
+// most recognisable tracks for the word-pool analysis.
 const PRESET_SONGS = {
     'Taylor Swift': [
-        'Shake It Off','Love Story','Blank Space','Style','Anti-Hero',
-        'Cruel Summer','Wildest Dreams','You Belong With Me','22',
-        'All Too Well','Cardigan','Lover','august','Fearless','Bad Blood',
+        'Anti-Hero','Shake It Off','Cruel Summer','Blank Space','Love Story',
+        'Bad Blood','Wildest Dreams','You Belong With Me','Cardigan',
+        'Style','22','All Too Well','Lover','august','Fearless',
     ],
     'Ed Sheeran': [
-        'Shape of You','Perfect','Thinking Out Loud','Photograph',
-        'Castle on the Hill','Lego House','A-Team','Galway Girl',
-        'Bad Habits','Shivers','Happier','I See Fire','Bloodstream','Dive',
+        'Shape of You','Perfect','Bad Habits','Thinking Out Loud','Photograph',
+        'Castle on the Hill','Shivers','Happier','Galway Girl',
+        'A-Team','Lego House','Dive','I See Fire','Bloodstream',
     ],
     'Coldplay': [
-        'Yellow','The Scientist','Clocks','Fix You','Speed of Sound',
-        'Viva la Vida','Paradise','A Sky Full of Stars','Something Just Like This',
-        'Hymn for the Weekend','Magic','In My Place','Trouble','The Hardest Part',
+        'Something Just Like This','Yellow','Hymn for the Weekend','A Sky Full of Stars',
+        'Fix You','The Scientist','Viva la Vida','Paradise',
+        'Magic','Clocks','Speed of Sound','In My Place','Trouble','The Hardest Part',
     ],
     'Joji': [
-        'Slow Dancing in the Dark','Sanctuary','Run','Gimme Love',
-        'Window','Glimpse of Us','Daylight','After Thoughts',
-        'Yeah Right','Pretty Boy','Will He','Ew','TEST DRIVE',
+        'Glimpse of Us','Slow Dancing in the Dark','Sanctuary','Run','Gimme Love',
+        'Daylight','Window','Yeah Right','After Thoughts','Pretty Boy','Will He','TEST DRIVE','Ew',
     ],
 };
 
-function getRandomSongs(artistName) {
-    const all     = PRESET_SONGS[artistName] || [];
-    const count   = 3 + Math.floor(Math.random() * 3); // pick 3–5
-    const shuffled = [...all].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(count, all.length))
+// Always take the top 5–7 songs (popularity-ordered, no randomness)
+function getTopSongs(artistName) {
+    const all   = PRESET_SONGS[artistName] || [];
+    const count = 5 + Math.floor(Math.random() * 3); // 5, 6 or 7
+    return all.slice(0, Math.min(count, all.length))
         .map(name => ({ name, artists: [{ name: artistName }] }));
 }
 
@@ -390,10 +391,11 @@ function getRandomSongs(artistName) {
 const TIME_LIMIT    = 30;
 const STREAK_MEDIUM = 5;
 const STREAK_HARD   = 10;
+// Local mode: no time bonus (lyrics search takes time, penalising speed is unfair)
 const SCORE_CONFIG  = {
-    easy:   { base: 100, timeBonus: 2  },
-    medium: { base: 250, timeBonus: 5  },
-    hard:   { base: 500, timeBonus: 10 },
+    easy:   { base: 100, timeBonus: 0 },
+    medium: { base: 250, timeBonus: 0 },
+    hard:   { base: 500, timeBonus: 0 },
 };
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let spotifyToken    = null;
@@ -540,9 +542,9 @@ async function pickArtist(artist) {
     document.getElementById('track-list').innerHTML = '';
 
     try {
-        const tracks = getRandomSongs(artist.name);
+        const tracks = getTopSongs(artist.name);
 
-        // Render track list with pending status
+        // TODO: remove track list display before release so players can't see which songs were analysed
         const trackList = document.getElementById('track-list');
         trackList.innerHTML = tracks.map((t, i) => `
             <div class="track-status-item">
@@ -697,11 +699,9 @@ function startGame() {
     document.getElementById('score-area').style.display = 'block';
     updateDiffBadge();
     hide('game-over-box');
-
-    const btn     = document.getElementById('start-btn');
-    btn.innerHTML = '&#9654; Start Game';
-    btn.onclick   = startRound;
-    btn.style.display = 'block';
+    hide('feedback');
+    hide('change-btn');   // disabled during game
+    startRound();
 }
 
 function startRound() {
@@ -922,6 +922,7 @@ function showGameOver() {
     btn.innerHTML = '&#9654; Play Again';
     btn.onclick   = startGame;
     btn.style.display = 'block';
+    show('change-btn');   // re-enable artist change after game over
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────

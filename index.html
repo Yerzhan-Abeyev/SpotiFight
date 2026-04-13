@@ -185,37 +185,34 @@
 
 <script>
 // ── WORD BANKS ────────────────────────────────────────────────────────────────
-// Easy (80): words that appear in an enormous number of songs — easy to find a match
+// Easy (80): ubiquitous — almost any song will have one of these
 const WORDS_EASY = [
     'love',    'heart',   'baby',    'night',   'feel',    'life',    'time',    'know',
     'need',    'come',    'back',    'say',     'want',    'stay',    'fall',    'give',
     'take',    'make',    'never',   'always',  'forever', 'dream',   'fire',    'rain',
-    'light',   'dark',    'day',    'mind',    'home',    'run',     'dance',   'eyes',
+    'light',   'dark',    'day',     'mind',    'home',    'run',     'dance',   'eyes',
     'tears',   'smile',   'hold',    'gone',    'miss',    'cry',     'away',    'free',
     'hurt',    'save',    'lost',    'find',    'leave',   'wait',    'tell',    'walk',
     'sing',    'live',    'die',     'wish',    'hope',    'far',     'world',   'road',
-    'stars',   'sky',     'hands',   'face',    'name',    'days',    'pain',    'true',
-    'real',    'good',    'hard',    'yeah',    'high',    'low',     'cold',    'break',
-    'wrong',   'fly',     'fight',   'strong',  'long',    'loud',    'young',   'breath',
-    'you',     'her',     'him',     'hey',     'get',     'let',     'out',     'your',
-    'us',      'together','one',     'beautiful',
+    'stars',   'sky',     'hands',   'face',    'name',    'pain',    'true',    'real',
+    'yeah',    'hey',     'you',     'her',     'him',     'get',     'let',     'out',
+    'your',    'us',      'together','one',     'beautiful','burn',   'rise',    'shine',
 ];
 
-// Medium (40): words that appear in lyrics but take more thought to find
+// Medium (40): appear often but require a specific song to come to mind
 const WORDS_MEDIUM = [
-    'broken',    'breathe',   'chase',     'scream',    'fade',      'shine',     'trust',     'shame',
-    'ghost',     'hollow',    'empty',     'brave',     'wild',      'thunder',   'blood',     'shadow',
-    'echo',      'wound',     'scar',      'battle',    'sacrifice', 'surrender', 'devotion',  'survive',
-    'whisper',   'wander',    'rebel',     'collide',   'drown',     'haunt',     'ignite',    'crumble',
-    'shatter',   'hunger',    'restless',  'reckless',  'bleed',     'crawl',     'burn',      'rise',
+    'broken',  'breathe', 'chase',  'scream',  'fade',   'trust',  'shame',  'ghost',
+    'hollow',  'empty',   'brave',  'wild',    'thunder','blood',  'shadow', 'echo',
+    'wound',   'scar',    'battle', 'survive', 'whisper','wander', 'rebel',  'collide',
+    'drown',   'bleed',   'crawl',  'cold',    'break',  'fight',  'fly',    'strong',
+    'young',   'breath',  'high',   'low',     'wrong',  'long',   'loud',   'hard',
 ];
 
-// Hard (20): uncommon words that still appear in some song lyrics
+// Hard (20): less obvious, still findable — pushes you to think of deeper cuts
 const WORDS_HARD = [
-    'labyrinth',  'phantom',    'inferno',    'requiem',    'asylum',
-    'elegy',      'tempest',    'silhouette', 'epitaph',    'vendetta',
-    'enigma',     'absolution', 'melancholy', 'oblivion',   'purgatory',
-    'covenant',   'paradox',    'catharsis',  'exile',      'abyss',
+    'sacrifice','surrender','devotion', 'reckless','restless','ignite',  'crumble', 'shatter',
+    'haunt',    'phantom',  'silhouette','exile',  'abyss',   'oblivion','tempest', 'asylum',
+    'labyrinth','vendetta', 'paradox',  'melancholy',
 ];
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -239,9 +236,26 @@ let timerRAF       = null;
 let searchDebounce = null;
 let score          = 0;
 let streak         = 0;
-let usedWords      = new Set();
+
+// Shuffled decks — one per tier, refilled when exhausted
+let decks   = { easy: [], medium: [], hard: [] };
+let deckPtr = { easy: 0,  medium: 0,  hard: 0  };
 
 // ── DIFFICULTY ────────────────────────────────────────────────────────────────
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function initDecks() {
+    decks   = { easy: shuffle(WORDS_EASY), medium: shuffle(WORDS_MEDIUM), hard: shuffle(WORDS_HARD) };
+    deckPtr = { easy: 0, medium: 0, hard: 0 };
+}
+
 function getDifficulty() {
     if (streak >= STREAK_HARD)   return 'hard';
     if (streak >= STREAK_MEDIUM) return 'medium';
@@ -250,12 +264,13 @@ function getDifficulty() {
 
 function pickWord() {
     const diff = getDifficulty();
-    const pool = diff === 'hard' ? WORDS_HARD : diff === 'medium' ? WORDS_MEDIUM : WORDS_EASY;
-    let available = pool.filter(w => !usedWords.has(w));
-    if (available.length === 0) { pool.forEach(w => usedWords.delete(w)); available = pool.slice(); }
-    const word = available[Math.floor(Math.random() * available.length)];
-    usedWords.add(word);
-    return word;
+    // Refill and reshuffle when the deck for this tier runs out
+    if (deckPtr[diff] >= decks[diff].length) {
+        const src = diff === 'hard' ? WORDS_HARD : diff === 'medium' ? WORDS_MEDIUM : WORDS_EASY;
+        decks[diff]  = shuffle(src);
+        deckPtr[diff] = 0;
+    }
+    return decks[diff][deckPtr[diff]++];
 }
 
 function updateDiffBadge() {
@@ -327,7 +342,7 @@ function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt
 function startGame() {
     score  = 0;
     streak = 0;
-    usedWords.clear();
+    initDecks();
     document.getElementById('score-val').innerText  = '0';
     document.getElementById('streak-val').innerText = '0';
     document.getElementById('score-area').style.display = 'flex';
