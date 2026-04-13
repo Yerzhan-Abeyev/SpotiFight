@@ -169,6 +169,28 @@
                 <p style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;margin-bottom:4px;">Choose Your Artist</p>
                 <p style="font-size:0.78rem;color:#444;line-height:1.5;">We'll analyze their top songs and build a word list just for them.</p>
             </div>
+
+            <!-- Artist search bar -->
+            <div>
+                <input id="artist-search" class="search-input" type="text"
+                       placeholder="Search any artist…" autocomplete="off"
+                       oninput="onArtistInput(this.value)">
+            </div>
+            <div id="artist-results-wrap" style="display:none;">
+                <div class="results-window">
+                    <div id="artist-loader" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+                    <div id="artist-empty" class="empty-state" style="display:none;"></div>
+                    <ul id="artist-list"></ul>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="flex:1;height:1px;background:rgba(255,255,255,0.05);"></div>
+                <span style="font-size:0.68rem;color:#2a2a2a;letter-spacing:0.15em;text-transform:uppercase;white-space:nowrap;">Featured artists</span>
+                <div style="flex:1;height:1px;background:rgba(255,255,255,0.05);"></div>
+            </div>
+
             <div id="artist-cards" class="flex flex-col gap-3">
                 <div class="artist-card" onclick="selectPresetArtist('Taylor Swift')">
                     <div class="artist-placeholder">🎤</div>
@@ -379,12 +401,29 @@ const PRESET_SONGS = {
     ],
 };
 
-// Always take the top 5–7 songs (popularity-ordered, no randomness)
-function getTopSongs(artistName) {
-    const all   = PRESET_SONGS[artistName] || [];
-    const count = 5 + Math.floor(Math.random() * 3); // 5, 6 or 7
-    return all.slice(0, Math.min(count, all.length))
-        .map(name => ({ name, artists: [{ name: artistName }] }));
+// Returns top 5–7 songs for an artist.
+// Preset artists → use hardcoded catalog.
+// Unknown artists → fetch via Spotify search filtered by artist ID.
+async function getTopSongs(artistId, artistName) {
+    if (PRESET_SONGS[artistName]) {
+        const all   = PRESET_SONGS[artistName];
+        const count = 5 + Math.floor(Math.random() * 3);
+        return all.slice(0, Math.min(count, all.length))
+            .map(name => ({ name, artists: [{ name: artistName }] }));
+    }
+    // Spotify search for tracks by this artist
+    const token = await getSpotifyToken();
+    const res   = await fetch(
+        `https://api.spotify.com/v1/search?q=artist:${encodeURIComponent(artistName)}&type=track&limit=25&market=US`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Track fetch error: ${res.status}`);
+    const data   = await res.json();
+    const tracks = data.tracks.items
+        .filter(t => t.artists.some(a => a.id === artistId))
+        .sort((a, b) => b.popularity - a.popularity)
+        .slice(0, 7);
+    return tracks.map(t => ({ name: t.name, artists: t.artists, album: t.album }));
 }
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -398,18 +437,22 @@ const SCORE_CONFIG  = {
     hard:   { base: 500, timeBonus: 0 },
 };
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let spotifyToken    = null;
-let spotifyExpiry   = 0;
-let selectedArtist  = null;   // { id, name, image }
-let artistWordPool  = null;   // { easy:[], medium:[], hard:[] }
-let currentWord     = '';
-let roundActive     = false;
-let roundStartedAt  = null;
-let pauseStart      = null;
-let timerRAF        = null;
-let score           = 0;
-let streak          = 0;
-let usedWords       = new Set();
+let spotifyToken      = null;
+let spotifyExpiry     = 0;
+let selectedArtist    = null;   // { id, name, image }
+let artistWordPool    = null;   // { easy:[], medium:[], hard:[] }
+let currentArtistSongs = [];    // names of analyzed songs (for in-game local search)
+let currentWord       = '';
+let roundActive       = false;
+let roundStartedAt    = null;
+let pauseStart        = null;
+let timerRAF          = null;
+let score             = 0;
+let streak            = 0;
+
+// Shuffled decks — built from artistWordPool once analysis completes
+let decks   = { easy: [], medium: [], hard: [] };
+let deckPtr = { easy: 0,  medium: 0,  hard: 0  };
 
 // ── LYRICS TOKENIZER ─────────────────────────────────────────────────────────
 function tokenize(text) {
@@ -476,11 +519,10 @@ async function searchArtists(query) {
     return (await res.json()).artists.items;
 }
 
-// Search within the artist's hardcoded catalog — no Spotify API needed
+// Search within the analyzed songs for the current artist — no Spotify API needed
 function searchLocalSongs(query) {
-    const songs = PRESET_SONGS[selectedArtist.name] || [];
-    const q     = query.toLowerCase();
-    return songs
+    const q = query.toLowerCase();
+    return currentArtistSongs
         .filter(name => name.toLowerCase().includes(q))
         .map(name => ({
             name,
@@ -504,9 +546,74 @@ async function fetchLyrics(trackName, artist) {
     }
 }
 
+// ── ARTIST SEARCH BAR ─────────────────────────────────────────────────────────
+let artistSearchTimer = null;
+
+function onArtistInput(val) {
+    const q     = val.trim();
+    const wrap  = document.getElementById('artist-results-wrap');
+    const list  = document.getElementById('artist-list');
+    const empty = document.getElementById('artist-empty');
+    const loader = document.getElementById('artist-loader');
+
+    clearTimeout(artistSearchTimer);
+
+    if (!q) {
+        wrap.style.display = 'none';
+        list.innerHTML     = '';
+        return;
+    }
+
+    wrap.style.display   = 'block';
+    list.innerHTML       = '';
+    loader.style.display = 'flex';
+    empty.style.display  = 'none';
+
+    artistSearchTimer = setTimeout(async () => {
+        try {
+            const artists = await searchArtists(q);
+            loader.style.display = 'none';
+            if (artists.length === 0) {
+                empty.innerText     = 'No artists found.';
+                empty.style.display = 'block';
+            } else {
+                renderArtists(artists);
+            }
+        } catch (e) {
+            loader.style.display = 'none';
+            empty.innerText      = '⚠️ Search failed. Check your connection.';
+            empty.style.display  = 'block';
+        }
+    }, 400);
+}
+
+function renderArtists(artists) {
+    const list = document.getElementById('artist-list');
+    list.innerHTML = '';
+    artists.forEach(artist => {
+        const img    = artist.images?.[2]?.url || artist.images?.[1]?.url || artist.images?.[0]?.url || '';
+        const genres = artist.genres?.slice(0, 2).join(' · ') || '';
+        const li     = document.createElement('li');
+        li.className = 'artist-card';
+        li.style.cssText = 'border-radius:0;border-left:none;border-right:none;border-top:none;';
+        li.innerHTML = `
+            ${img ? `<img class="artist-avatar" src="${esc(img)}" alt="">` : `<div class="artist-placeholder">🎤</div>`}
+            <div style="min-width:0;flex:1;">
+                <div class="artist-name-text">${esc(artist.name)}</div>
+                ${genres ? `<div class="artist-genre">${esc(genres)}</div>` : ''}
+            </div>
+            <div class="mode-arrow">&#8594;</div>`;
+        li.onclick = () => {
+            document.getElementById('artist-results-wrap').style.display = 'none';
+            pickArtist(artist);
+        };
+        list.appendChild(li);
+    });
+}
+
 // ── PRESET ARTIST SELECTION ───────────────────────────────────────────────────
 async function selectPresetArtist(name) {
-    document.querySelectorAll('.artist-card').forEach(c => c.classList.add('loading'));
+    document.querySelectorAll('#artist-cards .artist-card').forEach(c => c.classList.add('loading'));
     document.getElementById('preset-error').style.display  = 'none';
     document.getElementById('preset-loader').style.display = 'block';
 
@@ -519,7 +626,7 @@ async function selectPresetArtist(name) {
     } catch (e) {
         console.error(e);
         document.getElementById('preset-loader').style.display = 'none';
-        document.querySelectorAll('.artist-card').forEach(c => c.classList.remove('loading'));
+        document.querySelectorAll('#artist-cards .artist-card').forEach(c => c.classList.remove('loading'));
         document.getElementById('preset-error').innerText     = '⚠️ Failed to load artist. Please try again.';
         document.getElementById('preset-error').style.display = 'block';
     }
@@ -542,7 +649,12 @@ async function pickArtist(artist) {
     document.getElementById('track-list').innerHTML = '';
 
     try {
-        const tracks = getTopSongs(artist.name);
+        const tracks = await getTopSongs(artist.id, artist.name);
+
+        if (tracks.length < 5) {
+            showAnalysisError(`${artist.name} has fewer than 5 songs available. Please choose a different artist.`);
+            return;
+        }
 
         // TODO: remove track list display before release so players can't see which songs were analysed
         const trackList = document.getElementById('track-list');
@@ -584,10 +696,13 @@ async function pickArtist(artist) {
             }
         }
 
-        if (success === 0) {
-            showAnalysisError("Couldn't find lyrics for this artist. Try a different one.");
+        if (success < 5) {
+            showAnalysisError(`Only found lyrics for ${success} song${success === 1 ? '' : 's'} — need at least 5. Try a different artist.`);
             return;
         }
+
+        // Store song names so in-game local search works for any artist
+        currentArtistSongs = tracks.map(t => t.name);
 
         artistWordPool = buildWordPool(freq, songCount);
 
@@ -631,11 +746,15 @@ function changeArtist() {
     timerRAF    = null;
     roundActive = false;
 
-    selectedArtist = null;
-    artistWordPool = null;
-    document.querySelectorAll('.artist-card').forEach(c => c.classList.remove('loading'));
-    document.getElementById('preset-error').style.display  = 'none';
-    document.getElementById('preset-loader').style.display = 'none';
+    selectedArtist     = null;
+    artistWordPool     = null;
+    currentArtistSongs = [];
+    document.querySelectorAll('#artist-cards .artist-card').forEach(c => c.classList.remove('loading'));
+    document.getElementById('preset-error').style.display    = 'none';
+    document.getElementById('preset-loader').style.display   = 'none';
+    document.getElementById('artist-search').value           = '';
+    document.getElementById('artist-results-wrap').style.display = 'none';
+    document.getElementById('artist-list').innerHTML         = '';
 
     showView('view-select');
 }
@@ -648,6 +767,24 @@ function showView(id) {
 }
 
 // ── DIFFICULTY ────────────────────────────────────────────────────────────────
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function initDecks() {
+    decks   = {
+        easy:   shuffle(artistWordPool.easy   || []),
+        medium: shuffle(artistWordPool.medium || []),
+        hard:   shuffle(artistWordPool.hard   || []),
+    };
+    deckPtr = { easy: 0, medium: 0, hard: 0 };
+}
+
 function getDifficulty() {
     if (streak >= STREAK_HARD)   return 'hard';
     if (streak >= STREAK_MEDIUM) return 'medium';
@@ -656,27 +793,21 @@ function getDifficulty() {
 
 function pickWord() {
     const diff  = getDifficulty();
-    // Priority order: try the target tier first, fall back if empty
+    // Try the target tier first; fall back to adjacent tiers if empty
     const order = diff === 'hard'   ? ['hard','medium','easy']
                 : diff === 'medium' ? ['medium','easy','hard']
                 :                     ['easy','medium','hard'];
 
     for (const tier of order) {
-        const pool      = artistWordPool[tier] || [];
-        let   available = pool.filter(w => !usedWords.has(w));
-        if (available.length === 0 && pool.length > 0) {
-            // Refill this tier
-            pool.forEach(w => usedWords.delete(w));
-            available = pool.slice();
+        if (decks[tier].length === 0) continue;
+        if (deckPtr[tier] >= decks[tier].length) {
+            decks[tier]  = shuffle(artistWordPool[tier] || []);
+            deckPtr[tier] = 0;
         }
-        if (available.length > 0) {
-            const word = available[Math.floor(Math.random() * available.length)];
-            usedWords.add(word);
-            return word;
-        }
+        return decks[tier][deckPtr[tier]++];
     }
     // Absolute fallback
-    const all = [...artistWordPool.easy, ...artistWordPool.medium, ...artistWordPool.hard];
+    const all = [...(artistWordPool.easy||[]), ...(artistWordPool.medium||[]), ...(artistWordPool.hard||[])];
     return all[Math.floor(Math.random() * all.length)] || 'music';
 }
 
@@ -693,7 +824,7 @@ function updateDiffBadge() {
 function startGame() {
     score  = 0;
     streak = 0;
-    usedWords.clear();
+    initDecks();
     document.getElementById('score-val').innerText  = '0';
     document.getElementById('streak-val').innerText = '0';
     document.getElementById('score-area').style.display = 'block';
