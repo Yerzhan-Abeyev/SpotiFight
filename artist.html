@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight – Local Songs</title>
+    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -32,14 +33,26 @@
         .results-window::-webkit-scrollbar { width: 5px; }
         .results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
 
-        /* ── Artist result items ── */
-        .artist-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
-        .artist-item:last-child { border-bottom: none; }
-        .artist-item:hover { background: #1c1c1c; }
+        /* ── Preset artist cards ── */
+        .artist-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px 18px; border-radius: 14px;
+            background: #141414; border: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer; transition: border-color 0.15s, background 0.15s;
+        }
+        .artist-card:hover { border-color: #1DB954; background: #181818; }
+        .artist-card.loading { opacity: 0.5; pointer-events: none; }
         .artist-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
         .artist-placeholder { width: 50px; height: 50px; border-radius: 50%; background: #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         .artist-name-text { font-weight: 600; font-size: 0.9rem; }
         .artist-genre { font-size: 0.72rem; color: #555; margin-top: 2px; }
+        .mode-arrow {
+            margin-left: auto; flex-shrink: 0;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(29,185,84,0.08); border: 1px solid rgba(29,185,84,0.2);
+            display: flex; align-items: center; justify-content: center;
+            color: #1DB954; font-size: 0.9rem;
+        }
 
         /* ── Song result items (same as index.html) ── */
         .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
@@ -156,12 +169,42 @@
                 <p style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;margin-bottom:4px;">Choose Your Artist</p>
                 <p style="font-size:0.78rem;color:#444;line-height:1.5;">We'll analyze their top songs and build a word list just for them.</p>
             </div>
-            <input id="artist-bar" class="search-input" type="text" placeholder="Search for an artist…" autocomplete="off" oninput="onArtistInput(this.value)">
-            <div class="results-window">
-                <div id="artist-empty" class="empty-state">Search for an artist to begin…</div>
-                <div id="artist-loader" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
-                <ul id="artist-list"></ul>
+            <div id="artist-cards" class="flex flex-col gap-3">
+                <div class="artist-card" onclick="selectPresetArtist('Taylor Swift')">
+                    <div class="artist-placeholder">🎤</div>
+                    <div style="min-width:0;flex:1;">
+                        <div class="artist-name-text">Taylor Swift</div>
+                        <div class="artist-genre">Pop · Country</div>
+                    </div>
+                    <div class="mode-arrow">&#8594;</div>
+                </div>
+                <div class="artist-card" onclick="selectPresetArtist('Ed Sheeran')">
+                    <div class="artist-placeholder">🎸</div>
+                    <div style="min-width:0;flex:1;">
+                        <div class="artist-name-text">Ed Sheeran</div>
+                        <div class="artist-genre">Pop · Folk</div>
+                    </div>
+                    <div class="mode-arrow">&#8594;</div>
+                </div>
+                <div class="artist-card" onclick="selectPresetArtist('Coldplay')">
+                    <div class="artist-placeholder">🌟</div>
+                    <div style="min-width:0;flex:1;">
+                        <div class="artist-name-text">Coldplay</div>
+                        <div class="artist-genre">Alternative · Rock</div>
+                    </div>
+                    <div class="mode-arrow">&#8594;</div>
+                </div>
+                <div class="artist-card" onclick="selectPresetArtist('Joji')">
+                    <div class="artist-placeholder">🎶</div>
+                    <div style="min-width:0;flex:1;">
+                        <div class="artist-name-text">Joji</div>
+                        <div class="artist-genre">R&amp;B · Lo-fi</div>
+                    </div>
+                    <div class="mode-arrow">&#8594;</div>
+                </div>
             </div>
+            <div id="preset-loader" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+            <div id="preset-error" class="empty-state" style="display:none;"></div>
         </div>
     </div>
 
@@ -311,6 +354,38 @@ const STOP_WORDS = new Set([
 // and adverbs (not/just/only/even/still/again/never/always) are intentionally
 // NOT filtered — they reflect an artist's signature voice and make valid game words.
 
+// ── PRESET SONG CATALOG ───────────────────────────────────────────────────────
+const PRESET_SONGS = {
+    'Taylor Swift': [
+        'Shake It Off','Love Story','Blank Space','Style','Anti-Hero',
+        'Cruel Summer','Wildest Dreams','You Belong With Me','22',
+        'All Too Well','Cardigan','Lover','august','Fearless','Bad Blood',
+    ],
+    'Ed Sheeran': [
+        'Shape of You','Perfect','Thinking Out Loud','Photograph',
+        'Castle on the Hill','Lego House','A-Team','Galway Girl',
+        'Bad Habits','Shivers','Happier','I See Fire','Bloodstream','Dive',
+    ],
+    'Coldplay': [
+        'Yellow','The Scientist','Clocks','Fix You','Speed of Sound',
+        'Viva la Vida','Paradise','A Sky Full of Stars','Something Just Like This',
+        'Hymn for the Weekend','Magic','In My Place','Trouble','The Hardest Part',
+    ],
+    'Joji': [
+        'Slow Dancing in the Dark','Sanctuary','Run','Gimme Love',
+        'Window','Glimpse of Us','Daylight','After Thoughts',
+        'Yeah Right','Pretty Boy','Will He','Ew','TEST DRIVE',
+    ],
+};
+
+function getRandomSongs(artistName) {
+    const all     = PRESET_SONGS[artistName] || [];
+    const count   = 3 + Math.floor(Math.random() * 3); // pick 3–5
+    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(count, all.length))
+        .map(name => ({ name, artists: [{ name: artistName }] }));
+}
+
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const TIME_LIMIT    = 30;
 const STREAK_MEDIUM = 5;
@@ -320,7 +395,6 @@ const SCORE_CONFIG  = {
     medium: { base: 250, timeBonus: 5  },
     hard:   { base: 500, timeBonus: 10 },
 };
-
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let spotifyToken    = null;
 let spotifyExpiry   = 0;
@@ -331,8 +405,6 @@ let roundActive     = false;
 let roundStartedAt  = null;
 let pauseStart      = null;
 let timerRAF        = null;
-let searchDebounce  = null;
-let artistDebounce  = null;
 let score           = 0;
 let streak          = 0;
 let usedWords       = new Set();
@@ -395,40 +467,24 @@ async function getSpotifyToken() {
 async function searchArtists(query) {
     const token = await getSpotifyToken();
     const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=5&market=US`,
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=5`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     if (!res.ok) throw new Error(`Artist search error: ${res.status}`);
     return (await res.json()).artists.items;
 }
 
-async function getTopTracks(artistId, artistName) {
-    // /artists/{id}/top-tracks requires user OAuth; use plain search instead.
-    // High limit (50) gives the client-side ID filter enough candidates to work with.
-    const token = await getSpotifyToken();
-    const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=track&limit=50`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) throw new Error(`Top tracks error: ${res.status}`);
-    return (await res.json()).tracks.items
-        .filter(t => t.artists.some(a => a.id === artistId))   // exact artist match
-        .sort((a, b) => b.popularity - a.popularity)            // most popular first
-        .slice(0, 7);
-}
-
-// Search tracks filtered to the selected artist
-async function searchArtistTracks(query) {
-    const token = await getSpotifyToken();
-    // Include artist name in query to bias results, then filter client-side
-    const q   = `${query} ${selectedArtist.name}`;
-    const res = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=12&market=US`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) throw new Error(`Track search error: ${res.status}`);
-    const tracks = (await res.json()).tracks.items;
-    return tracks.filter(t => t.artists.some(a => a.id === selectedArtist.id));
+// Search within the artist's hardcoded catalog — no Spotify API needed
+function searchLocalSongs(query) {
+    const songs = PRESET_SONGS[selectedArtist.name] || [];
+    const q     = query.toLowerCase();
+    return songs
+        .filter(name => name.toLowerCase().includes(q))
+        .map(name => ({
+            name,
+            artists: [{ name: selectedArtist.name, id: selectedArtist.id }],
+            album:   { images: [] },
+        }));
 }
 
 // ── LYRICS ────────────────────────────────────────────────────────────────────
@@ -446,56 +502,25 @@ async function fetchLyrics(trackName, artist) {
     }
 }
 
-// ── ARTIST SEARCH UI ──────────────────────────────────────────────────────────
-function onArtistInput(val) {
-    clearTimeout(artistDebounce);
-    const q = val.trim();
-    if (!q) {
-        document.getElementById('artist-list').innerHTML  = '';
-        document.getElementById('artist-empty').innerText = 'Search for an artist to begin…';
-        document.getElementById('artist-empty').style.display = 'block';
-        document.getElementById('artist-loader').style.display = 'none';
-        return;
-    }
-    document.getElementById('artist-empty').style.display  = 'none';
-    document.getElementById('artist-loader').style.display = 'block';
-    document.getElementById('artist-list').innerHTML = '';
+// ── PRESET ARTIST SELECTION ───────────────────────────────────────────────────
+async function selectPresetArtist(name) {
+    document.querySelectorAll('.artist-card').forEach(c => c.classList.add('loading'));
+    document.getElementById('preset-error').style.display  = 'none';
+    document.getElementById('preset-loader').style.display = 'block';
 
-    artistDebounce = setTimeout(async () => {
-        try {
-            const artists = await searchArtists(q);
-            document.getElementById('artist-loader').style.display = 'none';
-            renderArtists(artists);
-        } catch {
-            document.getElementById('artist-loader').style.display = 'none';
-            document.getElementById('artist-empty').innerText      = '⚠️ Spotify search failed.';
-            document.getElementById('artist-empty').style.display  = 'block';
-        }
-    }, 350);
-}
-
-function renderArtists(artists) {
-    const list = document.getElementById('artist-list');
-    list.innerHTML = '';
-    if (!artists.length) {
-        document.getElementById('artist-empty').innerText     = 'No artists found.';
-        document.getElementById('artist-empty').style.display = 'block';
-        return;
+    try {
+        const artists = await searchArtists(name);
+        const artist  = artists.find(a => a.name.toLowerCase() === name.toLowerCase()) || artists[0];
+        if (!artist) throw new Error('Artist not found');
+        document.getElementById('preset-loader').style.display = 'none';
+        await pickArtist(artist);
+    } catch (e) {
+        console.error(e);
+        document.getElementById('preset-loader').style.display = 'none';
+        document.querySelectorAll('.artist-card').forEach(c => c.classList.remove('loading'));
+        document.getElementById('preset-error').innerText     = '⚠️ Failed to load artist. Please try again.';
+        document.getElementById('preset-error').style.display = 'block';
     }
-    artists.forEach(artist => {
-        const img    = artist.images?.[2]?.url || artist.images?.[0]?.url || '';
-        const genres = artist.genres?.slice(0, 2).join(', ') || '';
-        const li     = document.createElement('li');
-        li.className = 'artist-item';
-        li.innerHTML = `
-            ${img ? `<img class="artist-avatar" src="${img}" alt="">` : `<div class="artist-placeholder">🎤</div>`}
-            <div style="min-width:0;flex:1;">
-                <div class="artist-name-text">${esc(artist.name)}</div>
-                ${genres ? `<div class="artist-genre">${esc(genres)}</div>` : ''}
-            </div>`;
-        li.onclick = () => pickArtist(artist);
-        list.appendChild(li);
-    });
 }
 
 // ── CATALOG ANALYSIS ──────────────────────────────────────────────────────────
@@ -515,7 +540,7 @@ async function pickArtist(artist) {
     document.getElementById('track-list').innerHTML = '';
 
     try {
-        const tracks = await getTopTracks(artist.id, artist.name);
+        const tracks = getRandomSongs(artist.name);
 
         // Render track list with pending status
         const trackList = document.getElementById('track-list');
@@ -600,17 +625,15 @@ function showAnalysisError(msg) {
 }
 
 function changeArtist() {
-    // Stop any active round
     cancelAnimationFrame(timerRAF);
     timerRAF    = null;
     roundActive = false;
 
     selectedArtist = null;
     artistWordPool = null;
-    document.getElementById('artist-bar').value = '';
-    document.getElementById('artist-list').innerHTML  = '';
-    document.getElementById('artist-empty').innerText = 'Search for an artist to begin…';
-    document.getElementById('artist-empty').style.display = 'block';
+    document.querySelectorAll('.artist-card').forEach(c => c.classList.remove('loading'));
+    document.getElementById('preset-error').style.display  = 'none';
+    document.getElementById('preset-loader').style.display = 'none';
 
     showView('view-select');
 }
@@ -730,44 +753,33 @@ function runTimer() {
     timerRAF = requestAnimationFrame(tick);
 }
 
-// ── SEARCH (artist-filtered) ──────────────────────────────────────────────────
+// ── SEARCH (local catalog) ────────────────────────────────────────────────────
 function onSearchInput(val) {
-    clearTimeout(searchDebounce);
     const q = val.trim();
+    document.getElementById('songs-list').innerHTML      = '';
+    document.getElementById('loader-area').style.display = 'none';
+
     if (!q) {
-        document.getElementById('songs-list').innerHTML      = '';
         document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
         document.getElementById('empty-state').style.display = 'block';
-        document.getElementById('loader-area').style.display = 'none';
         return;
     }
-    document.getElementById('empty-state').style.display = 'none';
-    document.getElementById('loader-area').style.display = 'block';
-    document.getElementById('songs-list').innerHTML      = '';
 
-    searchDebounce = setTimeout(async () => {
-        try {
-            const tracks = await searchArtistTracks(q);
-            document.getElementById('loader-area').style.display = 'none';
-            if (tracks.length === 0) {
-                document.getElementById('empty-state').innerText     = `No songs by ${selectedArtist.name} found.`;
-                document.getElementById('empty-state').style.display = 'block';
-            } else {
-                renderResults(tracks);
-            }
-        } catch {
-            document.getElementById('loader-area').style.display = 'none';
-            document.getElementById('empty-state').innerText     = '⚠️ Spotify search failed.';
-            document.getElementById('empty-state').style.display = 'block';
-        }
-    }, 350);
+    const tracks = searchLocalSongs(q);
+    if (tracks.length === 0) {
+        document.getElementById('empty-state').innerText     = `No matching songs by ${selectedArtist.name}.`;
+        document.getElementById('empty-state').style.display = 'block';
+    } else {
+        document.getElementById('empty-state').style.display = 'none';
+        renderResults(tracks);
+    }
 }
 
 function renderResults(tracks) {
     const list = document.getElementById('songs-list');
     list.innerHTML = '';
     tracks.forEach(track => {
-        const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
+        const art     = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
         const artists = track.artists.map(a => a.name).join(', ');
         const li      = document.createElement('li');
         li.className  = 'song-item';
@@ -794,18 +806,11 @@ async function pickSong(track) {
     hide('timer-container');
     hide('word-container');
 
-    const art = track.album.images[1]?.url || track.album.images[0]?.url || '';
+    const art = track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '';
     document.getElementById('ck-art').src         = art;
     document.getElementById('ck-title').innerText  = track.name;
     document.getElementById('ck-status').innerHTML = 'Checking lyrics<span>.</span><span>.</span><span>.</span>';
     document.getElementById('checking-box').style.display = 'flex';
-
-    // Rule: word must NOT be in the title
-    if (wordInText(currentWord, track.name)) {
-        hide('checking-box');
-        endRound('word-in-title', track);
-        return;
-    }
 
     const trackName = track.name;
     const artist    = track.artists.map(a => a.name).join(', ');
@@ -885,12 +890,7 @@ function endRound(result, track, pointsEarned) {
     } else {
         // GAME OVER
         let reasonHtml = '';
-        if (result === 'word-in-title') {
-            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ❌ <strong>${esc(track.name)}</strong> has <strong>${currentWord}</strong> in its title!<br>
-                <span style="font-size:0.8rem;font-weight:400;">The word must be in the lyrics only.</span>
-            </div>`;
-        } else if (result === 'wrong') {
+        if (result === 'wrong') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
                 ❌ ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
             </div>`;

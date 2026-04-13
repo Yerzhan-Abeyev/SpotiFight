@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight</title>
+    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -221,8 +222,6 @@ const WORDS_HARD = [
 const TIME_LIMIT    = 30;
 const STREAK_MEDIUM = 5;
 const STREAK_HARD   = 10;
-
-
 const SCORE_CONFIG = {
     easy:   { base: 100, timeBonus: 2  },   // max 160 pts
     medium: { base: 250, timeBonus: 5  },   // max 400 pts
@@ -290,7 +289,7 @@ async function getSpotifyToken() {
 async function searchSpotify(query) {
     const token = await getSpotifyToken();
     const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=8&market=US`,
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=8`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     if (!res.ok) throw new Error(`Spotify search error: ${res.status}`);
