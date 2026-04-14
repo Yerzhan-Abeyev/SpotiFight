@@ -6,7 +6,7 @@
     <title>SpotiFight – Local Songs</title>
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
@@ -146,6 +146,16 @@
         .back-link { font-size: 0.75rem; color: #333; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; align-self: flex-start; transition: color 0.15s; }
         .back-link:hover { color: #666; }
         .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
+
+        /* ── Page transitions ── */
+        body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
+        body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+        #page-header { animation: fadeUp 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+        .card        { animation: fadeUp 0.45s 0.06s cubic-bezier(0.22,1,0.36,1) both; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
@@ -155,27 +165,25 @@
      ══════════════════════════════════════════════ -->
 <div id="view-select" class="w-full max-w-xl flex flex-col items-center gap-5 relative z-10">
 
-    <div class="w-full flex items-center justify-between pt-4 pb-2">
-        <a href="home.html" class="back-link">&#8592; Modes</a>
+    <div id="page-header" class="w-full flex items-center justify-between pt-4 pb-2">
+        <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
         <div style="text-align:right;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</div>
+            <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
             <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
         </div>
     </div>
 
     <div class="card w-full rounded-2xl p-7 shadow-2xl">
-        <div class="flex flex-col gap-4">
-            <div>
-                <p style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;margin-bottom:4px;">Choose Your Artist</p>
-                <p style="font-size:0.78rem;color:#444;line-height:1.5;">We'll analyze their top songs and build a word list just for them.</p>
+        <div class="flex flex-col gap-5">
+            <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Local Mode</div>
+                <div style="font-size:0.78rem;color:#444;margin-top:6px;">Pick an artist. Find songs from their catalog where the word is in the lyrics, not the title.</div>
             </div>
 
             <!-- Artist search bar -->
-            <div>
-                <input id="artist-search" class="search-input" type="text"
-                       placeholder="Search any artist…" autocomplete="off"
-                       oninput="onArtistInput(this.value)">
-            </div>
+            <input id="artist-search" class="search-input" type="text"
+                   placeholder="Search any artist…" autocomplete="off"
+                   oninput="onArtistInput(this.value)">
             <div id="artist-results-wrap" style="display:none;">
                 <div class="results-window">
                     <div id="artist-loader" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
@@ -183,50 +191,6 @@
                     <ul id="artist-list"></ul>
                 </div>
             </div>
-
-            <!-- Divider -->
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div style="flex:1;height:1px;background:rgba(255,255,255,0.05);"></div>
-                <span style="font-size:0.68rem;color:#2a2a2a;letter-spacing:0.15em;text-transform:uppercase;white-space:nowrap;">Featured artists</span>
-                <div style="flex:1;height:1px;background:rgba(255,255,255,0.05);"></div>
-            </div>
-
-            <div id="artist-cards" class="flex flex-col gap-3">
-                <div class="artist-card" onclick="selectPresetArtist('Taylor Swift')">
-                    <div class="artist-placeholder">🎤</div>
-                    <div style="min-width:0;flex:1;">
-                        <div class="artist-name-text">Taylor Swift</div>
-                        <div class="artist-genre">Pop · Country</div>
-                    </div>
-                    <div class="mode-arrow">&#8594;</div>
-                </div>
-                <div class="artist-card" onclick="selectPresetArtist('Ed Sheeran')">
-                    <div class="artist-placeholder">🎸</div>
-                    <div style="min-width:0;flex:1;">
-                        <div class="artist-name-text">Ed Sheeran</div>
-                        <div class="artist-genre">Pop · Folk</div>
-                    </div>
-                    <div class="mode-arrow">&#8594;</div>
-                </div>
-                <div class="artist-card" onclick="selectPresetArtist('Coldplay')">
-                    <div class="artist-placeholder">🌟</div>
-                    <div style="min-width:0;flex:1;">
-                        <div class="artist-name-text">Coldplay</div>
-                        <div class="artist-genre">Alternative · Rock</div>
-                    </div>
-                    <div class="mode-arrow">&#8594;</div>
-                </div>
-                <div class="artist-card" onclick="selectPresetArtist('Joji')">
-                    <div class="artist-placeholder">🎶</div>
-                    <div style="min-width:0;flex:1;">
-                        <div class="artist-name-text">Joji</div>
-                        <div class="artist-genre">R&amp;B · Lo-fi</div>
-                    </div>
-                    <div class="mode-arrow">&#8594;</div>
-                </div>
-            </div>
-            <div id="preset-loader" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
-            <div id="preset-error" class="empty-state" style="display:none;"></div>
         </div>
     </div>
 
@@ -238,7 +202,7 @@
      ══════════════════════════════════════════════ -->
 <div id="view-loading" class="w-full max-w-xl flex flex-col items-center gap-5 relative z-10" style="display:none;">
 
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:#1DB954;line-height:1;margin-top:1.5rem;">SpotiFight</div>
+    <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;margin-top:1.5rem;">SpotiFight</div>
 
     <div class="card w-full rounded-2xl p-7 shadow-2xl" style="text-align:center;">
         <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px;">
@@ -262,7 +226,7 @@
 <div id="view-game" class="w-full max-w-xl flex flex-col items-center relative z-10" style="display:none;">
 
     <header class="w-full text-center py-5">
-        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
+        <h1 style="font-family:'Nunito',sans-serif;font-weight:900;font-size:2.8rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</h1>
         <p style="color:#2a2a2a;font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:3px;">Word in lyrics &middot; Not in title &middot; No mistakes</p>
     </header>
 
@@ -301,7 +265,7 @@
     <div class="flex flex-col items-center gap-5">
 
         <div id="word-container" class="text-center" style="display:none;">
-            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Must be in lyrics &mdash; must NOT be in title</p>
+            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">In lyrics, not in title</p>
             <div id="word-display"></div>
         </div>
 
@@ -376,54 +340,32 @@ const STOP_WORDS = new Set([
 // and adverbs (not/just/only/even/still/again/never/always) are intentionally
 // NOT filtered — they reflect an artist's signature voice and make valid game words.
 
-// ── PRESET SONG CATALOG ───────────────────────────────────────────────────────
-// Songs are ordered by popularity (most popular first) so top 5–7 are always the
-// most recognisable tracks for the word-pool analysis.
-const PRESET_SONGS = {
-    'Taylor Swift': [
-        'Anti-Hero','Shake It Off','Cruel Summer','Blank Space','Love Story',
-        'Bad Blood','Wildest Dreams','You Belong With Me','Cardigan',
-        'Style','22','All Too Well','Lover','august','Fearless',
-    ],
-    'Ed Sheeran': [
-        'Shape of You','Perfect','Bad Habits','Thinking Out Loud','Photograph',
-        'Castle on the Hill','Shivers','Happier','Galway Girl',
-        'A-Team','Lego House','Dive','I See Fire','Bloodstream',
-    ],
-    'Coldplay': [
-        'Something Just Like This','Yellow','Hymn for the Weekend','A Sky Full of Stars',
-        'Fix You','The Scientist','Viva la Vida','Paradise',
-        'Magic','Clocks','Speed of Sound','In My Place','Trouble','The Hardest Part',
-    ],
-    'Joji': [
-        'Glimpse of Us','Slow Dancing in the Dark','Sanctuary','Run','Gimme Love',
-        'Daylight','Window','Yeah Right','After Thoughts','Pretty Boy','Will He','TEST DRIVE','Ew',
-    ],
-};
-
-// Returns top 5–7 songs for an artist.
-// Preset artists → use hardcoded catalog.
-// Unknown artists → fetch via Spotify search filtered by artist ID.
+// ── TOP SONGS VIA SPOTIFY ─────────────────────────────────────────────────────
+// Uses track search filtered to the primary artist, sorted by popularity.
+// (The /artists/{id}/top-tracks endpoint requires extended API access not
+//  available under basic Client Credentials, hence the search approach.)
 async function getTopSongs(artistId, artistName) {
-    if (PRESET_SONGS[artistName]) {
-        const all   = PRESET_SONGS[artistName];
-        const count = 5 + Math.floor(Math.random() * 3);
-        return all.slice(0, Math.min(count, all.length))
-            .map(name => ({ name, artists: [{ name: artistName }] }));
-    }
-    // Spotify search for tracks by this artist
-    const token = await getSpotifyToken();
-    const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=artist:${encodeURIComponent(artistName)}&type=track&limit=25&market=US`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) throw new Error(`Track fetch error: ${res.status}`);
-    const data   = await res.json();
-    const tracks = data.tracks.items
-        .filter(t => t.artists.some(a => a.id === artistId))
+    const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(artistName)}&limit=50`);
+    if (!res.ok) throw new Error(`Track search error: ${res.status}`);
+    const items = await res.json(); // server returns the array directly
+
+    // Only keep tracks where this artist is the FIRST (primary) credit.
+    // Deduplicate by lowercase title so single/album duplicates don't inflate the list.
+    const seen = new Set();
+    const unique = items.filter(t => {
+        if (!t?.artists?.[0]) return false;
+        if (t.artists[0].id !== artistId) return false;
+        const key = t.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+
+    const count = 5 + Math.floor(Math.random() * 3); // 5, 6 or 7
+    return unique
         .sort((a, b) => b.popularity - a.popularity)
-        .slice(0, 7);
-    return tracks.map(t => ({ name: t.name, artists: t.artists, album: t.album }));
+        .slice(0, count)
+        .map(t => ({ name: t.name, artists: t.artists, album: t.album }));
 }
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -510,13 +452,9 @@ async function getSpotifyToken() {
 }
 
 async function searchArtists(query) {
-    const token = await getSpotifyToken();
-    const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=5`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&type=artist&limit=5`);
     if (!res.ok) throw new Error(`Artist search error: ${res.status}`);
-    return (await res.json()).artists.items;
+    return await res.json();
 }
 
 // Search within the analyzed songs for the current artist — no Spotify API needed
@@ -611,27 +549,6 @@ function renderArtists(artists) {
     });
 }
 
-// ── PRESET ARTIST SELECTION ───────────────────────────────────────────────────
-async function selectPresetArtist(name) {
-    document.querySelectorAll('#artist-cards .artist-card').forEach(c => c.classList.add('loading'));
-    document.getElementById('preset-error').style.display  = 'none';
-    document.getElementById('preset-loader').style.display = 'block';
-
-    try {
-        const artists = await searchArtists(name);
-        const artist  = artists.find(a => a.name.toLowerCase() === name.toLowerCase()) || artists[0];
-        if (!artist) throw new Error('Artist not found');
-        document.getElementById('preset-loader').style.display = 'none';
-        await pickArtist(artist);
-    } catch (e) {
-        console.error(e);
-        document.getElementById('preset-loader').style.display = 'none';
-        document.querySelectorAll('#artist-cards .artist-card').forEach(c => c.classList.remove('loading'));
-        document.getElementById('preset-error').innerText     = '⚠️ Failed to load artist. Please try again.';
-        document.getElementById('preset-error').style.display = 'block';
-    }
-}
-
 // ── CATALOG ANALYSIS ──────────────────────────────────────────────────────────
 async function pickArtist(artist) {
     const img = artist.images?.[1]?.url || artist.images?.[0]?.url || '';
@@ -652,7 +569,7 @@ async function pickArtist(artist) {
         const tracks = await getTopSongs(artist.id, artist.name);
 
         if (tracks.length < 5) {
-            showAnalysisError(`${artist.name} has fewer than 5 songs available. Please choose a different artist.`);
+            showAnalysisError(`${artist.name} doesn't have enough songs on Spotify. Please choose a different artist.`);
             return;
         }
 
@@ -696,8 +613,8 @@ async function pickArtist(artist) {
             }
         }
 
-        if (success < 5) {
-            showAnalysisError(`Only found lyrics for ${success} song${success === 1 ? '' : 's'} — need at least 5. Try a different artist.`);
+        if (success < 3) {
+            showAnalysisError(`Only found lyrics for ${success} song${success === 1 ? '' : 's'}. Need at least 3. Try a different artist.`);
             return;
         }
 
@@ -714,7 +631,7 @@ async function pickArtist(artist) {
         const total = artistWordPool.easy.length + artistWordPool.medium.length + artistWordPool.hard.length;
         document.getElementById('load-dots').style.display      = 'none';
         document.getElementById('load-status-text').innerText   =
-            `Ready — ${total} words found across ${success} song${success > 1 ? 's' : ''}.`;
+            `Ready. ${total} words found across ${success} song${success > 1 ? 's' : ''}.`;
         document.getElementById('load-status-text').style.color = '#1DB954';
 
         setTimeout(() => {
@@ -728,8 +645,8 @@ async function pickArtist(artist) {
         }, 1400);
 
     } catch (e) {
-        console.error(e);
-        showAnalysisError('Something went wrong. Please try again.');
+        console.error('pickArtist failed:', e);
+        showAnalysisError(`Error: ${e.message}`);
     }
 }
 
@@ -749,12 +666,9 @@ function changeArtist() {
     selectedArtist     = null;
     artistWordPool     = null;
     currentArtistSongs = [];
-    document.querySelectorAll('#artist-cards .artist-card').forEach(c => c.classList.remove('loading'));
-    document.getElementById('preset-error').style.display    = 'none';
-    document.getElementById('preset-loader').style.display   = 'none';
-    document.getElementById('artist-search').value           = '';
+    document.getElementById('artist-search').value               = '';
     document.getElementById('artist-results-wrap').style.display = 'none';
-    document.getElementById('artist-list').innerHTML         = '';
+    document.getElementById('artist-list').innerHTML             = '';
 
     showView('view-select');
 }
@@ -1065,6 +979,12 @@ function show(id)     { document.getElementById(id).style.display = 'block'; }
 function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function navigateTo(e, url) {
+    e.preventDefault();
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = url; }, 280);
+}
 </script>
 </body>
 </html>

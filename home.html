@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight</title>
+    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
@@ -30,7 +31,7 @@
             border-color: #1DB954;
             box-shadow: 0 8px 40px rgba(29,185,84,0.12);
         }
-        .mode-card.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+        .mode-card.disabled { opacity: 0.5; filter: grayscale(1) brightness(0.55); cursor: not-allowed; pointer-events: none; }
 
         .mode-num {
             font-family: 'Bebas Neue', sans-serif; font-size: 3.2rem;
@@ -63,35 +64,238 @@
 
         .divider { width: 100%; height: 1px; background: rgba(255,255,255,0.04); }
         .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
+
+        /* ── Calendar button ── */
+        .cal-btn {
+            position: absolute; right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 44px; height: 44px; border-radius: 12px;
+            background: #141414; border: 1px solid rgba(255,255,255,0.07);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: border-color 0.15s, background 0.15s, border-color 0.15s;
+            flex-direction: column; gap: 2px; position: absolute;
+        }
+        .cal-btn:hover { border-color: #1DB954; background: #181818; }
+        .cal-btn.done { border-color: rgba(29,185,84,0.5); background: #0c1f12; }
+        .cal-btn.done:hover { border-color: #1DB954; }
+        /* small green tick badge in top-right corner of the button */
+        .cal-tick {
+            position: absolute; top: -5px; right: -5px;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #1DB954; border: 2px solid #0a0a0a;
+            display: none; align-items: center; justify-content: center;
+        }
+        .cal-tick svg { width: 8px; height: 8px; }
+
+        /* ── Calendar history overlay ── */
+        #cal-history-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.88);
+            z-index: 200; display: flex;
+            align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        #cal-history-overlay.open { opacity: 1; pointer-events: auto; }
+        #cal-history-overlay.closing { opacity: 0; pointer-events: none; }
+        #cal-history-modal {
+            background: #111; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; width: 100%; max-width: 380px;
+            padding: 28px; position: relative;
+        }
+        .ch-day-name { font-size: 0.6rem; color: #333; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 6px; }
+        .ch-cell {
+            aspect-ratio: 1; border-radius: 8px; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 0.78rem; color: #333;
+        }
+        .ch-cell.today { border: 1px solid rgba(255,255,255,0.08); color: #777; }
+        .ch-cell.solved { background: #0c2418; color: #1DB954; font-weight: 700; position: relative; }
+        .ch-cell.solved::after {
+            content: '✓'; position: absolute; top: 2px; right: 3px;
+            font-size: 0.45rem; color: #1DB954;
+        }
+
+        /* ── Daily modal overlay ── */
+        #daily-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.88);
+            z-index: 200;
+            display: flex;
+            align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        #daily-overlay.open { opacity: 1; pointer-events: auto; }
+        #daily-overlay.closing { opacity: 0; pointer-events: none; }
+
+        #daily-modal {
+            background: #111; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; width: 100%; max-width: 480px;
+            padding: 28px; position: relative;
+            max-height: 90vh; overflow-y: auto;
+        }
+        #daily-modal::-webkit-scrollbar { width: 4px; }
+        #daily-modal::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
+        @keyframes modalIn  { from { opacity:0; transform:scale(0.88) translateY(20px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @keyframes modalOut { from { opacity:1; transform:scale(1) translateY(0); }       to { opacity:0; transform:scale(0.88) translateY(20px); } }
+        #daily-overlay.open       #daily-modal,
+        #cal-history-overlay.open #cal-history-modal      { animation: modalIn  0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+        #daily-overlay.closing    #daily-modal,
+        #cal-history-overlay.closing #cal-history-modal   { animation: modalOut 0.25s cubic-bezier(0.4,0,1,1) both; }
+
+        .modal-close {
+            position: absolute; top: 16px; right: 16px;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #1a1a1a; border: 1px solid #222;
+            color: #555; font-size: 1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .modal-close:hover { color: #fff; border-color: #444; }
+
+        /* ── Daily word display ── */
+        #daily-word {
+            font-family: 'Bebas Neue', sans-serif; font-size: 3.8rem;
+            letter-spacing: 0.12em; line-height: 1;
+            background: linear-gradient(135deg,#1DB954,#17a349);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            text-align: center;
+        }
+
+        /* ── Search inside modal ── */
+        .dc-search {
+            background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
+            border-radius: 12px; padding: 13px 16px; width: 100%; font-size: 0.9rem;
+            outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .dc-search:focus { border-color: #1DB954; }
+        .dc-search::placeholder { color: #444; }
+
+        .dc-results { max-height: 240px; overflow-y: auto; background: #0d0d0d; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .dc-results::-webkit-scrollbar { width: 4px; }
+        .dc-results::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
+
+        .dc-song { display:flex; align-items:center; gap:12px; padding:10px 14px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.15s; }
+        .dc-song:last-child { border-bottom:none; }
+        .dc-song:hover { background:#161616; }
+        .dc-song img { width:42px; height:42px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+        .dc-song-ph { width:42px; height:42px; border-radius:6px; background:#1e1e1e; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1rem; }
+        .dc-song-title { font-weight:600; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .dc-song-artist { font-size:0.72rem; color:#555; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        .dc-empty { padding:22px; text-align:center; color:#444; font-size:0.8rem; }
+        .dc-loader { display:flex; gap:5px; justify-content:center; padding:18px; }
+        .dc-loader span { width:6px; height:6px; background:#1DB954; border-radius:50%; animation:bounce 1s infinite ease-in-out; }
+        .dc-loader span:nth-child(2) { animation-delay:.15s; }
+        .dc-loader span:nth-child(3) { animation-delay:.3s; }
+        @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4;} 40%{transform:scale(1);opacity:1;} }
+
+        .dc-checking {
+            display:none; align-items:center; gap:12px;
+            padding:14px 16px; border-radius:12px;
+            background:#0d0d0d; border:1.5px solid #1e1e1e;
+        }
+        .dc-checking img { width:42px; height:42px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+        .dc-ck-status { font-size:0.72rem; color:#555; margin-top:3px; }
+        .dc-ck-status span { animation:bounce 0.9s infinite ease-in-out; display:inline-block; }
+        .dc-ck-status span:nth-child(2) { animation-delay:.15s; }
+        .dc-ck-status span:nth-child(3) { animation-delay:.3s; }
+
+        .dc-fb { width:100%; padding:16px 18px; border-radius:12px; font-size:0.9rem; font-weight:600; text-align:center; animation:popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from{opacity:0;transform:scale(0.9);} to{opacity:1;transform:scale(1);} }
+        .dc-fb-win  { background:#0c2418; border:1.5px solid #1DB954; color:#1DB954; }
+        .dc-fb-lose { background:#2b0d0d; border:1.5px solid #ff4444; color:#ff5555; }
+        .dc-fb-warn { background:#1e1a0a; border:1.5px solid #f59e0b; color:#f59e0b; }
+
+        /* ── Waveform on title ── */
+        @keyframes barPulse1 { 0%,100%{height:6px}  50%{height:18px} }
+        @keyframes barPulse2 { 0%,100%{height:14px} 50%{height:5px}  }
+        @keyframes barPulse3 { 0%,100%{height:10px} 50%{height:22px} }
+        @keyframes barPulse4 { 0%,100%{height:18px} 50%{height:7px}  }
+        @keyframes barPulse5 { 0%,100%{height:8px}  50%{height:16px} }
+        .title-wave {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-left: 10px;
+            vertical-align: middle;
+            position: relative;
+            top: -2px;
+            height: 24px;
+        }
+        .title-wave span {
+            display: block;
+            width: 3px;
+            border-radius: 999px;
+            background: #1DB954;
+            opacity: 0.75;
+        }
+        .title-wave span:nth-child(1) { animation: barPulse1 1.1s ease-in-out infinite; }
+        .title-wave span:nth-child(2) { animation: barPulse2 1.1s ease-in-out infinite 0.15s; }
+        .title-wave span:nth-child(3) { animation: barPulse3 1.1s ease-in-out infinite 0.3s; }
+        .title-wave span:nth-child(4) { animation: barPulse4 1.1s ease-in-out infinite 0.45s; }
+        .title-wave span:nth-child(5) { animation: barPulse5 1.1s ease-in-out infinite 0.6s; }
+
+        /* ── Page transition ── */
+        body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
+        body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+        header { animation: fadeUp 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+        .mode-card:nth-child(1) { animation: fadeUp 0.4s 0.05s  cubic-bezier(0.22,1,0.36,1) both; }
+        .mode-card:nth-child(2) { animation: fadeUp 0.4s 0.10s  cubic-bezier(0.22,1,0.36,1) both; }
+        .mode-card:nth-child(3) { animation: fadeUp 0.4s 0.15s  cubic-bezier(0.22,1,0.36,1) both; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
 
-<header class="w-full max-w-xl text-center py-8 relative z-10">
-    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:4rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</h1>
-    <p style="color:#2e2e2e;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;margin-top:6px;">Word in lyrics &middot; Not in title &middot; No mistakes</p>
+<header class="w-full max-w-xl text-center py-8 relative z-10" style="position:relative;">
+    <h1 style="font-family:'Nunito',sans-serif;font-weight:900;font-size:3.6rem;letter-spacing:0.02em;color:#1DB954;line-height:1;display:inline-flex;align-items:center;">SpotiFight<span class="title-wave"><span></span><span></span><span></span><span></span><span></span></span></h1>
+    <p style="color:#2e2e2e;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;margin-top:6px;">Only real music fans survive</p>
+
+    <!-- Daily Challenge calendar button -->
+    <button class="cal-btn" onclick="onCalClick()" title="Daily Challenge" id="cal-btn">
+        <!-- green tick badge shown when today is solved -->
+        <div id="cal-tick" class="cal-tick">
+            <svg viewBox="0 0 10 10" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1.5,5 4,7.5 8.5,2.5"/>
+            </svg>
+        </div>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" id="cal-icon" style="color:#555;">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:0.6rem;letter-spacing:0.1em;color:#333;line-height:1;" id="cal-day"></div>
+    </button>
 </header>
 
 <div class="w-full max-w-xl flex flex-col gap-4 relative z-10 pb-10">
 
     <!-- Global Songs -->
-    <a href="index.html" class="mode-card">
+    <a href="index.html" class="mode-card" onclick="navigateTo(event,'index.html')">
         <div class="mode-num">01</div>
         <div style="min-width:0;flex:1;">
             <div class="mode-tag">Worldwide</div>
             <div class="mode-title">Global Songs</div>
-            <div class="mode-desc">Find any song in the world whose lyrics contain the word, but not its title.</div>
+            <div class="mode-desc">Search any song. The word must be in the lyrics, not in the song title.</div>
         </div>
         <div class="mode-arrow">&#8594;</div>
     </a>
 
     <!-- Local / Artist Mode -->
-    <a href="artist.html" class="mode-card">
+    <a href="artist.html" class="mode-card" onclick="navigateTo(event,'artist.html')">
         <div class="mode-num">02</div>
         <div style="min-width:0;flex:1;">
             <div class="mode-tag">Artist Focus</div>
             <div class="mode-title">Local Songs</div>
-            <div class="mode-desc">Pick an artist and guess only from their catalog. Stay in their world.</div>
+            <div class="mode-desc">Pick an artist and find songs from their catalog where the word appears in the lyrics.</div>
         </div>
         <div class="mode-arrow">&#8594;</div>
     </a>
@@ -111,5 +315,478 @@
 
 <p class="note relative z-10">Powered by Spotify &amp; lyrics.ovh</p>
 
+<!-- ══════════════════════════════════════════════
+     CALENDAR HISTORY OVERLAY
+     ══════════════════════════════════════════════ -->
+<div id="cal-history-overlay">
+<div id="cal-history-modal">
+    <button class="modal-close" onclick="closeCalHistory()">&#10005;</button>
+
+    <div style="margin-bottom:20px;">
+        <div style="font-size:0.62rem;color:#1DB954;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:4px;">Daily Challenge</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:#fff;line-height:1;" id="ch-month-label"></div>
+        <div style="font-size:0.72rem;color:#333;margin-top:4px;" id="ch-streak-label"></div>
+    </div>
+
+    <!-- Calendar grid injected by JS -->
+    <div id="ch-grid"></div>
+
+    <!-- Today's word re-shown for context -->
+    <div id="ch-today-row" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05);">
+        <div style="font-size:0.6rem;color:#333;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px;">Today's challenge</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:0.1em;background:linear-gradient(135deg,#1DB954,#17a349);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" id="ch-today-word"></div>
+            <div style="font-size:0.72rem;color:#555;" id="ch-today-answer"></div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     DAILY CHALLENGE MODAL
+     ══════════════════════════════════════════════ -->
+<div id="daily-overlay">
+<div id="daily-modal">
+
+    <button class="modal-close" onclick="closeDailyChallenge()">&#10005;</button>
+
+    <!-- Header -->
+    <div style="margin-bottom:20px;">
+        <div style="font-size:0.62rem;color:#1DB954;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:4px;">Daily Challenge</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:#fff;line-height:1;" id="dc-date-label"></div>
+        <div style="font-size:0.75rem;color:#333;margin-top:4px;">Your musical puzzle of the day.</div>
+    </div>
+
+    <!-- Word of the day -->
+    <div style="background:#0d0d0d;border:1px solid rgba(29,185,84,0.15);border-radius:14px;padding:20px 16px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:0.6rem;color:#333;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">Word of the day</div>
+        <div id="daily-word"></div>
+    </div>
+
+    <!-- Already completed banner (shown instead of search if done) -->
+    <div id="dc-done-banner" style="display:none;margin-bottom:16px;">
+        <div style="background:#0c2418;border:1.5px solid #1DB954;border-radius:12px;padding:16px 18px;text-align:center;">
+            <div style="font-size:1.1rem;margin-bottom:6px;">🏆</div>
+            <div style="font-weight:700;color:#1DB954;font-size:0.9rem;">Challenge Complete!</div>
+            <div id="dc-done-song" style="font-size:0.78rem;color:#555;margin-top:6px;line-height:1.4;"></div>
+        </div>
+    </div>
+
+    <!-- Search area (hidden when done) -->
+    <div id="dc-search-area" style="display:flex;flex-direction:column;gap:10px;">
+        <input id="dc-search-bar" class="dc-search" type="text"
+               placeholder="Search a song on Spotify…" autocomplete="off"
+               oninput="dcOnSearch(this.value)">
+
+        <div id="dc-results-wrap" style="display:none;">
+            <div class="dc-results">
+                <div id="dc-loader" class="dc-loader" style="display:none;"><span></span><span></span><span></span></div>
+                <div id="dc-empty" class="dc-empty" style="display:none;"></div>
+                <ul id="dc-song-list"></ul>
+            </div>
+        </div>
+
+        <!-- Checking box -->
+        <div id="dc-checking" class="dc-checking">
+            <img id="dc-ck-art" src="" alt="">
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:0.82rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="dc-ck-title"></div>
+                <div class="dc-ck-status" id="dc-ck-status">Checking lyrics<span>.</span><span>.</span><span>.</span></div>
+            </div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="dc-feedback" style="display:none;"></div>
+    </div>
+
+</div>
+</div>
+
+<script>
+// ── DATE UTILITIES ────────────────────────────────────────────────────────────
+function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateLabel(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m-1, d).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+}
+
+// ── DAILY WORD (server-first, local fallback) ─────────────────────────────────
+// Server reads daily-words.json and picks based on weekday vs weekend.
+// If the server isn't running (file:// open), falls back to the weekday pool
+// baked in here so the page still works offline.
+const FALLBACK_WEEKDAY = [
+    'love','heart','baby','night','feel','life','time','know','need','back',
+    'want','stay','fall','dream','fire','rain','light','dark','dance','eyes',
+    'tears','smile','hold','gone','miss','cry','away','free','hurt','save',
+    'lost','find','leave','wait','sing','live','wish','hope','stars','sky',
+    'pain','true','real','burn','rise','shine','together','beautiful',
+    'broken','breathe','chase','fade','trust','shame','ghost','hollow',
+    'empty','brave','wild','shadow','echo','wound','scar','survive',
+    'whisper','wander','drown','cold','fight','fly','strong','young','loud',
+];
+const FALLBACK_WEEKEND = [
+    'broken','breathe','chase','scream','fade','trust','shame','ghost',
+    'hollow','empty','brave','wild','thunder','blood','shadow','echo',
+    'wound','scar','battle','survive','whisper','wander','rebel','collide',
+    'drown','bleed','crawl','cold','fight','fly','strong',
+    'sacrifice','surrender','devotion','reckless','restless','ignite','crumble','shatter',
+    'haunt','phantom','silhouette','exile','abyss','oblivion','tempest','asylum',
+    'labyrinth','vendetta','paradox','melancholy',
+];
+
+function localFallbackWord() {
+    const day = new Date().getDay();
+    const isWeekend = day === 0 || day === 6;
+    const pool = isWeekend ? FALLBACK_WEEKEND : FALLBACK_WEEKDAY;
+    const key  = todayKey();
+    let h = 0;
+    for (const c of key) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0;
+    return pool[Math.abs(h) % pool.length];
+}
+
+let dailyWordCache = null;   // set once per page load
+
+async function fetchDailyWord() {
+    if (dailyWordCache) return dailyWordCache;
+    try {
+        const res = await fetch('/api/daily');
+        if (!res.ok) throw new Error();
+        const data    = await res.json();
+        dailyWordCache = data.word;
+    } catch {
+        // Server not reachable — use client-side fallback
+        dailyWordCache = localFallbackWord();
+    }
+    return dailyWordCache;
+}
+
+// ── SPOTIFY ───────────────────────────────────────────────────────────────────
+let dcToken = null, dcExpiry = 0;
+
+async function dcGetToken() {
+    if (dcToken && Date.now() < dcExpiry) return dcToken;
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+            Authorization: `Basic ${btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`)}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) throw new Error(`Token error: ${res.status}`);
+    const data = await res.json();
+    dcToken  = data.access_token;
+    dcExpiry = Date.now() + (data.expires_in - 60) * 1000;
+    return dcToken;
+}
+
+async function dcSearchSpotify(q) {
+    const token = await dcGetToken();
+    const res   = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=8`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Search error: ${res.status}`);
+    return (await res.json()).tracks.items;
+}
+
+// ── LYRICS ────────────────────────────────────────────────────────────────────
+async function dcFetchLyrics(trackName, artist) {
+    const title = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
+    const art   = artist.split(',')[0].trim();
+    try {
+        const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.lyrics || null;
+    } catch { return null; }
+}
+
+function dcWordInText(word, text) {
+    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    return re.test(text);
+}
+
+// ── CALENDAR BUTTON ROUTING ───────────────────────────────────────────────────
+function onCalClick() {
+    const completed = !!localStorage.getItem(`dc_${todayKey()}`);
+    if (completed) {
+        openCalHistory();
+    } else {
+        openDailyChallenge();
+    }
+}
+
+// ── MARK DONE UI ──────────────────────────────────────────────────────────────
+function markDoneUI() {
+    const btn  = document.getElementById('cal-btn');
+    const tick = document.getElementById('cal-tick');
+    const icon = document.getElementById('cal-icon');
+    btn.classList.add('done');
+    tick.style.display  = 'flex';
+    icon.style.color    = '#1DB954';
+}
+
+// ── CALENDAR HISTORY ──────────────────────────────────────────────────────────
+function openCalHistory() {
+    const now   = new Date();
+    const year  = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+
+    // Month label
+    document.getElementById('ch-month-label').innerText =
+        now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // Collect all solved days this month from localStorage
+    const solved = {};   // day → { song, artist }
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k.startsWith('dc_')) continue;
+        const dateStr = k.slice(3);
+        const [y, m, d] = dateStr.split('-').map(Number);
+        if (y === year && m - 1 === month) {
+            try { solved[d] = JSON.parse(localStorage.getItem(k)); } catch {}
+        }
+    }
+
+    // Streak: count consecutive solved days up to today
+    let streak = 0;
+    for (let d = today; d >= 1; d--) {
+        if (solved[d]) streak++;
+        else break;
+    }
+    const totalSolved = Object.keys(solved).length;
+    document.getElementById('ch-streak-label').innerText =
+        `${totalSolved} day${totalSolved !== 1 ? 's' : ''} solved this month` +
+        (streak > 1 ? ` · ${streak}-day streak` : '');
+
+    // Build grid
+    const firstDow  = new Date(year, month, 1).getDay();   // 0=Sun
+    const daysInMon = new Date(year, month + 1, 0).getDate();
+    const DAY_NAMES = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+    let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">`;
+    // headers
+    DAY_NAMES.forEach(n => { html += `<div class="ch-day-name">${n}</div>`; });
+    // empty cells before first day
+    for (let i = 0; i < firstDow; i++) html += `<div class="ch-cell"></div>`;
+    // day cells
+    for (let d = 1; d <= daysInMon; d++) {
+        const isSolved  = !!solved[d];
+        const isToday   = d === today;
+        const isFuture  = d > today;
+        let cls = 'ch-cell';
+        if (isSolved)     cls += ' solved';
+        else if (isToday) cls += ' today';
+        const style = isFuture ? 'opacity:0.2;' : '';
+        html += `<div class="${cls}" style="${style}">${d}</div>`;
+    }
+    html += `</div>`;
+    document.getElementById('ch-grid').innerHTML = html;
+
+    // Today's word + answer row
+    const todaySaved = solved[today];
+    const todayRow   = document.getElementById('ch-today-row');
+    if (todaySaved) {
+        document.getElementById('ch-today-word').innerText   = (dailyWordCache || '…').toUpperCase();
+        document.getElementById('ch-today-answer').innerHTML =
+            `<strong style="color:#ccc;">${dcEsc(todaySaved.song)}</strong><br>${dcEsc(todaySaved.artist)}`;
+        todayRow.style.display = 'block';
+    } else {
+        todayRow.style.display = 'none';
+    }
+
+    const overlay = document.getElementById('cal-history-overlay');
+    overlay.classList.remove('open', 'closing');
+    void document.getElementById('cal-history-modal').offsetWidth; // force reflow → restarts animation
+    overlay.classList.add('open');
+}
+
+function closeCalHistory() {
+    const el = document.getElementById('cal-history-overlay');
+    el.classList.add('closing');
+    setTimeout(() => el.classList.remove('open', 'closing'), 240);
+}
+
+document.getElementById('cal-history-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('cal-history-overlay')) closeCalHistory();
+});
+
+// ── MODAL OPEN / CLOSE ────────────────────────────────────────────────────────
+async function openDailyChallenge() {
+    const key  = todayKey();
+
+    // Show modal immediately with a loading placeholder, then fill in the word
+    document.getElementById('daily-word').innerText    = '…';
+    document.getElementById('dc-date-label').innerText = formatDateLabel(key);
+    const dailyOverlay = document.getElementById('daily-overlay');
+    dailyOverlay.classList.remove('open', 'closing');
+    void document.getElementById('daily-modal').offsetWidth; // force reflow → restarts animation
+    dailyOverlay.classList.add('open');
+
+    const word = await fetchDailyWord();
+    document.getElementById('daily-word').innerText = word.toUpperCase();
+
+    document.getElementById('dc-done-banner').style.display = 'none';
+    document.getElementById('dc-search-area').style.display = 'flex';
+    document.getElementById('dc-search-bar').value          = '';
+    document.getElementById('dc-results-wrap').style.display = 'none';
+    document.getElementById('dc-song-list').innerHTML       = '';
+    document.getElementById('dc-feedback').style.display    = 'none';
+    document.getElementById('dc-checking').style.display    = 'none';
+
+    setTimeout(() => document.getElementById('dc-search-bar').focus(), 100);
+}
+
+function closeDailyChallenge() {
+    const el = document.getElementById('daily-overlay');
+    el.classList.add('closing');
+    setTimeout(() => el.classList.remove('open', 'closing'), 240);
+}
+
+// Close on overlay click (not modal click)
+document.getElementById('daily-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('daily-overlay')) closeDailyChallenge();
+});
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+let dcDebounce = null;
+
+function dcOnSearch(val) {
+    clearTimeout(dcDebounce);
+    const q     = val.trim();
+    const wrap  = document.getElementById('dc-results-wrap');
+    const list  = document.getElementById('dc-song-list');
+    const loader = document.getElementById('dc-loader');
+    const empty  = document.getElementById('dc-empty');
+
+    if (!q) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
+
+    wrap.style.display   = 'block';
+    list.innerHTML       = '';
+    loader.style.display = 'flex';
+    empty.style.display  = 'none';
+
+    dcDebounce = setTimeout(async () => {
+        try {
+            const tracks = await dcSearchSpotify(q);
+            loader.style.display = 'none';
+            if (tracks.length === 0) {
+                empty.innerText     = 'No songs found.';
+                empty.style.display = 'block';
+            } else {
+                dcRenderTracks(tracks);
+            }
+        } catch {
+            loader.style.display = 'none';
+            empty.innerText      = '⚠️ Search failed. Check your connection.';
+            empty.style.display  = 'block';
+        }
+    }, 380);
+}
+
+function dcRenderTracks(tracks) {
+    const list = document.getElementById('dc-song-list');
+    list.innerHTML = '';
+    tracks.forEach(t => {
+        const art     = t.album?.images?.[2]?.url || t.album?.images?.[0]?.url || '';
+        const artists = t.artists.map(a => a.name).join(', ');
+        const li      = document.createElement('li');
+        li.className  = 'dc-song';
+        li.innerHTML  = `
+            ${art ? `<img src="${art}" alt="">` : `<div class="dc-song-ph">🎵</div>`}
+            <div style="min-width:0;flex:1;">
+                <div class="dc-song-title">${dcEsc(t.name)}</div>
+                <div class="dc-song-artist">${dcEsc(artists)}</div>
+            </div>`;
+        li.onclick = () => dcPickSong(t);
+        list.appendChild(li);
+    });
+}
+
+// ── SONG PICK & VERIFY ────────────────────────────────────────────────────────
+async function dcPickSong(track) {
+    const word    = dailyWordCache;   // already fetched when modal opened
+    const artUrl  = track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '';
+    const artist  = track.artists.map(a => a.name).join(', ');
+
+    // Show checking state
+    document.getElementById('dc-results-wrap').style.display = 'none';
+    document.getElementById('dc-feedback').style.display     = 'none';
+    document.getElementById('dc-search-bar').disabled        = true;
+
+    const ck = document.getElementById('dc-checking');
+    document.getElementById('dc-ck-art').src          = artUrl;
+    document.getElementById('dc-ck-title').innerText  = track.name;
+    document.getElementById('dc-ck-status').innerHTML = 'Checking lyrics<span>.</span><span>.</span><span>.</span>';
+    ck.style.display = 'flex';
+
+    try {
+        const lyrics = await dcFetchLyrics(track.name, artist);
+        ck.style.display = 'none';
+
+        const fb = document.getElementById('dc-feedback');
+
+        if (lyrics === null) {
+            fb.innerHTML = `<div class="dc-fb dc-fb-warn">⚠️ Couldn't find lyrics for this song. Try another!</div>`;
+            fb.style.display = 'block';
+            document.getElementById('dc-results-wrap').style.display = 'block';
+            document.getElementById('dc-search-bar').disabled = false;
+            return;
+        }
+
+        const inTitle  = dcWordInText(word, track.name);
+        const inLyrics = dcWordInText(word, lyrics);
+
+        if (inTitle) {
+            fb.innerHTML = `<div class="dc-fb dc-fb-lose">❌ <strong>${dcEsc(track.name)}</strong> has <strong>${word}</strong> in its title. The word must only appear in the lyrics.</div>`;
+            fb.style.display = 'block';
+            document.getElementById('dc-results-wrap').style.display = 'block';
+            document.getElementById('dc-search-bar').disabled = false;
+        } else if (inLyrics) {
+            // SUCCESS — save and show completion
+            const key = todayKey();
+            localStorage.setItem(`dc_${key}`, JSON.stringify({ song: track.name, artist }));
+            markDoneUI();
+
+            document.getElementById('dc-search-area').style.display = 'none';
+            document.getElementById('dc-done-song').innerHTML =
+                `You answered with <strong style="color:#ccc;">${dcEsc(track.name)}</strong> by ${dcEsc(artist)}`;
+            document.getElementById('dc-done-banner').style.display = 'block';
+        } else {
+            fb.innerHTML = `<div class="dc-fb dc-fb-lose">❌ <strong>${dcEsc(track.name)}</strong> doesn't have <strong>${word}</strong> in its lyrics.</div>`;
+            fb.style.display = 'block';
+            document.getElementById('dc-results-wrap').style.display = 'block';
+            document.getElementById('dc-search-bar').disabled = false;
+        }
+
+    } catch {
+        ck.style.display = 'none';
+        document.getElementById('dc-feedback').innerHTML = `<div class="dc-fb dc-fb-warn">⚠️ Lyrics lookup failed. Try again.</div>`;
+        document.getElementById('dc-feedback').style.display = 'block';
+        document.getElementById('dc-search-bar').disabled = false;
+    }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function dcEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// On page load: show today's date on the calendar button; mark done if already solved
+(function init() {
+    document.getElementById('cal-day').innerText = new Date().getDate();
+    if (localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
+})();
+
+function navigateTo(e, url) {
+    e.preventDefault();
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = url; }, 280);
+}
+</script>
 </body>
 </html>

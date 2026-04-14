@@ -6,7 +6,7 @@
     <title>SpotiFight</title>
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
@@ -95,6 +95,18 @@
         .diff-medium { background: #1e1208; color: #f59e0b; border: 1px solid #f59e0b; }
         .diff-hard   { background: #2b0d0d; color: #ff5555; border: 1px solid #ff5555; }
 
+        /* ── Page exit transition ── */
+        body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
+        body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
+
+        /* ── Page entrance animation ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+        #page-header { animation: fadeUp 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+        .card        { animation: fadeUp 0.45s 0.06s cubic-bezier(0.22,1,0.36,1) both; }
+
         /* Word container difficulty tint on hard */
         #word-display.hard {
             background: linear-gradient(135deg,#ff5555,#cc2222);
@@ -112,10 +124,10 @@
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
 
-<div class="w-full max-w-xl flex items-center justify-between pt-4 pb-2 relative z-10">
-    <a href="home.html" class="back-link">&#8592; Modes</a>
+<div id="page-header" class="w-full max-w-xl flex items-center justify-between pt-4 pb-2 relative z-10">
+    <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
     <div style="text-align:right;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.1em;color:#1DB954;line-height:1;">SpotiFight</div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
         <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Global Songs</div>
     </div>
 </div>
@@ -143,8 +155,39 @@
 <div class="card w-full max-w-xl rounded-2xl p-7 shadow-2xl relative z-10">
 <div class="flex flex-col items-center gap-5">
 
+    <!-- ── Pre-game intro (hidden once game starts) ── -->
+    <div id="pre-game" class="w-full flex flex-col gap-5">
+
+        <!-- One-liner -->
+        <div style="text-align:center;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Global Mode</div>
+            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Find a song where the word lives in the lyrics, not in the title.</div>
+        </div>
+
+        <!-- Difficulty progression -->
+        <div style="background:#0d0d0d;border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:22px 20px;">
+            <div style="font-size:0.6rem;color:#2a2a2a;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:14px;">Difficulty</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span class="diff-badge diff-easy" style="min-width:60px;text-align:center;">EASY</span>
+                    <span style="font-size:0.75rem;color:#444;">Streak 0-6 &nbsp;·&nbsp; 100 pts</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span class="diff-badge diff-medium" style="min-width:60px;text-align:center;">MEDIUM</span>
+                    <span style="font-size:0.75rem;color:#444;">Streak 7-11 &nbsp;·&nbsp; 250 pts</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span class="diff-badge diff-hard" style="min-width:60px;text-align:center;">HARD</span>
+                    <span style="font-size:0.75rem;color:#444;">Streak 12+ &nbsp;·&nbsp; 500 pts + time bonus</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- ── End pre-game ── -->
+
     <div id="word-container" class="text-center" style="display:none;">
-        <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Must be in lyrics &mdash; must NOT be in title</p>
+        <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">In lyrics, not in title</p>
         <div id="word-display"></div>
     </div>
 
@@ -184,41 +227,67 @@
 <p class="note" style="margin-top:18px;">Powered by Spotify &amp; lyrics.ovh</p>
 
 <script>
-// ── WORD BANKS ────────────────────────────────────────────────────────────────
-// Easy (80): ubiquitous — almost any song will have one of these
+// WORD BANKS
+// Easy (240): very common in lyrics across all genres, verbs in present + past tense + plural nouns
 const WORDS_EASY = [
-    'love',    'heart',   'baby',    'night',   'feel',    'life',    'time',    'know',
-    'need',    'come',    'back',    'say',     'want',    'stay',    'fall',    'give',
-    'take',    'make',    'never',   'always',  'forever', 'dream',   'fire',    'rain',
-    'light',   'dark',    'day',     'mind',    'home',    'run',     'dance',   'eyes',
-    'tears',   'smile',   'hold',    'gone',    'miss',    'cry',     'away',    'free',
-    'hurt',    'save',    'lost',    'find',    'leave',   'wait',    'tell',    'walk',
-    'sing',    'live',    'die',     'wish',    'hope',    'far',     'world',   'road',
-    'stars',   'sky',     'hands',   'face',    'name',    'pain',    'true',    'real',
-    'yeah',    'hey',     'you',     'her',     'him',     'get',     'let',     'out',
-    'your',    'us',      'together','one',     'beautiful','burn',   'rise',    'shine',
+    // Present tense verbs (very common in mainstream lyrics)
+    'love',   'feel',   'know',   'need',   'want',   'stay',   'run',    'fall',   'cry',    'miss',
+    'dream',  'break',  'hold',   'leave',  'fight',  'dance',  'sing',   'burn',   'save',   'find',
+    'take',   'give',   'make',   'come',   'walk',   'talk',   'die',    'live',   'try',    'see',
+    'say',    'hear',   'tell',   'wait',   'lose',   'show',   'move',   'fly',    'rise',   'shine',
+    'call',   'keep',   'play',   'think',  'pray',   'wish',   'touch',  'stop',   'turn',   'stand',
+    'hide',   'forget', 'believe','hurt',   'care',   'need',   'sleep',  'smile',  'start',  'end',
+    // Past tense verbs
+    'loved',  'felt',   'knew',   'stayed', 'ran',    'fell',   'cried',  'missed', 'dreamed','broke',
+    'held',   'left',   'fought', 'danced', 'burned', 'saved',  'found',  'took',   'gave',   'made',
+    'came',   'walked', 'talked', 'died',   'lived',  'tried',  'saw',    'said',   'heard',  'told',
+    'waited', 'lost',   'showed', 'moved',  'flew',   'rose',   'called', 'kept',   'played', 'thought',
+    'prayed', 'wished', 'chased', 'touched','stopped','turned', 'stood',  'forgot', 'believed','cared',
+    'slept',  'smiled', 'started','ended',  'needed',
+    // Singular nouns
+    'heart',  'soul',   'mind',   'life',   'time',   'night',  'day',    'world',  'home',   'fire',
+    'rain',   'light',  'dark',   'eyes',   'tears',  'hands',  'face',   'name',   'road',   'stars',
+    'sky',    'blood',  'voice',  'pain',   'fear',   'hope',   'way',    'door',   'head',   'mouth',
+    'song',   'word',   'town',   'air',    'place',  'body',   'arms',   'skin',   'smile',  'kiss',
+    'bed',    'wall',   'street', 'beat',   'dream',  'friend', 'girl',   'boy',    'baby',   'sun',
+    // Plural nouns
+    'hearts', 'souls',  'minds',  'lives',  'nights', 'days',   'worlds', 'homes',  'fires',  'lights',
+    'faces',  'names',  'roads',  'voices', 'fears',  'hopes',  'ways',   'doors',  'songs',  'words',
+    'towns',  'bodies', 'smiles', 'kisses', 'walls',  'streets','beats',  'dreams', 'times',  'skies',
+    'tears',  'hands',  'eyes',   'stars',  'arms',   'friends','girls',  'boys',   'babies', 'suns',
+    // Adjectives and other
+    'alone',  'free',   'real',   'true',   'wild',   'cold',   'warm',   'broken', 'strong', 'young',
+    'old',    'beautiful','brave','afraid', 'alive',  'angry',  'ready',  'wrong',  'right',  'high',
+    'low',    'deep',   'long',   'hard',   'soft',   'slow',   'fast',   'sweet',  'sad',    'happy',
+    'never',  'always', 'forever','again',  'away',   'together','still', 'close',  'far',    'okay',
 ];
 
-// Medium (40): appear often but require a specific song to come to mind
+// Medium (100): appear in lyrics but need a specific song in mind
 const WORDS_MEDIUM = [
-    'broken',  'breathe', 'chase',  'scream',  'fade',   'trust',  'shame',  'ghost',
-    'hollow',  'empty',   'brave',  'wild',    'thunder','blood',  'shadow', 'echo',
-    'wound',   'scar',    'battle', 'survive', 'whisper','wander', 'rebel',  'collide',
-    'drown',   'bleed',   'crawl',  'cold',    'break',  'fight',  'fly',    'strong',
-    'young',   'breath',  'high',   'low',     'wrong',  'long',   'loud',   'hard',
+    'ghost',   'hollow',  'echo',    'shadow',  'thunder', 'survive', 'rebel',   'whisper', 'wander',  'collide',
+    'drown',   'bleed',   'crawl',   'surrender','reckless','restless','haunt',   'shatter', 'crumble', 'spiral',
+    'ignite',  'stone',   'steel',   'crown',   'kingdom', 'warrior', 'battle',  'storm',   'cage',    'mercy',
+    'glory',   'sacrifice','devoted','wasted',  'scattered','stranded','trapped', 'escape',  'vanish',  'stumble',
+    'linger',  'suffer',  'ache',    'hunger',  'rage',    'grief',   'guilt',   'doubt',   'faith',   'grace',
+    'chaos',   'power',   'shelter', 'burden',  'mirror',  'poison',  'anchor',  'ember',   'spark',   'venom',
+    'sorrow',  'stain',   'blade',   'throne',  'grave',   'dust',    'ash',     'smoke',   'fever',   'faded',
+    'haunted', 'sacred',  'selfish', 'fragile', 'violent', 'endless', 'ruthless','demons',  'shadows', 'storms',
+    'battles', 'warriors','kingdoms','chains',  'wings',   'flames',  'scars',   'wounds',  'blades',  'thrones',
+    'graves',  'embers',  'sparks',  'sorrows', 'burdens', 'mirrors', 'anchors', 'whispers','echoes',  'ghosts',
 ];
 
-// Hard (20): less obvious, still findable — pushes you to think of deeper cuts
+// Hard (20): uncommon words that still appear in real songs
 const WORDS_HARD = [
-    'sacrifice','surrender','devotion', 'reckless','restless','ignite',  'crumble', 'shatter',
-    'haunt',    'phantom',  'silhouette','exile',  'abyss',   'oblivion','tempest', 'asylum',
-    'labyrinth','vendetta', 'paradox',  'melancholy',
+    'melancholy', 'labyrinth',  'vendetta',   'paradox',    'silhouette',
+    'oblivion',   'tempest',    'asylum',     'exodus',     'requiem',
+    'redemption', 'purgatory',  'solitude',   'euphoria',   'nostalgia',
+    'adrenaline', 'catastrophe','revelation', 'renaissance','apocalypse',
 ];
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const TIME_LIMIT    = 30;
-const STREAK_MEDIUM = 5;
-const STREAK_HARD   = 10;
+const STREAK_MEDIUM = 7;
+const STREAK_HARD   = 12;
 const SCORE_CONFIG = {
     easy:   { base: 100, timeBonus: 2  },   // max 160 pts
     medium: { base: 250, timeBonus: 5  },   // max 400 pts
@@ -348,6 +417,7 @@ function startGame() {
     document.getElementById('score-area').style.display = 'flex';
     updateDiffBadge();
     hide('game-over-box');
+    hide('pre-game');
     startRound();
 }
 
@@ -585,6 +655,12 @@ function endRound(result, track, pointsEarned) {
 
         showGameOver();
     }
+}
+
+function navigateTo(e, url) {
+    e.preventDefault();
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = url; }, 280);
 }
 
 function showGameOver() {
