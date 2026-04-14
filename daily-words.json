@@ -1,0 +1,25 @@
+{
+  "weekday": [
+    "love",    "heart",   "baby",    "night",   "feel",    "life",    "time",    "know",
+    "need",    "back",    "want",    "stay",    "fall",    "give",    "take",    "make",
+    "never",   "always",  "forever", "dream",   "fire",    "rain",    "light",   "dark",
+    "day",     "mind",    "home",    "run",     "dance",   "eyes",    "tears",   "smile",
+    "hold",    "gone",    "miss",    "cry",     "away",    "free",    "hurt",    "save",
+    "lost",    "find",    "leave",   "wait",    "tell",    "walk",    "sing",    "live",
+    "wish",    "hope",    "far",     "world",   "stars",   "sky",     "hands",   "face",
+    "pain",    "true",    "real",    "burn",    "rise",    "shine",   "together","beautiful",
+    "broken",  "breathe", "chase",   "fade",    "trust",   "shame",   "ghost",   "hollow",
+    "empty",   "brave",   "wild",    "shadow",  "echo",    "wound",   "scar",    "survive",
+    "whisper", "wander",  "drown",   "cold",    "fight",   "fly",     "strong",  "young",
+    "loud",    "scream",  "battle",  "rebel"
+  ],
+  "weekend": [
+    "broken",  "breathe", "chase",   "scream",  "fade",    "trust",   "shame",   "ghost",
+    "hollow",  "empty",   "brave",   "wild",    "thunder", "blood",   "shadow",  "echo",
+    "wound",   "scar",    "battle",  "survive", "whisper", "wander",  "rebel",   "collide",
+    "drown",   "bleed",   "crawl",   "cold",    "fight",   "fly",     "strong",  "young",
+    "loud",    "sacrifice","surrender","devotion","reckless","restless","ignite",  "crumble",
+    "shatter", "haunt",   "phantom", "silhouette","exile",  "abyss",   "oblivion","tempest",
+    "asylum",  "labyrinth","vendetta","paradox", "melancholy","bleed", "crawl",   "collide"
+  ]
+}
