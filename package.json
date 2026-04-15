@@ -5,9 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "css": "tailwindcss -i tailwind.css -o public/tw.css --minify",
-    "css:watch": "tailwindcss -i tailwind.css -o public/tw.css --watch"
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -26,8 +24,6 @@
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.2.2",
-    "nodemon": "^3.1.14",
-    "tailwindcss": "^4.2.2"
+    "nodemon": "^3.1.14"
   }
 }

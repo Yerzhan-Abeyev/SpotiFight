@@ -17,11 +17,6 @@ HTML_FILES.forEach(f => {
     app.get(`/${f}`, (_req, res) => res.sendFile(path.join(__dirname, f)));
 });
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'home.html')));
-// Serve config.js (credentials loaded by the HTML pages)
-app.get('/config.js', (_req, res) => res.sendFile(path.join(__dirname, 'config.js')));
-// Serve compiled Tailwind CSS
-app.get('/tw.css', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'tw.css')));
-
 // ── GET /api/daily ────────────────────────────────────────────────────────────
 // Returns today's word of the day.
 // Weekday (Mon–Fri) → easy/medium pool.  Weekend (Sat–Sun) → medium/hard pool.
@@ -75,6 +70,18 @@ async function getSpotifyToken() {
     tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
     return cachedToken;
 }
+
+// ── GET /api/spotify/token ────────────────────────────────────────────────────
+// Returns a short-lived access token so the browser can call Spotify directly
+// without ever seeing the client secret.
+app.get('/api/spotify/token', async (_req, res) => {
+    try {
+        const token = await getSpotifyToken();
+        res.json({ access_token: token });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // ── POST /api/spotify/search ──────────────────────────────────────────────────
 app.get('/api/spotify/search', async (req, res) => {

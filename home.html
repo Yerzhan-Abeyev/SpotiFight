@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight</title>
-    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
@@ -469,18 +468,11 @@ let dcToken = null, dcExpiry = 0;
 
 async function dcGetToken() {
     if (dcToken && Date.now() < dcExpiry) return dcToken;
-    const res = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-            Authorization: `Basic ${btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`)}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'grant_type=client_credentials',
-    });
+    const res = await fetch('/api/spotify/token');
     if (!res.ok) throw new Error(`Token error: ${res.status}`);
     const data = await res.json();
     dcToken  = data.access_token;
-    dcExpiry = Date.now() + (data.expires_in - 60) * 1000;
+    dcExpiry = Date.now() + 55 * 60 * 1000;
     return dcToken;
 }
 
