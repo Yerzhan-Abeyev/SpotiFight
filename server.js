@@ -79,12 +79,13 @@ async function getSpotifyToken() {
 // ── POST /api/spotify/search ──────────────────────────────────────────────────
 app.get('/api/spotify/search', async (req, res) => {
     try {
-        const { q, limit, type = 'track' } = req.query;
+        const { q, type = 'track' } = req.query;
         if (!q) return res.status(400).json({ error: 'Missing query' });
 
-        const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 8));
+        const limit = type === 'artist' ? 5 : 20;
         const token = await getSpotifyToken();
-        const url   = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=${type}&limit=${safeLimit}&market=US`;
+        const url   = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&market=US`;
+        console.log('Spotify search URL:', url);
         const spotRes = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
         if (!spotRes.ok) {

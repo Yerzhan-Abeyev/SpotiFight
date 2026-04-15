@@ -211,7 +211,6 @@
             <div style="font-size:0.75rem;color:#444;letter-spacing:0.15em;text-transform:uppercase;">Analyzing catalog…</div>
         </div>
 
-        <div id="track-list" style="text-align:left;margin-bottom:16px;"></div>
 
         <div id="load-status-text" style="font-size:0.78rem;color:#555;min-height:20px;"></div>
         <div id="load-dots" class="dot-loader" style="padding:14px;"><span></span><span></span><span></span></div>
@@ -236,6 +235,7 @@
         <div>
             <div id="ctx-label">Artist</div>
             <div id="ctx-name"></div>
+            <div id="ctx-best" style="display:none;font-size:0.65rem;color:#1DB954;margin-top:2px;letter-spacing:0.06em;"></div>
         </div>
         <button id="change-btn" onclick="changeArtist()">Change artist</button>
     </div>
@@ -345,27 +345,54 @@ const STOP_WORDS = new Set([
 // (The /artists/{id}/top-tracks endpoint requires extended API access not
 //  available under basic Client Credentials, hence the search approach.)
 async function getTopSongs(artistId, artistName) {
-    const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(artistName)}&limit=50`);
-    if (!res.ok) throw new Error(`Track search error: ${res.status}`);
-    const items = await res.json(); // server returns the array directly
+    const token = await getSpotifyToken();
+    const terms = [
+        artistName,
+        `${artistName} love`,
+        `${artistName} night`,
+        `${artistName} heart`,
+        `${artistName} time`,
+        `${artistName} life`,
+    ];
 
-    // Only keep tracks where this artist is the FIRST (primary) credit.
-    // Deduplicate by lowercase title so single/album duplicates don't inflate the list.
-    const seen = new Set();
-    const unique = items.filter(t => {
-        if (!t?.artists?.[0]) return false;
-        if (t.artists[0].id !== artistId) return false;
-        const key = t.name.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
+    const seen  = new Set();
+    const items = [];
+
+    for (const term of terms) {
+        try {
+            const res  = await fetch(
+                `https://api.spotify.com/v1/search?q=${encodeURIComponent(term)}&type=track&limit=5`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!res.ok) continue;
+            const data = await res.json();
+            for (const t of data.tracks?.items || []) {
+                if (!t?.artists?.[0] || t.artists[0].id !== artistId) continue;
+                const key = t.name.toLowerCase().replace(/\s*[\(\[].*/, '');
+                if (seen.has(key)) continue;
+                seen.add(key);
+                items.push(t);
+            }
+        } catch { continue; }
+    }
+
+    const unique = items;
 
     const count = 5 + Math.floor(Math.random() * 3); // 5, 6 or 7
     return unique
         .sort((a, b) => b.popularity - a.popularity)
         .slice(0, count)
         .map(t => ({ name: t.name, artists: t.artists, album: t.album }));
+}
+
+// ── PERSONAL BEST (per artist) ────────────────────────────────────────────────
+function getArtistBest(artistId) {
+    try { return JSON.parse(localStorage.getItem(`sf_artist_${artistId}`)) || null; } catch { return null; }
+}
+function saveArtistBest(artistId, s, st) {
+    const d = new Date();
+    const date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    localStorage.setItem(`sf_artist_${artistId}`, JSON.stringify({ score: s, streak: st, date }));
 }
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -563,7 +590,6 @@ async function pickArtist(artist) {
     loadName.innerText = artist.name;
     document.getElementById('load-status-text').innerText = '';
     document.getElementById('load-dots').style.display   = 'flex';
-    document.getElementById('track-list').innerHTML = '';
 
     try {
         const tracks = await getTopSongs(artist.id, artist.name);
@@ -573,25 +599,13 @@ async function pickArtist(artist) {
             return;
         }
 
-        // TODO: remove track list display before release so players can't see which songs were analysed
-        const trackList = document.getElementById('track-list');
-        trackList.innerHTML = tracks.map((t, i) => `
-            <div class="track-status-item">
-                <span class="ts-icon" id="ts-${i}" style="color:#333;">&#8226;</span>
-                <span class="ts-name">${esc(t.name)}</span>
-            </div>`).join('');
-
         // Fetch lyrics and build frequency maps
         const freq      = {};
         const songCount = {};
         let   success   = 0;
 
         for (let i = 0; i < tracks.length; i++) {
-            const track = tracks[i];
-            const icon  = document.getElementById(`ts-${i}`);
-            icon.innerText   = '⟳';
-            icon.style.color = '#555';
-
+            const track  = tracks[i];
             const lyrics = await fetchLyrics(track.name, track.artists[0].name);
 
             if (lyrics) {
@@ -605,11 +619,6 @@ async function pickArtist(artist) {
                     }
                 }
                 success++;
-                icon.innerText   = '✓';
-                icon.style.color = '#1DB954';
-            } else {
-                icon.innerText   = '✗';
-                icon.style.color = '#ff4444';
             }
         }
 
@@ -630,9 +639,7 @@ async function pickArtist(artist) {
 
         const total = artistWordPool.easy.length + artistWordPool.medium.length + artistWordPool.hard.length;
         document.getElementById('load-dots').style.display      = 'none';
-        document.getElementById('load-status-text').innerText   =
-            `Ready. ${total} words found across ${success} song${success > 1 ? 's' : ''}.`;
-        document.getElementById('load-status-text').style.color = '#1DB954';
+        document.getElementById('load-status-text').innerText   = '';
 
         setTimeout(() => {
             showView('view-game');
@@ -641,6 +648,14 @@ async function pickArtist(artist) {
             ctxImg.src    = img;
             ctxImg.style.display = img ? 'block' : 'none';
             document.getElementById('ctx-name').innerText = artist.name;
+            const prevBest  = getArtistBest(artist.id);
+            const ctxBest   = document.getElementById('ctx-best');
+            if (prevBest) {
+                ctxBest.innerText      = `Best: ${prevBest.score} pts`;
+                ctxBest.style.display  = 'block';
+            } else {
+                ctxBest.style.display  = 'none';
+            }
             startGame();
         }, 1400);
 
@@ -799,25 +814,46 @@ function runTimer() {
 }
 
 // ── SEARCH (local catalog) ────────────────────────────────────────────────────
+let searchDebounce = null;
+
 function onSearchInput(val) {
+    clearTimeout(searchDebounce);
     const q = val.trim();
     document.getElementById('songs-list').innerHTML      = '';
-    document.getElementById('loader-area').style.display = 'none';
 
     if (!q) {
+        document.getElementById('loader-area').style.display = 'none';
         document.getElementById('empty-state').innerText     = '🎵 Start typing to search songs…';
         document.getElementById('empty-state').style.display = 'block';
         return;
     }
 
-    const tracks = searchLocalSongs(q);
-    if (tracks.length === 0) {
-        document.getElementById('empty-state').innerText     = `No matching songs by ${selectedArtist.name}.`;
-        document.getElementById('empty-state').style.display = 'block';
-    } else {
-        document.getElementById('empty-state').style.display = 'none';
-        renderResults(tracks);
-    }
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('loader-area').style.display = 'block';
+
+    searchDebounce = setTimeout(async () => {
+        try {
+            const token = await getSpotifyToken();
+            const res   = await fetch(
+                `https://api.spotify.com/v1/search?q=${encodeURIComponent(q + ' ' + selectedArtist.name)}&type=track&limit=5`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            document.getElementById('loader-area').style.display = 'none';
+            if (!res.ok) throw new Error();
+            const items = ((await res.json()).tracks?.items || [])
+                .filter(t => t.artists.some(a => a.id === selectedArtist.id));
+            if (items.length === 0) {
+                document.getElementById('empty-state').innerText     = `No songs found for "${q}" by ${selectedArtist.name}.`;
+                document.getElementById('empty-state').style.display = 'block';
+            } else {
+                renderResults(items);
+            }
+        } catch {
+            document.getElementById('loader-area').style.display = 'none';
+            document.getElementById('empty-state').innerText     = '⚠️ Search failed. Try again.';
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    }, 350);
 }
 
 function renderResults(tracks) {
@@ -859,6 +895,13 @@ async function pickSong(track) {
 
     const trackName = track.name;
     const artist    = track.artists.map(a => a.name).join(', ');
+
+    // Reject if the target word appears in the song title
+    if (wordInText(currentWord, trackName)) {
+        hide('checking-box');
+        endRound('word-in-title', track);
+        return;
+    }
 
     try {
         const lyrics = await fetchLyrics(trackName, artist);
@@ -915,8 +958,10 @@ function endRound(result, track, pointsEarned) {
         btn.onclick   = startRound;
         btn.style.display = 'block';
 
-    } else if (result === 'no-lyrics' || result === 'error') {
-        const msg = result === 'no-lyrics'
+    } else if (result === 'word-in-title' || result === 'no-lyrics' || result === 'error') {
+        const msg = result === 'word-in-title'
+            ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
+            : result === 'no-lyrics'
             ? `⚠️ Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
             : `⚠️ Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
@@ -953,10 +998,27 @@ function endRound(result, track, pointsEarned) {
 function showGameOver() {
     const diff      = getDifficulty();
     const diffLabel = diff.toUpperCase();
-    const box       = document.getElementById('game-over-box');
+
+    const prev        = getArtistBest(selectedArtist.id);
+    const isNewRecord = score > 0 && (!prev || score > prev.score);
+    if (isNewRecord) {
+        saveArtistBest(selectedArtist.id, score, streak);
+        const ctxBest = document.getElementById('ctx-best');
+        ctxBest.innerText     = `Best: ${score} pts`;
+        ctxBest.style.display = 'block';
+    }
+
+    const recordHtml = isNewRecord
+        ? `<div style="font-size:0.7rem;color:#1DB954;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px;">New Record!</div>`
+        : prev
+        ? `<div style="font-size:0.72rem;color:#333;letter-spacing:0.08em;margin-bottom:6px;">Best: ${prev.score} pts</div>`
+        : '';
+
+    const box = document.getElementById('game-over-box');
     box.innerHTML = `
         <div class="go-title">GAME OVER</div>
-        <div class="go-score" style="margin:10px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
+        ${recordHtml}
+        <div class="go-score" style="margin:6px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
         <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:20px;">
             <span>Streak &nbsp;<strong style="color:#ccc;">${streak}</strong></span>
             <span>Level reached &nbsp;<span class="diff-badge diff-${diff}">${diffLabel}</span></span>

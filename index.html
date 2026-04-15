@@ -183,6 +183,12 @@
             </div>
         </div>
 
+        <!-- Personal best (shown if a previous run exists) -->
+        <div id="best-row" style="display:none;text-align:center;border-top:1px solid rgba(255,255,255,0.04);padding-top:16px;">
+            <div style="font-size:0.6rem;color:#2a2a2a;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">Personal Best</div>
+            <div id="best-row-val" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#555;letter-spacing:0.06em;"></div>
+        </div>
+
     </div>
     <!-- ── End pre-game ── -->
 
@@ -407,6 +413,23 @@ function showFlex(id) { const el = document.getElementById(id); el.style.display
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ── PERSONAL BEST (Global mode) ───────────────────────────────────────────────
+function getGlobalBest() {
+    try { return JSON.parse(localStorage.getItem('sf_global_best')) || null; } catch { return null; }
+}
+function saveGlobalBest(s, st) {
+    const d = new Date();
+    const date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    localStorage.setItem('sf_global_best', JSON.stringify({ score: s, streak: st, date }));
+}
+(function initBestRow() {
+    const best = getGlobalBest();
+    if (best) {
+        document.getElementById('best-row').style.display = 'block';
+        document.getElementById('best-row-val').innerText = `${best.score} pts  ·  Streak ${best.streak}`;
+    }
+})();
+
 // ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
 function startGame() {
     score  = 0;
@@ -612,8 +635,10 @@ function endRound(result, track, pointsEarned) {
         btn.onclick   = startRound;
         btn.style.display = 'block';
 
-    } else if (result === 'no-lyrics' || result === 'error') {
-        const msg = result === 'no-lyrics'
+    } else if (result === 'word-in-title' || result === 'no-lyrics' || result === 'error') {
+        const msg = result === 'word-in-title'
+            ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
+            : result === 'no-lyrics'
             ? `⚠️ Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
             : `⚠️ Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
@@ -633,14 +658,9 @@ function endRound(result, track, pointsEarned) {
         }, 1800);
 
     } else {
-        // GAME OVER: wrong, word-in-title, or timeout
+        // GAME OVER: wrong or timeout
         let reasonHtml = '';
-        if (result === 'word-in-title') {
-            reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ❌ <strong>${esc(track.name)}</strong> has <strong>${currentWord}</strong> in its title!<br>
-                <span style="font-size:0.8rem;font-weight:400;">The word must be in the lyrics only.</span>
-            </div>`;
-        } else if (result === 'wrong') {
+        if (result === 'wrong') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
                 ❌ ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
             </div>`;
@@ -664,13 +684,29 @@ function navigateTo(e, url) {
 }
 
 function showGameOver() {
-    const diff       = getDifficulty();
-    const diffLabel  = diff.toUpperCase();
+    const diff      = getDifficulty();
+    const diffLabel = diff.toUpperCase();
+
+    const prev        = getGlobalBest();
+    const isNewRecord = score > 0 && (!prev || score > prev.score);
+    if (isNewRecord) {
+        saveGlobalBest(score, streak);
+        // Update the pre-game best row so it's fresh next time
+        document.getElementById('best-row').style.display  = 'block';
+        document.getElementById('best-row-val').innerText  = `${score} pts  ·  Streak ${streak}`;
+    }
+
+    const recordHtml = isNewRecord
+        ? `<div style="font-size:0.7rem;color:#1DB954;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px;">New Record!</div>`
+        : prev
+        ? `<div style="font-size:0.72rem;color:#333;letter-spacing:0.08em;margin-bottom:6px;">Best: ${prev.score} pts</div>`
+        : '';
 
     const box = document.getElementById('game-over-box');
     box.innerHTML = `
         <div class="go-title">GAME OVER</div>
-        <div class="go-score" style="margin:10px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
+        ${recordHtml}
+        <div class="go-score" style="margin:6px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
         <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:20px;">
             <span>Streak &nbsp;<strong style="color:#ccc;">${streak}</strong></span>
             <span>Level reached &nbsp;<span class="diff-badge diff-${diff}">${diffLabel}</span></span>
