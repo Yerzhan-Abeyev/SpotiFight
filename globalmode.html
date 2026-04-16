@@ -119,6 +119,18 @@
         /* Game over */
         .go-title { font-family: 'Bebas Neue', sans-serif; font-size: 3.8rem; color: #ff4444; letter-spacing: 0.12em; line-height: 1; }
         .go-score { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.08em; color: #fff; }
+
+        /* ── Mobile ── */
+        @media (max-width: 480px) {
+            body { padding: 12px !important; }
+            .card { padding: 20px !important; }
+            #word-display { font-size: 3.2rem; }
+            .go-title { font-size: 2.8rem; }
+            .go-score { font-size: 2rem; }
+            #start-btn { padding: 13px 32px; font-size: 0.9rem; }
+            .search-input { padding: 12px 14px; font-size: 0.9rem; }
+            .btn-icon { display: none; }
+        }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
@@ -203,7 +215,7 @@
         <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">30s</p>
     </div>
 
-    <button id="start-btn" onclick="startGame()">&#9654; Start Game</button>
+    <button id="start-btn" onclick="startGame()"><span class="btn-icon">&#9654;</span> Start Game</button>
 
     <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
         <input id="search-bar" class="search-input" type="text" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
@@ -623,7 +635,7 @@ function endRound(result, track, pointsEarned) {
         fb.style.display = 'block';
 
         const btn     = document.getElementById('start-btn');
-        btn.innerHTML = '&#9654; Next Round';
+        btn.innerHTML = '<span class="btn-icon">&#9654;</span> Next Round';
         btn.onclick   = startRound;
         btn.style.display = 'block';
 
@@ -707,7 +719,7 @@ function showGameOver() {
     box.style.display = 'block';
 
     const btn     = document.getElementById('start-btn');
-    btn.innerHTML = '&#9654; Play Again';
+    btn.innerHTML = '<span class="btn-icon">&#9654;</span> Play Again';
     btn.onclick   = startGame;
     btn.style.display = 'block';
 }

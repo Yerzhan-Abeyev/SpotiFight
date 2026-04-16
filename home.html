@@ -249,6 +249,20 @@
         .mode-card:nth-child(1) { animation: fadeUp 0.4s 0.05s  cubic-bezier(0.22,1,0.36,1) both; }
         .mode-card:nth-child(2) { animation: fadeUp 0.4s 0.10s  cubic-bezier(0.22,1,0.36,1) both; }
         .mode-card:nth-child(3) { animation: fadeUp 0.4s 0.15s  cubic-bezier(0.22,1,0.36,1) both; }
+
+        /* ── Mobile ── */
+        @media (max-width: 480px) {
+            body { padding: 12px !important; }
+            header { padding-top: 1.2rem; padding-bottom: 0.5rem; }
+            h1 { font-size: 2.6rem !important; }
+            .cal-btn { position: fixed; top: 14px; right: 14px; width: 38px; height: 38px; }
+            .mode-card { padding: 18px 16px; gap: 14px; }
+            .mode-num { font-size: 2rem; width: 34px; }
+            .mode-title { font-size: 1.45rem; }
+            .mode-desc { font-size: 0.75rem; }
+            #daily-modal, #cal-history-modal { padding: 20px 16px; }
+            #daily-word { font-size: 2.8rem !important; }
+        }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
