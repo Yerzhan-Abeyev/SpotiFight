@@ -12,7 +12,7 @@ const app = express();
 // ── Static files ──────────────────────────────────────────────────────────────
 // Serve root-level HTML files and any css/js/assets directly from project root.
 // Only named files are exposed — server.js / config.js / .env are not served.
-const HTML_FILES = ['home.html', 'index.html', 'artist.html', 'test.html'];
+const HTML_FILES = ['home.html', 'globalmode.html', 'localmode.html', 'test.html'];
 HTML_FILES.forEach(f => {
     app.get(`/${f}`, (_req, res) => res.sendFile(path.join(__dirname, f)));
 });
