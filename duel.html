@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotiFight – Duel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(29,185,84,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(29,185,84,0.025) 1px, transparent 1px);
+            background-size: 40px 40px; pointer-events: none; z-index: 0;
+        }
+
+        .card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); }
+
+        .search-input {
+            background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
+            border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 0.95rem;
+            outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .search-input:focus { border-color: #1DB954; }
+        .search-input::placeholder { color: #444; }
+
+        .results-window { max-height: 260px; overflow-y: auto; background: #111; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
+        .results-window::-webkit-scrollbar { width: 5px; }
+        .results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
+
+        .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+        .song-item:last-child { border-bottom: none; }
+        .song-item:hover { background: #1c1c1c; }
+        .song-item img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .song-placeholder { width: 44px; height: 44px; border-radius: 6px; background: #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .song-title { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-artist { font-size: 0.75rem; color: #666; margin-top: 2px; }
+
+        .empty-state { padding: 24px; text-align: center; color: #444; font-size: 0.82rem; }
+        .dot-loader { display: flex; gap: 6px; justify-content: center; padding: 20px; }
+        .dot-loader span { width: 7px; height: 7px; background: #1DB954; border-radius: 50%; animation: bounce 1s infinite ease-in-out; }
+        .dot-loader span:nth-child(2) { animation-delay: .15s; }
+        .dot-loader span:nth-child(3) { animation-delay: .3s; }
+        @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4;} 40%{transform:scale(1);opacity:1;} }
+
+        /* Code input */
+        #code-input {
+            background: #111; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
+            border-radius: 12px; padding: 14px 18px; font-size: 1.4rem; font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.25em; text-align: center; width: 100%; outline: none;
+            transition: border-color 0.2s; text-transform: uppercase;
+        }
+        #code-input:focus { border-color: #1DB954; }
+        #code-input::placeholder { color: #2a2a2a; letter-spacing: 0.1em; font-size: 1rem; font-family: 'Inter', sans-serif; }
+
+        .name-input {
+            background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
+            border-radius: 12px; padding: 13px 16px; width: 100%; font-size: 0.95rem;
+            outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .name-input:focus { border-color: #1DB954; }
+        .name-input::placeholder { color: #444; }
+
+        /* Buttons */
+        .btn-primary {
+            background: #1DB954; color: #000; font-weight: 700; font-size: 0.95rem;
+            padding: 14px; border-radius: 999px; border: none; cursor: pointer; width: 100%;
+            letter-spacing: 0.04em; transition: transform 0.15s, box-shadow 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .btn-primary:hover { transform: scale(1.03); box-shadow: 0 0 24px rgba(29,185,84,0.3); }
+        .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
+
+        .btn-secondary {
+            background: transparent; color: #555; font-size: 0.85rem;
+            padding: 12px; border-radius: 999px; border: 1px solid #222; cursor: pointer; width: 100%;
+            letter-spacing: 0.04em; transition: border-color 0.15s, color 0.15s; font-family: 'Inter', sans-serif;
+        }
+        .btn-secondary:hover { border-color: #444; color: #aaa; }
+
+        /* Room code display */
+        .room-code-display {
+            font-family: 'Bebas Neue', sans-serif; font-size: 3.2rem; letter-spacing: 0.3em;
+            color: #1DB954; text-align: center; background: #0c1f12;
+            border: 1px solid rgba(29,185,84,0.2); border-radius: 14px;
+            padding: 16px 20px; cursor: pointer; transition: background 0.15s;
+            position: relative;
+        }
+        .room-code-display:hover { background: #0f2918; }
+        .copy-hint { font-family: 'Inter', sans-serif; font-size: 0.62rem; color: #1DB954; opacity: 0.5; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 4px; }
+
+        /* Score bar */
+        #score-bar { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px; }
+        .player-score { text-align: center; flex: 1; }
+        .player-name-label { font-size: 0.62rem; color: #444; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
+        .player-score-val { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.06em; }
+        .score-divider { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: #222; flex-shrink: 0; }
+
+        /* Word display */
+        #word-display {
+            font-family: 'Bebas Neue', sans-serif; font-size: 4rem;
+            letter-spacing: 0.12em; line-height: 1;
+            background: linear-gradient(135deg,#1DB954,#17a349);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        /* Timer */
+        #timer-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#1DB954,#17a349); transition: background 0.5s; }
+
+        /* Opponent status */
+        #opponent-status {
+            font-size: 0.72rem; color: #333; letter-spacing: 0.1em; text-align: center;
+            padding: 8px 0; text-transform: uppercase;
+        }
+        #opponent-status.found { color: #ff4444; }
+
+        /* Feedback */
+        .feedback-box { width: 100%; padding: 14px 18px; border-radius: 14px; font-size: 0.9rem; font-weight: 600; text-align: center; animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from{opacity:0;transform:scale(0.9);} to{opacity:1;transform:scale(1);} }
+        .fb-win  { background: #0c2418; border: 1.5px solid #1DB954; color: #1DB954; }
+        .fb-lose { background: #2b0d0d; border: 1.5px solid #ff4444; color: #ff5555; }
+        .fb-warn { background: #1e1a0a; border: 1.5px solid #f59e0b; color: #f59e0b; }
+
+        /* Countdown overlay */
+        #countdown-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; flex-direction: column; gap: 12px;
+        }
+        #countdown-num { font-family: 'Bebas Neue', sans-serif; font-size: 6rem; color: #1DB954; letter-spacing: 0.1em; animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+
+        .back-link { font-size: 0.72rem; color: #333; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: color 0.15s; }
+        .back-link:hover { color: #666; }
+        .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
+        .divider { display: flex; align-items: center; gap: 12px; color: #222; font-size: 0.75rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1e1e1e; }
+
+        /* Page transition */
+        body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
+        body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            body { padding: 12px !important; }
+            .card { padding: 20px !important; }
+            #word-display { font-size: 3rem; }
+            .room-code-display { font-size: 2.4rem; }
+            .btn-icon { display: none; }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-5">
+
+<div id="page-header" class="w-full max-w-xl flex items-center justify-between pt-4 pb-2 relative z-10">
+    <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
+    <div style="text-align:right;">
+        <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
+        <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Online Duel</div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIEW: LOBBY
+     ══════════════════════════════════════════════ -->
+<div id="view-lobby" class="w-full max-w-xl flex flex-col gap-4 relative z-10">
+
+    <div class="card w-full rounded-2xl p-7 shadow-2xl">
+        <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:20px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Online Duel</div>
+            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Race a friend to find the word in the lyrics first. First to 5 rounds wins.</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+                <label style="font-size:0.65rem;color:#444;letter-spacing:0.15em;text-transform:uppercase;display:block;margin-bottom:6px;">Your name</label>
+                <input id="name-input" class="name-input" type="text" placeholder="Enter your name…" maxlength="16" autocomplete="off">
+            </div>
+
+            <div>
+                <label style="font-size:0.65rem;color:#444;letter-spacing:0.15em;text-transform:uppercase;display:block;margin-bottom:6px;">Room code</label>
+                <input id="code-input" type="text" placeholder="XXXX" maxlength="4" autocomplete="off">
+            </div>
+            <button class="btn-primary" onclick="joinRoom()">Join Room</button>
+
+            <div class="divider">or</div>
+
+            <button class="btn-secondary" onclick="createRoom()">Create Room</button>
+
+            <div id="lobby-error" style="display:none;font-size:0.8rem;color:#ff5555;text-align:center;"></div>
+        </div>
+    </div>
+
+    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIEW: WAITING (host waiting for opponent)
+     ══════════════════════════════════════════════ -->
+<div id="view-waiting" class="w-full max-w-xl flex flex-col gap-4 relative z-10" style="display:none;">
+
+    <div class="card w-full rounded-2xl p-7 shadow-2xl" style="text-align:center;">
+        <div style="font-size:0.65rem;color:#1DB954;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;">Waiting for opponent</div>
+
+        <div style="margin-bottom:8px;font-size:0.75rem;color:#444;">Share this code with your friend</div>
+        <div class="room-code-display" id="waiting-code" onclick="copyCode()" title="Click to copy"></div>
+        <div class="copy-hint" id="copy-hint">tap to copy</div>
+
+        <div style="margin-top:20px;">
+            <div class="dot-loader" style="padding:10px;"><span></span><span></span><span></span></div>
+        </div>
+    </div>
+
+    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIEW: GAME
+     ══════════════════════════════════════════════ -->
+<div id="view-game" class="w-full max-w-xl flex flex-col items-center gap-3 relative z-10" style="display:none;">
+
+    <!-- Score bar -->
+    <div id="score-bar" class="card w-full rounded-2xl px-6 py-4">
+        <div class="player-score">
+            <div class="player-name-label" id="my-name-label">You</div>
+            <div class="player-score-val" id="my-score" style="color:#1DB954;">0</div>
+        </div>
+        <div class="score-divider">—</div>
+        <div class="player-score">
+            <div class="player-name-label" id="opp-name-label">Opponent</div>
+            <div class="player-score-val" id="opp-score" style="color:#ff4444;">0</div>
+        </div>
+    </div>
+
+    <!-- Game card -->
+    <div class="card w-full rounded-2xl p-7 shadow-2xl">
+        <div class="flex flex-col items-center gap-4">
+
+            <!-- Word -->
+            <div id="word-container" class="text-center" style="display:none;">
+                <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">In lyrics, not in title</p>
+                <div id="word-display"></div>
+            </div>
+
+            <!-- Timer -->
+            <div id="timer-container" class="w-full" style="display:none;">
+                <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
+                    <div id="timer-bar" style="width:100%;height:100%;"></div>
+                </div>
+                <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">30s</p>
+            </div>
+
+            <!-- Search -->
+            <div id="search-container" class="w-full" style="display:none;flex-direction:column;gap:10px;">
+                <input id="search-bar" class="search-input" type="text" placeholder="Type a song name…" autocomplete="off" oninput="onSearchInput(this.value)">
+                <div class="results-window">
+                    <div id="empty-state" class="empty-state">Start typing to search songs…</div>
+                    <div id="loader-area" style="display:none;"><div class="dot-loader"><span></span><span></span><span></span></div></div>
+                    <ul id="songs-list"></ul>
+                </div>
+            </div>
+
+            <!-- Feedback -->
+            <div id="feedback" style="display:none;width:100%;"></div>
+
+        </div>
+    </div>
+
+    <!-- Opponent status -->
+    <div id="opponent-status"></div>
+
+    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIEW: MATCH OVER
+     ══════════════════════════════════════════════ -->
+<div id="view-over" class="w-full max-w-xl flex flex-col gap-4 relative z-10" style="display:none;">
+    <div class="card w-full rounded-2xl p-7 shadow-2xl" style="text-align:center;" id="over-card"></div>
+    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+</div>
+
+<!-- Countdown overlay (shown between rounds) -->
+<div id="countdown-overlay" style="display:none;">
+    <div id="countdown-label" style="font-size:0.75rem;color:#555;letter-spacing:0.15em;text-transform:uppercase;"></div>
+    <div id="countdown-num"></div>
+</div>
+
+<script>
+// ── SOCKET ────────────────────────────────────────────────────────────────────
+const socket = io();
+
+let myId         = null;
+let myName       = '';
+let oppName      = '';
+let roomCode     = null;
+let currentWord  = '';
+let roundActive  = false;
+let lockedOut    = false;   // true after a wrong answer — can't pick again this round
+let timerRAF     = null;
+let roundStartAt = null;
+const ROUND_TIME = 20;
+
+// ── SPOTIFY ───────────────────────────────────────────────────────────────────
+let spotifyToken = null, spotifyExpiry = 0;
+
+async function getSpotifyToken() {
+    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
+    const res  = await fetch('/api/spotify/token');
+    if (!res.ok) throw new Error('Token fetch failed');
+    const data = await res.json();
+    spotifyToken  = data.access_token;
+    spotifyExpiry = Date.now() + 55 * 60 * 1000;
+    return spotifyToken;
+}
+
+async function searchSpotify(q) {
+    const token = await getSpotifyToken();
+    const res   = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=8`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error('Search failed');
+    return (await res.json()).tracks.items;
+}
+
+// ── LOBBY ACTIONS ─────────────────────────────────────────────────────────────
+function getName() {
+    return document.getElementById('name-input').value.trim() || 'Anonymous';
+}
+
+function createRoom() {
+    myName = getName();
+    socket.emit('create_room', { name: myName });
+}
+
+function joinRoom() {
+    const code = document.getElementById('code-input').value.trim().toUpperCase();
+    if (code.length !== 4) { showLobbyError('Enter a 4-character room code.'); return; }
+    myName = getName();
+    socket.emit('join_room', { code, name: myName });
+}
+
+function showLobbyError(msg) {
+    const el = document.getElementById('lobby-error');
+    el.innerText = msg;
+    el.style.display = 'block';
+}
+
+function copyCode() {
+    if (!roomCode) return;
+    navigator.clipboard.writeText(roomCode).then(() => {
+        document.getElementById('copy-hint').innerText = 'copied!';
+        setTimeout(() => { document.getElementById('copy-hint').innerText = 'tap to copy'; }, 1500);
+    });
+}
+
+// ── ROUND SUMMARY ─────────────────────────────────────────────────────────────
+function renderSubmissions(submissions) {
+    if (!submissions || !Object.keys(submissions).length) return '';
+    const myPick  = submissions[myId];
+    const ids     = Object.keys(submissions);
+    const oppId   = ids.find(id => id !== myId) || ids[0];
+    const oppPick = submissions[oppId];
+    let html = `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">`;
+    if (myPick) {
+        html += `<div style="font-size:0.75rem;color:#aaa;">
+            <span style="color:#555;text-transform:uppercase;font-size:0.65rem;letter-spacing:0.1em;">You  </span>
+            "${esc(myPick.trackName)}"
+        </div>`;
+    }
+    if (oppPick) {
+        html += `<div style="font-size:0.75rem;color:#aaa;">
+            <span style="color:#555;text-transform:uppercase;font-size:0.65rem;letter-spacing:0.1em;">${esc(oppName)}  </span>
+            "${esc(oppPick.trackName)}"
+        </div>`;
+    }
+    html += `</div>`;
+    return html;
+}
+
+// ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
+socket.on('room_created', ({ code }) => {
+    roomCode = code;
+    document.getElementById('waiting-code').innerText = code;
+    showView('view-waiting');
+});
+
+socket.on('your_id', ({ id }) => {
+    myId = id;
+});
+
+socket.on('join_error', ({ msg }) => {
+    showLobbyError(msg);
+});
+
+socket.on('game_start', ({ players }) => {
+    // Determine my id vs opponent id
+    const ids = Object.keys(players);
+    // myId is set via 'your_id' — but join_room fires game_start first for p2,
+    // so we set myId from socket.id directly
+    myId = socket.id;
+    const oppId = ids.find(id => id !== myId);
+
+    myName  = players[myId]?.name  || 'You';
+    oppName = players[oppId]?.name || 'Opponent';
+
+    document.getElementById('my-name-label').innerText  = myName;
+    document.getElementById('opp-name-label').innerText = oppName;
+    document.getElementById('my-score').innerText  = '0';
+    document.getElementById('opp-score').innerText = '0';
+
+    showView('view-game');
+});
+
+socket.on('round_start', ({ word, roundNum }) => {
+    currentWord  = word;
+    roundActive  = true;
+    lockedOut    = false;
+    roundStartAt = Date.now();
+
+    hide('feedback');
+    show('word-container');
+    show('timer-container');
+    showFlex('search-container');
+
+    document.getElementById('word-display').innerText      = word.toUpperCase();
+    document.getElementById('search-bar').value            = '';
+    document.getElementById('search-bar').disabled         = false;
+    document.getElementById('songs-list').innerHTML        = '';
+    document.getElementById('empty-state').innerText       = 'Start typing to search songs…';
+    document.getElementById('empty-state').style.display   = 'block';
+    document.getElementById('loader-area').style.display   = 'none';
+    document.getElementById('opponent-status').innerText   = `${oppName} is searching…`;
+    document.getElementById('opponent-status').className   = 'opponent-status';
+
+    const bar = document.getElementById('timer-bar');
+    bar.style.cssText = 'width:100%;height:100%;border-radius:999px;background:linear-gradient(90deg,#1DB954,#17a349);';
+    document.getElementById('search-bar').focus();
+    runTimer();
+});
+
+socket.on('submit_result', ({ result }) => {
+    const fb = document.getElementById('feedback');
+    if (result === 'wrong') {
+        // Permanent lockout for this round
+        lockedOut = true;
+        document.getElementById('search-bar').disabled        = true;
+        document.getElementById('songs-list').innerHTML       = '';
+        document.getElementById('empty-state').style.display  = 'none';
+        fb.innerHTML     = `<div class="feedback-box fb-lose">Wrong song — you can't pick again this round.</div>`;
+        fb.style.display = 'block';
+    } else if (result === 'word_in_title') {
+        // Not a lockout — unlock and let them pick again
+        lockedOut = false;
+        document.getElementById('search-bar').disabled        = false;
+        document.getElementById('empty-state').innerText      = 'Start typing to search songs…';
+        document.getElementById('empty-state').style.display  = 'block';
+        fb.innerHTML = `<div class="feedback-box fb-warn">"${esc(currentWord)}" is in the song title. Pick a different one!</div>`;
+        fb.style.display = 'block';
+        setTimeout(() => { if (fb.style.display !== 'none') fb.style.display = 'none'; }, 2500);
+        document.getElementById('search-bar').focus();
+    } else if (result === 'no_lyrics') {
+        // Not a lockout — unlock and let them pick again
+        lockedOut = false;
+        document.getElementById('search-bar').disabled        = false;
+        document.getElementById('empty-state').innerText      = 'Start typing to search songs…';
+        document.getElementById('empty-state').style.display  = 'block';
+        fb.innerHTML = `<div class="feedback-box fb-warn">Couldn't find lyrics for that song. Try another!</div>`;
+        fb.style.display = 'block';
+        setTimeout(() => { if (fb.style.display !== 'none') fb.style.display = 'none'; }, 2500);
+        document.getElementById('search-bar').focus();
+    }
+});
+
+socket.on('round_end', ({ winnerId, track, scores, word, submissions }) => {
+    roundActive = false;
+    cancelAnimationFrame(timerRAF);
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
+
+    // Update score bar
+    const ids   = Object.keys(scores);
+    const oppId = ids.find(id => id !== myId);
+    document.getElementById('my-score').innerText  = scores[myId]  ?? 0;
+    document.getElementById('opp-score').innerText = scores[oppId] ?? 0;
+
+    const iWon = winnerId === myId;
+    const fb   = document.getElementById('feedback');
+    fb.innerHTML = `
+        <div class="feedback-box ${iWon ? 'fb-win' : 'fb-lose'}">
+            ${iWon ? 'You found it!' : `${esc(oppName)} found it!`}
+            <div style="font-size:0.75rem;font-weight:400;opacity:0.7;margin-top:4px;">"${esc(track.name)}" · next round starting…</div>
+        </div>
+        ${renderSubmissions(submissions, oppId)}`;
+    fb.style.display = 'block';
+});
+
+socket.on('round_skip', ({ bothWrong, submissions } = {}) => {
+    roundActive = false;
+    cancelAnimationFrame(timerRAF);
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
+    document.getElementById('opponent-status').innerText = '';
+
+    const fb   = document.getElementById('feedback');
+    const oppId = null; // will resolve inside renderSubmissions via submissions keys
+    if (bothWrong) {
+        fb.innerHTML = `<div class="feedback-box fb-warn">Both players got it wrong — next word coming…</div>${renderSubmissions(submissions)}`;
+        fb.style.display = 'block';
+    } else if (submissions && Object.keys(submissions).length) {
+        fb.innerHTML = renderSubmissions(submissions);
+        fb.style.display = 'block';
+    } else {
+        hide('feedback');
+    }
+    // round_start will arrive shortly and reset everything
+});
+
+socket.on('opponent_wrong', ({ trackName, artist }) => {
+    const el   = document.getElementById('opponent-status');
+    const song = trackName ? `"${esc(trackName)}"` : 'that song';
+    el.innerText = `${oppName} picked ${song} — wrong!`;
+    el.className = 'opponent-status found';
+    setTimeout(() => {
+        if (roundActive) {
+            el.innerText = `${oppName} is searching…`;
+            el.className = 'opponent-status';
+        }
+    }, 3000);
+});
+
+socket.on('match_end', ({ winnerId, scores }) => {
+    roundActive = false;
+    cancelAnimationFrame(timerRAF);
+    hideCountdown();
+
+    const ids   = Object.keys(scores);
+    const oppId = ids.find(id => id !== myId);
+    const iWon  = winnerId === myId;
+
+    document.getElementById('over-card').innerHTML = `
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:0.1em;color:${iWon ? '#1DB954' : '#ff4444'};line-height:1;margin-bottom:8px;">
+            ${iWon ? 'You Win!' : 'You Lost'}
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#fff;letter-spacing:0.06em;margin-bottom:6px;">
+            ${scores[myId] ?? 0} — ${scores[oppId] ?? 0}
+        </div>
+        <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${myName} vs ${oppName}</div>
+        <button class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="rematch()">Play Again</button>
+        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'home.html')">Back to Modes</button>
+    `;
+    showView('view-over');
+});
+
+socket.on('opponent_disconnected', () => {
+    roundActive = false;
+    cancelAnimationFrame(timerRAF);
+    hideCountdown();
+    document.getElementById('over-card').innerHTML = `
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:0.1em;color:#f59e0b;margin-bottom:8px;">Opponent Left</div>
+        <div style="font-size:0.8rem;color:#444;margin-bottom:24px;">Your opponent disconnected.</div>
+        <button class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="resetToLobby()">New Game</button>
+        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'home.html')">Back to Modes</button>
+    `;
+    showView('view-over');
+});
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+let searchDebounce = null;
+
+function onSearchInput(val) {
+    clearTimeout(searchDebounce);
+    const q = val.trim();
+    document.getElementById('songs-list').innerHTML = '';
+
+    if (!q) {
+        document.getElementById('loader-area').style.display  = 'none';
+        document.getElementById('empty-state').innerText      = 'Start typing to search songs…';
+        document.getElementById('empty-state').style.display  = 'block';
+        return;
+    }
+
+    document.getElementById('empty-state').style.display  = 'none';
+    document.getElementById('loader-area').style.display  = 'block';
+
+    searchDebounce = setTimeout(async () => {
+        try {
+            const tracks = await searchSpotify(q);
+            document.getElementById('loader-area').style.display = 'none';
+            renderResults(tracks);
+        } catch {
+            document.getElementById('loader-area').style.display = 'none';
+            document.getElementById('empty-state').innerText     = 'Search failed. Try again.';
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    }, 200);
+}
+
+function renderResults(tracks) {
+    const list = document.getElementById('songs-list');
+    list.innerHTML = '';
+    if (!tracks.length) {
+        document.getElementById('empty-state').innerText     = 'No results found.';
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+    }
+    tracks.forEach(track => {
+        const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
+        const artists = track.artists.map(a => a.name).join(', ');
+        const li      = document.createElement('li');
+        li.className  = 'song-item';
+        li.innerHTML  = `
+            ${art ? `<img src="${art}" alt="">` : `<div class="song-placeholder">♪</div>`}
+            <div style="min-width:0;flex:1;">
+                <div class="song-title">${esc(track.name)}</div>
+                <div class="song-artist">${esc(artists)}</div>
+            </div>`;
+        li.onclick = () => pickSong(track);
+        list.appendChild(li);
+    });
+}
+
+function pickSong(track) {
+    if (!roundActive || lockedOut) return;
+    const artists = track.artists.map(a => a.name).join(', ');
+    socket.emit('submit_song', {
+        trackName: track.name,
+        artist:    artists,
+        trackData: { name: track.name, artists: track.artists },
+    });
+    // Lock UI completely while server checks lyrics — re-enabled in submit_result
+    lockedOut = true;
+    document.getElementById('search-bar').disabled = true;
+    document.getElementById('songs-list').innerHTML = '';
+    document.getElementById('empty-state').innerText     = 'Checking lyrics…';
+    document.getElementById('empty-state').style.display = 'block';
+    document.getElementById('loader-area').style.display = 'none';
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────────────
+function runTimer() {
+    cancelAnimationFrame(timerRAF);
+    const bar  = document.getElementById('timer-bar');
+    const text = document.getElementById('timer-text');
+
+    function tick() {
+        if (!roundActive) return;
+        const elapsed   = (Date.now() - roundStartAt) / 1000;
+        const remaining = Math.max(0, ROUND_TIME - elapsed);
+        bar.style.width = `${(remaining / ROUND_TIME) * 100}%`;
+        text.innerText  = `${Math.ceil(remaining)}s`;
+        if (remaining <= 5) bar.style.background = 'linear-gradient(90deg,#ff4444,#cc0000)';
+        timerRAF = requestAnimationFrame(tick);
+    }
+    timerRAF = requestAnimationFrame(tick);
+}
+
+// ── COUNTDOWN OVERLAY ─────────────────────────────────────────────────────────
+function showCountdown(label, sublabel) {
+    const overlay = document.getElementById('countdown-overlay');
+    document.getElementById('countdown-label').innerText = label + (sublabel ? ` · ${sublabel}` : '');
+    let n = 3;
+    overlay.style.display = 'flex';
+    document.getElementById('countdown-num').innerText = n;
+
+    const tick = setInterval(() => {
+        n--;
+        if (n <= 0) {
+            clearInterval(tick);
+            return;
+        }
+        document.getElementById('countdown-num').innerText = n;
+    }, 1000);
+}
+
+function hideCountdown() {
+    document.getElementById('countdown-overlay').style.display = 'none';
+}
+
+// ── MISC ──────────────────────────────────────────────────────────────────────
+function rematch() {
+    resetToLobby();
+}
+
+function resetToLobby() {
+    myId = null; roomCode = null; currentWord = ''; roundActive = false;
+    cancelAnimationFrame(timerRAF);
+    hideCountdown();
+    document.getElementById('lobby-error').style.display = 'none';
+    document.getElementById('code-input').value          = '';
+    showView('view-lobby');
+}
+
+function showView(id) {
+    ['view-lobby','view-waiting','view-game','view-over'].forEach(v => {
+        document.getElementById(v).style.display = v === id ? 'flex' : 'none';
+    });
+    document.getElementById(id).style.flexDirection = 'column';
+}
+
+function show(id)     { document.getElementById(id).style.display = 'block'; }
+function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
+function hide(id)     { document.getElementById(id).style.display = 'none'; }
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function navigateTo(e, url) {
+    e.preventDefault();
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = url; }, 280);
+}
+</script>
+</body>
+</html>
