@@ -427,6 +427,8 @@ let artistWordPool    = null;   // { easy:[], medium:[], hard:[] }
 let currentArtistSongs = [];    // names of analyzed songs (for in-game local search)
 let currentWord       = '';
 let roundActive       = false;
+let currentAudio      = null;
+let currentAudioCtx   = null;
 let roundStartedAt    = null;
 let pauseStart        = null;
 let timerRAF          = null;
@@ -508,8 +510,11 @@ async function fetchLyrics(trackName, artist) {
     const cleanTitle  = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
     const cleanArtist = artist.split(',')[0].trim();
     try {
+        const controller = new AbortController();
+        const timeout    = setTimeout(() => controller.abort(), 1500);
         const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
         if (!res.ok) return null;
         const data = await res.json();
         return data.lyrics || null;
@@ -553,7 +558,7 @@ function onArtistInput(val) {
             }
         } catch (e) {
             loader.style.display = 'none';
-            empty.innerText      = '⚠️ Search failed. Check your connection.';
+            empty.innerText      = 'Search failed. Check your connection.';
             empty.style.display  = 'block';
         }
     }, 400);
@@ -674,7 +679,7 @@ async function pickArtist(artist) {
 
 function showAnalysisError(msg) {
     document.getElementById('load-dots').style.display      = 'none';
-    document.getElementById('load-status-text').innerText   = '⚠️ ' + msg;
+    document.getElementById('load-status-text').innerText   = '' + msg;
     document.getElementById('load-status-text').style.color = '#f59e0b';
 
     setTimeout(() => showView('view-select'), 3000);
@@ -756,6 +761,73 @@ function updateDiffBadge() {
     wd.className = diff;
 }
 
+// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+function stopAudio() {
+    if (currentAudio)    { currentAudio.pause(); currentAudio = null; }
+    if (currentAudioCtx) { currentAudioCtx.close().catch(()=>{}); currentAudioCtx = null; }
+}
+
+async function playPreview(track) {
+    stopAudio();
+    let url = track.preview_url || null;
+    if (!url) {
+        try {
+            const q   = `${track.name} ${track.artists.map(a => a.name).join(' ')}`;
+            const res = await fetch(`/api/deezer/preview?q=${encodeURIComponent(q)}`);
+            url = (await res.json()).preview || null;
+        } catch { url = null; }
+    }
+    if (!url) return;
+
+    const dur     = 9000 + Math.random() * 1000; // 9–10s
+    const maxVol  = 0.7;
+    const fadeIn  = 1500;
+    const fadeOut = 1500;
+
+    // Radio static via Web Audio API
+    try {
+        const ctx = new AudioContext();
+        currentAudioCtx = ctx;
+        const nBuf  = ctx.createBuffer(1, ctx.sampleRate * 1.4, ctx.sampleRate);
+        const nData = nBuf.getChannelData(0);
+        for (let i = 0; i < nData.length; i++) nData[i] = (Math.random() * 2 - 1) * 0.12;
+        const nSrc  = ctx.createBufferSource();
+        nSrc.buffer = nBuf;
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(1, ctx.currentTime);
+        nGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
+        nSrc.connect(nGain);
+        nGain.connect(ctx.destination);
+        nSrc.start();
+    } catch(e) {}
+
+    // Music with fade in / fade out
+    const audio  = new Audio(url);
+    currentAudio = audio;
+    audio.volume = 0;
+    audio.play().catch(() => {});
+
+    const inSteps = 40, inInterval = fadeIn / inSteps;
+    let inStep = 0;
+    const fadeInId = setInterval(() => {
+        if (currentAudio !== audio) { clearInterval(fadeInId); return; }
+        inStep++;
+        audio.volume = Math.min(maxVol, (inStep / inSteps) * maxVol);
+        if (inStep >= inSteps) clearInterval(fadeInId);
+    }, inInterval);
+
+    setTimeout(() => {
+        const outSteps = 40, outInterval = fadeOut / outSteps;
+        let outStep = 0;
+        const fadeOutId = setInterval(() => {
+            if (currentAudio !== audio) { clearInterval(fadeOutId); return; }
+            outStep++;
+            audio.volume = Math.max(0, maxVol * (1 - outStep / outSteps));
+            if (outStep >= outSteps) { clearInterval(fadeOutId); stopAudio(); }
+        }, outInterval);
+    }, dur - fadeOut);
+}
+
 // ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
 function startGame() {
     score  = 0;
@@ -772,6 +844,7 @@ function startGame() {
 }
 
 function startRound() {
+    stopAudio();
     currentWord    = pickWord();
     roundActive    = true;
     roundStartedAt = Date.now();
@@ -857,7 +930,7 @@ function onSearchInput(val) {
             }
         } catch {
             document.getElementById('loader-area').style.display = 'none';
-            document.getElementById('empty-state').innerText     = '⚠️ Search failed. Try again.';
+            document.getElementById('empty-state').innerText     = 'Search failed. Try again.';
             document.getElementById('empty-state').style.display = 'block';
         }
     }, 350);
@@ -956,10 +1029,11 @@ function endRound(result, track, pointsEarned) {
 
     if (result === 'win') {
         fb.innerHTML = `<div class="feedback-box fb-win">
-            ✅ ${name} has <strong>${currentWord}</strong> in its lyrics!
+            ${name} has <strong>${currentWord}</strong> in its lyrics!
             <div style="font-size:0.78rem;font-weight:400;opacity:0.7;margin-top:4px;">+${pointsEarned} pts</div>
         </div>`;
         fb.style.display = 'block';
+        playPreview(track);
         const btn = document.getElementById('start-btn');
         btn.innerHTML = '<span class="btn-icon">&#9654;</span> Next Round';
         btn.onclick   = startRound;
@@ -969,8 +1043,8 @@ function endRound(result, track, pointsEarned) {
         const msg = result === 'word-in-title'
             ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
             : result === 'no-lyrics'
-            ? `⚠️ Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
-            : `⚠️ Lyrics lookup failed. Pick another song!`;
+            ? `Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
+            : `Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
         fb.style.display = 'block';
         setTimeout(() => {
@@ -989,11 +1063,11 @@ function endRound(result, track, pointsEarned) {
         let reasonHtml = '';
         if (result === 'wrong') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ❌ ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
+                ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
             </div>`;
         } else if (result === 'timeout') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
+                Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
             </div>`;
         }
         fb.innerHTML     = reasonHtml;

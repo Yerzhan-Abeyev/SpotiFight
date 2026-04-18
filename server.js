@@ -19,6 +19,7 @@ HTML_FILES.forEach(f => {
     app.get(`/${f}`, (_req, res) => res.sendFile(path.join(__dirname, f)));
 });
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'home.html')));
+app.get('/Paradise_Found.mp3', (_req, res) => res.sendFile(path.join(__dirname, 'Paradise_Found.mp3')));
 
 // ── GET /api/daily ────────────────────────────────────────────────────────────
 app.get('/api/daily', (_req, res) => {
@@ -93,6 +94,21 @@ app.get('/api/spotify/search', async (req, res) => {
         res.json(items || []);
     } catch (err) {
         console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── GET /api/deezer/preview ───────────────────────────────────────────────────
+app.get('/api/deezer/preview', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) return res.status(400).json({ error: 'Missing query' });
+        const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=1`);
+        if (!r.ok) throw new Error('Deezer error');
+        const data = await r.json();
+        const preview = data.data?.[0]?.preview || null;
+        res.json({ preview });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });

@@ -301,6 +301,8 @@ let roundActive  = false;
 let lockedOut    = false;   // true after a wrong answer — can't pick again this round
 let timerRAF     = null;
 let roundStartAt = null;
+let currentAudio    = null;
+let currentAudioCtx = null;
 const ROUND_TIME = 20;
 
 // ── SPOTIFY ───────────────────────────────────────────────────────────────────
@@ -416,6 +418,7 @@ socket.on('game_start', ({ players }) => {
 });
 
 socket.on('round_start', ({ word, roundNum }) => {
+    stopAudio();
     currentWord  = word;
     roundActive  = true;
     lockedOut    = false;
@@ -497,6 +500,7 @@ socket.on('round_end', ({ winnerId, track, scores, word, submissions }) => {
         </div>
         ${renderSubmissions(submissions, oppId)}`;
     fb.style.display = 'block';
+    playPreview(track);
 });
 
 socket.on('round_skip', ({ bothWrong, submissions } = {}) => {
@@ -631,7 +635,7 @@ function pickSong(track) {
     socket.emit('submit_song', {
         trackName: track.name,
         artist:    artists,
-        trackData: { name: track.name, artists: track.artists },
+        trackData: { name: track.name, artists: track.artists, preview_url: track.preview_url || null },
     });
     // Lock UI completely while server checks lyrics — re-enabled in submit_result
     lockedOut = true;
@@ -640,6 +644,73 @@ function pickSong(track) {
     document.getElementById('empty-state').innerText     = 'Checking lyrics…';
     document.getElementById('empty-state').style.display = 'block';
     document.getElementById('loader-area').style.display = 'none';
+}
+
+// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+function stopAudio() {
+    if (currentAudio)    { currentAudio.pause(); currentAudio = null; }
+    if (currentAudioCtx) { currentAudioCtx.close().catch(()=>{}); currentAudioCtx = null; }
+}
+
+async function playPreview(track) {
+    stopAudio();
+    let url = track.preview_url || null;
+    if (!url) {
+        try {
+            const q   = `${track.name} ${track.artists.map(a => a.name).join(' ')}`;
+            const res = await fetch(`/api/deezer/preview?q=${encodeURIComponent(q)}`);
+            url = (await res.json()).preview || null;
+        } catch { url = null; }
+    }
+    if (!url) return;
+
+    const dur     = 9000 + Math.random() * 1000; // 9–10s
+    const maxVol  = 0.7;
+    const fadeIn  = 1500;
+    const fadeOut = 1500;
+
+    // Radio static via Web Audio API
+    try {
+        const ctx = new AudioContext();
+        currentAudioCtx = ctx;
+        const nBuf  = ctx.createBuffer(1, ctx.sampleRate * 1.4, ctx.sampleRate);
+        const nData = nBuf.getChannelData(0);
+        for (let i = 0; i < nData.length; i++) nData[i] = (Math.random() * 2 - 1) * 0.12;
+        const nSrc  = ctx.createBufferSource();
+        nSrc.buffer = nBuf;
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(1, ctx.currentTime);
+        nGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
+        nSrc.connect(nGain);
+        nGain.connect(ctx.destination);
+        nSrc.start();
+    } catch(e) {}
+
+    // Music with fade in / fade out
+    const audio  = new Audio(url);
+    currentAudio = audio;
+    audio.volume = 0;
+    audio.play().catch(() => {});
+
+    const inSteps = 40, inInterval = fadeIn / inSteps;
+    let inStep = 0;
+    const fadeInId = setInterval(() => {
+        if (currentAudio !== audio) { clearInterval(fadeInId); return; }
+        inStep++;
+        audio.volume = Math.min(maxVol, (inStep / inSteps) * maxVol);
+        if (inStep >= inSteps) clearInterval(fadeInId);
+    }, inInterval);
+
+    setTimeout(() => {
+        const outSteps = 40, outInterval = fadeOut / outSteps;
+        let outStep = 0;
+        const fadeOutId = setInterval(() => {
+            if (currentAudio !== audio) { clearInterval(fadeOutId); return; }
+            outStep++;
+            audio.volume = Math.max(0, maxVol * (1 - outStep / outSteps));
+            if (outStep >= outSteps) { clearInterval(fadeOutId); stopAudio(); }
+        }, outInterval);
+    }, dur - fadeOut);
 }
 
 // ── TIMER ─────────────────────────────────────────────────────────────────────

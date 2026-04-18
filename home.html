@@ -690,7 +690,7 @@ function dcOnSearch(val) {
             }
         } catch {
             loader.style.display = 'none';
-            empty.innerText      = '⚠️ Search failed. Check your connection.';
+            empty.innerText      = 'Search failed. Check your connection.';
             empty.style.display  = 'block';
         }
     }, 380);
@@ -739,7 +739,7 @@ async function dcPickSong(track) {
         const fb = document.getElementById('dc-feedback');
 
         if (lyrics === null) {
-            fb.innerHTML = `<div class="dc-fb dc-fb-warn">⚠️ Couldn't find lyrics for this song. Try another!</div>`;
+            fb.innerHTML = `<div class="dc-fb dc-fb-warn">Couldn't find lyrics for this song. Try another!</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
             document.getElementById('dc-search-bar').disabled = false;
@@ -750,7 +750,7 @@ async function dcPickSong(track) {
         const inLyrics = dcWordInText(word, lyrics);
 
         if (inTitle) {
-            fb.innerHTML = `<div class="dc-fb dc-fb-lose">❌ <strong>${dcEsc(track.name)}</strong> has <strong>${word}</strong> in its title. The word must only appear in the lyrics.</div>`;
+            fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> has <strong>${word}</strong> in its title. The word must only appear in the lyrics.</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
             document.getElementById('dc-search-bar').disabled = false;
@@ -765,7 +765,7 @@ async function dcPickSong(track) {
                 `You answered with <strong style="color:#ccc;">${dcEsc(track.name)}</strong> by ${dcEsc(artist)}`;
             document.getElementById('dc-done-banner').style.display = 'block';
         } else {
-            fb.innerHTML = `<div class="dc-fb dc-fb-lose">❌ <strong>${dcEsc(track.name)}</strong> doesn't have <strong>${word}</strong> in its lyrics.</div>`;
+            fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> doesn't have <strong>${word}</strong> in its lyrics.</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
             document.getElementById('dc-search-bar').disabled = false;
@@ -773,7 +773,7 @@ async function dcPickSong(track) {
 
     } catch {
         ck.style.display = 'none';
-        document.getElementById('dc-feedback').innerHTML = `<div class="dc-fb dc-fb-warn">⚠️ Lyrics lookup failed. Try again.</div>`;
+        document.getElementById('dc-feedback').innerHTML = `<div class="dc-fb dc-fb-warn">Lyrics lookup failed. Try again.</div>`;
         document.getElementById('dc-feedback').style.display = 'block';
         document.getElementById('dc-search-bar').disabled = false;
     }

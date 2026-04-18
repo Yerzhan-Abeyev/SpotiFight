@@ -245,38 +245,35 @@
 
 <script>
 // WORD BANKS
-// Easy (240): very common in lyrics across all genres, verbs in present + past tense + plural nouns
+// Easy: very common single-form words that appear across all mainstream genres
 const WORDS_EASY = [
-    // Present tense verbs (very common in mainstream lyrics)
-    'love',   'feel',   'know',   'need',   'want',   'stay',   'run',    'fall',   'cry',    'miss',
-    'dream',  'break',  'hold',   'leave',  'fight',  'dance',  'sing',   'burn',   'save',   'find',
-    'take',   'give',   'make',   'come',   'walk',   'talk',   'die',    'live',   'try',    'see',
-    'say',    'hear',   'tell',   'wait',   'lose',   'show',   'move',   'fly',    'rise',   'shine',
-    'call',   'keep',   'play',   'think',  'pray',   'wish',   'touch',  'stop',   'turn',   'stand',
-    'hide',   'forget', 'believe','hurt',   'care',   'need',   'sleep',  'smile',  'start',  'end',
-    // Past tense verbs
-    'loved',  'felt',   'knew',   'stayed', 'ran',    'fell',   'cried',  'missed', 'dreamed','broke',
-    'held',   'left',   'fought', 'danced', 'burned', 'saved',  'found',  'took',   'gave',   'made',
-    'came',   'walked', 'talked', 'died',   'lived',  'tried',  'saw',    'said',   'heard',  'told',
-    'waited', 'lost',   'showed', 'moved',  'flew',   'rose',   'called', 'kept',   'played', 'thought',
-    'prayed', 'wished', 'chased', 'touched','stopped','turned', 'stood',  'forgot', 'believed','cared',
-    'slept',  'smiled', 'started','ended',  'needed',
-    // Singular nouns
-    'heart',  'soul',   'mind',   'life',   'time',   'night',  'day',    'world',  'home',   'fire',
-    'rain',   'light',  'dark',   'eyes',   'tears',  'hands',  'face',   'name',   'road',   'stars',
-    'sky',    'blood',  'voice',  'pain',   'fear',   'hope',   'way',    'door',   'head',   'mouth',
-    'song',   'word',   'town',   'air',    'place',  'body',   'arms',   'skin',   'smile',  'kiss',
-    'bed',    'wall',   'street', 'beat',   'dream',  'friend', 'girl',   'boy',    'baby',   'sun',
-    // Plural nouns
-    'hearts', 'souls',  'minds',  'lives',  'nights', 'days',   'worlds', 'homes',  'fires',  'lights',
-    'faces',  'names',  'roads',  'voices', 'fears',  'hopes',  'ways',   'doors',  'songs',  'words',
-    'towns',  'bodies', 'smiles', 'kisses', 'walls',  'streets','beats',  'dreams', 'times',  'skies',
-    'tears',  'hands',  'eyes',   'stars',  'arms',   'friends','girls',  'boys',   'babies', 'suns',
-    // Adjectives and other
-    'alone',  'free',   'real',   'true',   'wild',   'cold',   'warm',   'broken', 'strong', 'young',
-    'old',    'beautiful','brave','afraid', 'alive',  'angry',  'ready',  'wrong',  'right',  'high',
-    'low',    'deep',   'long',   'hard',   'soft',   'slow',   'fast',   'sweet',  'sad',    'happy',
-    'never',  'always', 'forever','again',  'away',   'together','still', 'close',  'far',    'okay',
+    // Body & feeling
+    'love','heart','soul','mind','eyes','tears','voice','smile','kiss','hands',
+    'arms','lips','body','breath','skin','blood','head','chest','face','touch',
+    'pain','hurt','fear','hope','dream','feel','cry','miss',
+    // Emotions & states
+    'happy','sad','lost','broken','alive','alone','free','strong','wild',
+    'real','true','wrong','right','cold','warm','young','old','sweet','soft',
+    'hard','deep','high','low','slow','fast','good','bad','safe','bright',
+    // People
+    'girl','boy','baby','friend','angel','mother','father','king','queen',
+    'woman','man','lover','brother','sister','hero','ghost',
+    // Nature & place
+    'night','day','life','time','home','world','road','sky','sun','moon',
+    'stars','rain','fire','light','dark','storm','shadow','ocean','river',
+    'door','city','street','room','wall','bed','ground','earth','sea','air',
+    'water','wind','floor','window','town','place','wave','smoke','hill',
+    // Actions
+    'run','fall','fly','rise','dance','fight','hold','break','leave','find',
+    'come','walk','lose','move','save','burn','stay','give','take','play',
+    'shine','fade','hide','wait','stop','scream','sing','speak','laugh','know',
+    'call','keep','think','pray','wish','hear','tell','show','turn','stand',
+    'look','open','close','forget','remember','believe','see','say','want','need',
+    // Common song words
+    'song','name','way','back','away','tonight','forever','better','never','always',
+    'still','together','again','money','gold','summer','winter','morning','midnight',
+    'music','beat','party','memory','chance','truth','lie','war','peace',
+    'promise','word','dream','light','fire','time','love',
 ];
 
 // Medium (100): appear in lyrics but need a specific song in mind
@@ -316,6 +313,8 @@ let spotifyToken   = null;
 let spotifyExpiry  = 0;
 let currentWord    = '';
 let roundActive    = false;
+let currentAudio   = null;
+let currentAudioCtx = null;
 let roundStartedAt = null;
 let pauseStart     = null;   // tracks when timer was paused (for no-lyrics retry)
 let timerRAF       = null;
@@ -395,13 +394,15 @@ async function fetchLyrics(trackName, artist) {
     const cleanTitle  = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
     const cleanArtist = artist.split(',')[0].trim();
     try {
+        const controller = new AbortController();
+        const timeout    = setTimeout(() => controller.abort(), 1500);
         const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
         if (!res.ok) return null;
         const data = await res.json();
         return data.lyrics || null;
-    } catch (e) {
-        console.error('lyrics.ovh failed:', e);
+    } catch {
         return null;
     }
 }
@@ -434,6 +435,73 @@ function saveGlobalBest(s, st) {
     }
 })();
 
+// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+function stopAudio() {
+    if (currentAudio)    { currentAudio.pause(); currentAudio = null; }
+    if (currentAudioCtx) { currentAudioCtx.close().catch(()=>{}); currentAudioCtx = null; }
+}
+
+async function playPreview(track) {
+    stopAudio();
+    let url = track.preview_url || null;
+    if (!url) {
+        try {
+            const q   = `${track.name} ${track.artists.map(a => a.name).join(' ')}`;
+            const res = await fetch(`/api/deezer/preview?q=${encodeURIComponent(q)}`);
+            url = (await res.json()).preview || null;
+        } catch { url = null; }
+    }
+    if (!url) return;
+
+    const dur     = 9000 + Math.random() * 1000; // 9–10s
+    const maxVol  = 0.7;
+    const fadeIn  = 1500;
+    const fadeOut = 1500;
+
+    // Radio static via Web Audio API (no crossOrigin needed)
+    try {
+        const ctx = new AudioContext();
+        currentAudioCtx = ctx;
+        const nBuf  = ctx.createBuffer(1, ctx.sampleRate * 1.4, ctx.sampleRate);
+        const nData = nBuf.getChannelData(0);
+        for (let i = 0; i < nData.length; i++) nData[i] = (Math.random() * 2 - 1) * 0.12;
+        const nSrc  = ctx.createBufferSource();
+        nSrc.buffer = nBuf;
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(1, ctx.currentTime);
+        nGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
+        nSrc.connect(nGain);
+        nGain.connect(ctx.destination);
+        nSrc.start();
+    } catch(e) {}
+
+    // Music with fade in / fade out
+    const audio  = new Audio(url);
+    currentAudio = audio;
+    audio.volume = 0;
+    audio.play().catch(() => {});
+
+    const inSteps = 40, inInterval = fadeIn / inSteps;
+    let inStep = 0;
+    const fadeInId = setInterval(() => {
+        if (currentAudio !== audio) { clearInterval(fadeInId); return; }
+        inStep++;
+        audio.volume = Math.min(maxVol, (inStep / inSteps) * maxVol);
+        if (inStep >= inSteps) clearInterval(fadeInId);
+    }, inInterval);
+
+    setTimeout(() => {
+        const outSteps = 40, outInterval = fadeOut / outSteps;
+        let outStep = 0;
+        const fadeOutId = setInterval(() => {
+            if (currentAudio !== audio) { clearInterval(fadeOutId); return; }
+            outStep++;
+            audio.volume = Math.max(0, maxVol * (1 - outStep / outSteps));
+            if (outStep >= outSteps) { clearInterval(fadeOutId); stopAudio(); }
+        }, outInterval);
+    }, dur - fadeOut);
+}
+
 // ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
 function startGame() {
     score  = 0;
@@ -449,6 +517,7 @@ function startGame() {
 }
 
 function startRound() {
+    stopAudio();
     currentWord    = pickWord();
     roundActive    = true;
     roundStartedAt = Date.now();
@@ -519,7 +588,7 @@ function onSearchInput(val) {
             renderResults(tracks);
         } catch {
             document.getElementById('loader-area').style.display = 'none';
-            document.getElementById('empty-state').innerText     = '⚠️ Spotify search failed.';
+            document.getElementById('empty-state').innerText     = 'Spotify search failed.';
             document.getElementById('empty-state').style.display = 'block';
         }
     }, 350);
@@ -629,10 +698,11 @@ function endRound(result, track, pointsEarned) {
 
     if (result === 'win') {
         fb.innerHTML = `<div class="feedback-box fb-win">
-            ✅ ${name} has <strong>${currentWord}</strong> in its lyrics!
+            ${name} has <strong>${currentWord}</strong> in its lyrics!
             <div style="font-size:0.78rem;font-weight:400;opacity:0.7;margin-top:4px;">+${pointsEarned} pts</div>
         </div>`;
         fb.style.display = 'block';
+        playPreview(track);
 
         const btn     = document.getElementById('start-btn');
         btn.innerHTML = '<span class="btn-icon">&#9654;</span> Next Round';
@@ -643,8 +713,8 @@ function endRound(result, track, pointsEarned) {
         const msg = result === 'word-in-title'
             ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
             : result === 'no-lyrics'
-            ? `⚠️ Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
-            : `⚠️ Lyrics lookup failed. Pick another song!`;
+            ? `Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
+            : `Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
         fb.style.display = 'block';
 
@@ -666,11 +736,11 @@ function endRound(result, track, pointsEarned) {
         let reasonHtml = '';
         if (result === 'wrong') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ❌ ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
+                ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
             </div>`;
         } else if (result === 'timeout') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ⏰ Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
+                Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
             </div>`;
         }
 
