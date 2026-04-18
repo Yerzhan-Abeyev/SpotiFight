@@ -158,7 +158,7 @@ function generateCode() {
 // rooms: Map<code, { players: [socketId, socketId?], names: {}, scores: {}, word, roundActive, timer, roundNum }>
 const rooms = new Map();
 
-const ROUNDS_TO_WIN = 5;
+const ROUNDS_TO_WIN = 6;
 const ROUND_TIME_MS = 20_000;
 
 function startRound(code) {

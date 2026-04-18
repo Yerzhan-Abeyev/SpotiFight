@@ -170,7 +170,7 @@
     <div class="card w-full rounded-2xl p-7 shadow-2xl">
         <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:20px;">
             <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Online Duel</div>
-            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Race a friend to find the word in the lyrics first. First to 5 rounds wins.</div>
+            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Race a friend to find the word in the lyrics first. First to 6 rounds wins.</div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:14px;">
@@ -362,8 +362,8 @@ function renderSubmissions(submissions) {
     if (!submissions || !Object.keys(submissions).length) return '';
     const myPick  = submissions[myId];
     const ids     = Object.keys(submissions);
-    const oppId   = ids.find(id => id !== myId) || ids[0];
-    const oppPick = submissions[oppId];
+    const oppId   = ids.find(id => id !== myId);
+    const oppPick = oppId ? submissions[oppId] : null;
     let html = `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">`;
     if (myPick) {
         html += `<div style="font-size:0.75rem;color:#aaa;">
