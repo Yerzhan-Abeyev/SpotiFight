@@ -191,7 +191,7 @@
         <div class="flex flex-col gap-5">
             <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
                 <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Local Mode</div>
-                <div style="font-size:0.78rem;color:#444;margin-top:6px;">Pick an artist. Find songs from their catalog where the word is in the lyrics, not the title.</div>
+                <div style="font-size:0.78rem;color:#444;margin-top:6px;">Pick an artist. Find songs from their catalog where the word appears in the lyrics.</div>
             </div>
 
             <!-- Artist search bar -->
@@ -238,10 +238,13 @@
      ══════════════════════════════════════════════ -->
 <div id="view-game" class="w-full max-w-xl flex flex-col items-center relative z-10" style="display:none;">
 
-    <header class="w-full text-center py-5">
-        <h1 style="font-family:'Nunito',sans-serif;font-weight:900;font-size:2.8rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</h1>
-        <p style="color:#2a2a2a;font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;margin-top:3px;">Word in lyrics &middot; Not in title &middot; No mistakes</p>
-    </header>
+    <div class="w-full flex items-center justify-between pt-4 pb-2">
+        <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
+        <div style="text-align:right;">
+            <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
+            <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
+        </div>
+    </div>
 
     <!-- Artist context bar -->
     <div id="artist-ctx" style="margin-bottom:12px;">
@@ -279,7 +282,7 @@
     <div class="flex flex-col items-center gap-5">
 
         <div id="word-container" class="text-center" style="display:none;">
-            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">In lyrics, not in title</p>
+            <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Find in lyrics</p>
             <div id="word-display"></div>
         </div>
 
@@ -976,13 +979,6 @@ async function pickSong(track) {
     const trackName = track.name;
     const artist    = track.artists.map(a => a.name).join(', ');
 
-    // Reject if the target word appears in the song title
-    if (wordInText(currentWord, trackName)) {
-        hide('checking-box');
-        endRound('word-in-title', track);
-        return;
-    }
-
     try {
         const lyrics = await fetchLyrics(trackName, artist);
         hide('checking-box');
@@ -1039,10 +1035,8 @@ function endRound(result, track, pointsEarned) {
         btn.onclick   = startRound;
         btn.style.display = 'block';
 
-    } else if (result === 'word-in-title' || result === 'no-lyrics' || result === 'error') {
-        const msg = result === 'word-in-title'
-            ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
-            : result === 'no-lyrics'
+    } else if (result === 'no-lyrics' || result === 'error') {
+        const msg = result === 'no-lyrics'
             ? `Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
             : `Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;

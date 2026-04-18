@@ -17,10 +17,22 @@ Difficulty scales with your streak, unlocking harder words and higher point mult
 ### Local Songs
 Pick an artist. The game analyzes their catalog and builds a word pool from their lyrics.
 Every session is unique to the artist, their signature words, their themes.
-Search any song from their full Spotify catalog during gameplay.
+Search any song from their full Spotify catalog during gameplay. The word just needs to appear in the lyrics — it can also be in the title.
+
+### Duel Mode
+Real-time 1v1 — create or join a room with a 4-letter code. Both players get the same word and race to find a valid song. First to **6 points** with a **2-point lead** wins.
+
+- Wrong answer locks you out for the round; your opponent sees what you picked.
+- Round ends when one player answers correctly, both get it wrong, or the 20-second timer runs out.
+- A short Spotify/Deezer preview plays after each correct answer.
+- Scores are shown live throughout the match.
 
 ### Daily Challenge
 One word per day, the same for every player. Solved days are tracked in your calendar.
+
+## Song Previews
+
+After a correct answer in any mode, a 9–10 second audio preview of the chosen song plays automatically. Previews come from Spotify's `preview_url`; if unavailable, the Deezer API is used as a fallback.
 
 ## Personal Records
 
@@ -32,7 +44,9 @@ Records are stored locally in the browser via `localStorage`.
 ## Tech
 
 - Node.js + Express backend
+- Socket.io for real-time duel matchmaking and gameplay
 - Spotify Web API (Client Credentials flow), token served by the backend, credentials never exposed to the browser
+- [Deezer API](https://developers.deezer.com) as a free preview fallback (no key required)
 - [lyrics.ovh](https://lyrics.ovh) for lyric verification
 - Vanilla JS, no frontend framework
 - Tailwind CSS via CDN
@@ -72,10 +86,11 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Project Structure
 
 ```
-├── server.js          # Express server, Spotify token proxy, daily word API
+├── server.js          # Express + Socket.io server, Spotify token proxy, duel logic, daily word API
 ├── home.html          # Landing page, mode selection, daily challenge
 ├── globalmode.html    # Global mode
 ├── localmode.html     # Local mode
+├── duel.html          # Duel mode (real-time 1v1)
 ├── daily-words.json   # Word pools for daily challenges (weekday / weekend)
 ├── .env               # Credentials, never committed
 └── package.json
@@ -84,4 +99,5 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Notes
 
 - Spotify's track search API rejects limits above 5 per request from server-side calls. Local mode works around this by running 6 parallel searches with different query terms and deduplicating results.
-- Lyric verification is best-effort. If lyrics cannot be found for a song, the player is warned and the round resumes without penalty.
+- Lyric verification is best-effort and capped at 1 second server-side. If lyrics cannot be found, the player is warned and the round resumes without penalty.
+- Duel mode win condition uses deuce-style scoring: first to 6 points with a minimum 2-point lead.
