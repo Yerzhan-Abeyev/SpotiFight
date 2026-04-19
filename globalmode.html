@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -426,6 +427,12 @@ function saveGlobalBest(s, st) {
     const d = new Date();
     const date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     localStorage.setItem('sf_global_best', JSON.stringify({ score: s, streak: st, date }));
+    if (currentUser) {
+        (async () => { try { await sb.from('global_scores').upsert({
+            user_id: currentUser.id, best_score: s, best_streak: st,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' }); } catch {} })();
+    }
 }
 (function initBestRow() {
     const best = getGlobalBest();
@@ -751,6 +758,38 @@ function endRound(result, track, pointsEarned) {
     }
 }
 
+
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const { createClient } = window.supabase;
+const sb = createClient(
+    'https://drspcfilywicsmfhpjyr.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyc3BjZmlseXdpY3NtZmhwanlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc4OTMsImV4cCI6MjA5MjE0Mzg5M30.InweWdz0hAFuDxB4LfYIX70kvvoK6Sv7JMKKeHkqwB4'
+);
+let currentUser = null;
+sb.auth.getSession().then(({ data: { session } }) => {
+    currentUser = session?.user || null;
+    if (currentUser) onUserReady(currentUser);
+});
+
+function onUserReady(user) {
+    // Sync best score from DB into localStorage so the pre-game row shows DB value
+    sb.from('global_scores').select('best_score,best_streak').eq('user_id', user.id).maybeSingle()
+        .then(({ data }) => {
+            if (!data) return;
+            const local = getGlobalBest();
+            if (!local || data.best_score > local.score) {
+                localStorage.setItem('sf_global_best', JSON.stringify({
+                    score: data.best_score, streak: data.best_streak, date: ''
+                }));
+                const row = document.getElementById('best-row');
+                const val = document.getElementById('best-row-val');
+                if (row && val && data.best_score > 0) {
+                    val.innerText = `${data.best_score} pts  ·  Streak ${data.best_streak}`;
+                    row.style.display = 'block';
+                }
+            }
+        });
+}
 function navigateTo(e, url) {
     e.preventDefault();
     document.body.classList.add('page-exit');

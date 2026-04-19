@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight – Duel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── AUTH GUARD ────────────────────────────────────────────────────────────────
+// Redirect to home if not signed in
+(async () => {
+    const { createClient } = window.supabase;
+    const _sb = createClient(
+        'https://drspcfilywicsmfhpjyr.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyc3BjZmlseXdpY3NtZmhwanlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc4OTMsImV4cCI6MjA5MjE0Mzg5M30.InweWdz0hAFuDxB4LfYIX70kvvoK6Sv7JMKKeHkqwB4'
+    );
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) window.location.replace('/');
+})();
+</script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -335,6 +349,7 @@ function getName() {
 
 function createRoom() {
     myName = getName();
+    saveDuelName(myName);
     socket.emit('create_room', { name: myName });
 }
 
@@ -342,6 +357,7 @@ function joinRoom() {
     const code = document.getElementById('code-input').value.trim().toUpperCase();
     if (code.length !== 4) { showLobbyError('Enter a 4-character room code.'); return; }
     myName = getName();
+    saveDuelName(myName);
     socket.emit('join_room', { code, name: myName });
 }
 
@@ -779,6 +795,33 @@ function showFlex(id) { const el = document.getElementById(id); el.style.display
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const { createClient } = window.supabase;
+const sb = createClient(
+    'https://drspcfilywicsmfhpjyr.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyc3BjZmlseXdpY3NtZmhwanlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc4OTMsImV4cCI6MjA5MjE0Mzg5M30.InweWdz0hAFuDxB4LfYIX70kvvoK6Sv7JMKKeHkqwB4'
+);
+let currentUser = null;
+sb.auth.getSession().then(({ data: { session } }) => {
+    currentUser = session?.user || null;
+    if (currentUser) onUserReady(currentUser);
+});
+
+function onUserReady(user) {
+    // Load saved display name from profiles table, fallback to Google full_name
+    sb.from('profiles').select('display_name').eq('id', user.id).maybeSingle()
+        .then(({ data }) => {
+            const name = data?.display_name || user.user_metadata?.full_name?.split(' ')[0] || '';
+            const input = document.getElementById('name-input');
+            if (name && !input.value) input.value = name;
+        });
+}
+
+function saveDuelName(name) {
+    if (!currentUser || !name) return;
+    (async () => { try { await sb.from('profiles').update({ display_name: name }).eq('id', currentUser.id); } catch {} })();
+}
 function navigateTo(e, url) {
     e.preventDefault();
     document.body.classList.add('page-exit');

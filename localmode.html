@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight – Local Songs</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── AUTH GUARD ────────────────────────────────────────────────────────────────
+// Redirect to home if not signed in
+(async () => {
+    const { createClient } = window.supabase;
+    const _sb = createClient(
+        'https://drspcfilywicsmfhpjyr.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyc3BjZmlseXdpY3NtZmhwanlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc4OTMsImV4cCI6MjA5MjE0Mzg5M30.InweWdz0hAFuDxB4LfYIX70kvvoK6Sv7JMKKeHkqwB4'
+    );
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) window.location.replace('/');
+})();
+</script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -410,6 +424,15 @@ function saveArtistBest(artistId, s, st) {
     const d = new Date();
     const date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     localStorage.setItem(`sf_artist_${artistId}`, JSON.stringify({ score: s, streak: st, date }));
+    if (currentUser) {
+        (async () => { try { await sb.from('local_scores').upsert({
+            user_id: currentUser.id,
+            artist_id: artistId,
+            artist_name: selectedArtist?.name || artistId,
+            best_score: s, best_streak: st,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,artist_id' }); } catch {} })();
+    }
 }
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -595,6 +618,7 @@ function renderArtists(artists) {
 async function pickArtist(artist) {
     const img = artist.images?.[1]?.url || artist.images?.[0]?.url || '';
     selectedArtist = { id: artist.id, name: artist.name, image: img };
+    syncArtistBestFromDB(artist.id);
 
     // Transition to loading view
     showView('view-loading');
@@ -1117,6 +1141,38 @@ function showFlex(id) { const el = document.getElementById(id); el.style.display
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const { createClient } = window.supabase;
+const sb = createClient(
+    'https://drspcfilywicsmfhpjyr.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyc3BjZmlseXdpY3NtZmhwanlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc4OTMsImV4cCI6MjA5MjE0Mzg5M30.InweWdz0hAFuDxB4LfYIX70kvvoK6Sv7JMKKeHkqwB4'
+);
+let currentUser = null;
+sb.auth.getSession().then(({ data: { session } }) => {
+    currentUser = session?.user || null;
+    if (currentUser) onUserReady(currentUser);
+});
+
+function onUserReady(user) {
+    // Called when user is confirmed — artist sync happens per-artist on selection
+}
+
+async function syncArtistBestFromDB(artistId) {
+    if (!currentUser) return;
+    const { data } = await sb.from('local_scores')
+        .select('best_score,best_streak')
+        .eq('user_id', currentUser.id)
+        .eq('artist_id', artistId)
+        .maybeSingle();
+    if (!data) return;
+    const local = getArtistBest(artistId);
+    if (!local || data.best_score > local.score) {
+        localStorage.setItem(`sf_artist_${artistId}`, JSON.stringify({
+            score: data.best_score, streak: data.best_streak, date: ''
+        }));
+    }
+}
 function navigateTo(e, url) {
     e.preventDefault();
     document.body.classList.add('page-exit');

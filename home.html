@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpotiFight</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -274,6 +275,40 @@
         .mode-card:nth-child(2) { animation: fadeUp 0.4s 0.10s  cubic-bezier(0.22,1,0.36,1) both; }
         .mode-card:nth-child(3) { animation: fadeUp 0.4s 0.15s  cubic-bezier(0.22,1,0.36,1) both; }
 
+        /* ── Auth button ── */
+        #auth-btn {
+            position: fixed; right: 85px; top: 72px; transform: translateY(-50%);
+            display: flex; align-items: center; gap: 8px;
+            background: #141414; border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px; padding: 0 14px;
+            height: 44px;
+            cursor: pointer; font-family: 'Inter', sans-serif;
+            font-size: 0.75rem; color: #555; z-index: 100;
+            transition: border-color 0.15s, background 0.15s;
+            white-space: nowrap;
+        }
+        #auth-btn:hover { border-color: #1DB954; background: #181818; color: #aaa; }
+        #auth-btn.signed-in { color: #777; }
+        #auth-btn.signed-in:hover { color: #aaa; }
+        #auth-icon { font-size: 0.7rem; line-height: 1; color: #333; }
+
+        /* ── Locked mode card overlay ── */
+        .mode-card.locked {
+            position: relative; pointer-events: auto !important;
+            opacity: 1 !important; filter: none !important; cursor: pointer;
+        }
+        .mode-card.locked::after {
+            content: ''; position: absolute; inset: 0; border-radius: 18px;
+            background: rgba(10,10,10,0.72); backdrop-filter: blur(1px);
+        }
+        .lock-badge {
+            position: absolute; inset: 0; border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2; pointer-events: none;
+            font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem;
+            color: #aaa; letter-spacing: 0.14em;
+        }
+
         /* ── Mobile ── */
         @media (max-width: 480px) {
             body { padding: 12px !important; }
@@ -290,6 +325,12 @@
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
+
+<!-- Auth button (fixed, right side of viewport) -->
+<button id="auth-btn" onclick="authAction()">
+    <span id="auth-icon">▶</span>
+    <span id="auth-label">Sign in with Google</span>
+</button>
 
 <header class="w-full max-w-xl text-center py-8 relative z-10" style="position:relative;">
     <h1 style="font-family:'Nunito',sans-serif;font-weight:900;font-size:3.6rem;letter-spacing:0.02em;color:#1DB954;line-height:1;display:inline-flex;align-items:center;">SpotiFight<span class="title-wave"><span></span><span></span><span></span><span></span><span></span></span></h1>
@@ -327,7 +368,7 @@
     </a>
 
     <!-- Local / Artist Mode -->
-    <a href="localmode.html" class="mode-card" onclick="navigateTo(event,'localmode.html')">
+    <a id="card-local" href="localmode.html" class="mode-card" onclick="navigateTo(event,'localmode.html')">
         <div class="mode-num">02</div>
         <div style="min-width:0;flex:1;">
             <div class="mode-tag">Artist Focus</div>
@@ -335,10 +376,13 @@
             <div class="mode-desc">Pick an artist and find songs from their catalog where the word appears in the lyrics.</div>
         </div>
         <div class="mode-arrow">&#8594;</div>
+        <div class="lock-badge" id="lock-local" style="display:none;">
+            <span>Sign in to play</span>
+        </div>
     </a>
 
     <!-- Online Duel -->
-    <a href="duel.html" class="mode-card" onclick="navigateTo(event,'duel.html')">
+    <a id="card-duel" href="duel.html" class="mode-card" onclick="navigateTo(event,'duel.html')">
         <div class="mode-num">03</div>
         <div style="min-width:0;flex:1;">
             <div class="mode-tag">Head-to-Head</div>
@@ -346,6 +390,9 @@
             <div class="mode-desc">Challenge a friend in real-time. First to 5 rounds wins.</div>
         </div>
         <div class="mode-arrow">&#8594;</div>
+        <div class="lock-badge" id="lock-duel" style="display:none;">
+            <span>Sign in to play</span>
+        </div>
     </a>
 
 </div>
@@ -455,6 +502,9 @@
 </div>
 
 <script>
+// ── AUTH STATE ────────────────────────────────────────────────────────────────
+let currentUser = null;
+
 // ── DATE UTILITIES ────────────────────────────────────────────────────────────
 function todayKey() {
     const d = new Date();
@@ -628,12 +678,18 @@ function dcWordInText(word, text) {
 // ── LIVES ─────────────────────────────────────────────────────────────────────
 let dcLives = 3;
 
-function dcSetLives(n) {
+function dcSetLives(n, save = false) {
     dcLives = n;
     for (let i = 0; i < 3; i++) {
         document.getElementById(`dc-life-${i}`).classList.toggle('lost', i >= n);
     }
     localStorage.setItem(`dc_lives_${todayKey()}`, n);
+    if (save && currentUser) {
+        (async () => { try { await sb.from('daily_results').upsert({
+            user_id: currentUser.id, date: todayKey(),
+            lives_used: 3 - n, solved: false
+        }, { onConflict: 'user_id,date' }); } catch {} })();
+    }
 }
 
 function dcGameOver(word) {
@@ -642,6 +698,12 @@ function dcGameOver(word) {
     document.getElementById('dc-gameover-word').innerHTML       =
         `Today's word was <strong style="color:#ccc;">${dcEsc(word.toUpperCase())}</strong>. Better luck tomorrow!`;
     document.getElementById('dc-gameover-banner').style.display = 'block';
+    if (currentUser) {
+        (async () => { try { await sb.from('daily_results').upsert({
+            user_id: currentUser.id, date: todayKey(),
+            lives_used: 3, solved: false
+        }, { onConflict: 'user_id,date' }); } catch {} })();
+    }
     setTimeout(() => {
         closeDailyChallenge();
         setTimeout(() => openCalHistory(), 300);
@@ -649,15 +711,21 @@ function dcGameOver(word) {
 }
 
 // ── CALENDAR BUTTON ROUTING ───────────────────────────────────────────────────
-function onCalClick() {
-    const key       = todayKey();
-    const completed = !!localStorage.getItem(`dc_${key}`);
-    const failed    = parseInt(localStorage.getItem(`dc_lives_${key}`) ?? '3') <= 0;
-    if (completed || failed) {
-        openCalHistory();
+async function onCalClick() {
+    const key = todayKey();
+    let completed = false, failed = false;
+    if (currentUser) {
+        const { data } = await sb.from('daily_results')
+            .select('solved, lives_used')
+            .eq('user_id', currentUser.id)
+            .eq('date', key)
+            .maybeSingle();
+        if (data) { completed = data.solved; failed = !data.solved; }
     } else {
-        openDailyChallenge();
+        completed = !!localStorage.getItem(`dc_${key}`);
+        failed    = parseInt(localStorage.getItem(`dc_lives_${key}`) ?? '3') <= 0;
     }
+    if (completed || failed) { openCalHistory(); } else { openDailyChallenge(); }
 }
 
 // ── MARK DONE UI ──────────────────────────────────────────────────────────────
@@ -671,7 +739,7 @@ function markDoneUI() {
 }
 
 // ── CALENDAR HISTORY ──────────────────────────────────────────────────────────
-function openCalHistory() {
+async function openCalHistory() {
     const now   = new Date();
     const year  = now.getFullYear();
     const month = now.getMonth();
@@ -681,15 +749,30 @@ function openCalHistory() {
     document.getElementById('ch-month-label').innerText =
         now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-    // Collect all solved days this month from localStorage
+    // Collect all solved days this month
     const solved = {};   // day → { song, artist }
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (!k.startsWith('dc_')) continue;
-        const dateStr = k.slice(3);
-        const [y, m, d] = dateStr.split('-').map(Number);
-        if (y === year && m - 1 === month) {
-            try { solved[d] = JSON.parse(localStorage.getItem(k)); } catch {}
+    if (currentUser) {
+        const firstDay = `${year}-${String(month+1).padStart(2,'0')}-01`;
+        const lastDay  = `${year}-${String(month+1).padStart(2,'0')}-31`;
+        const { data } = await sb.from('daily_results')
+            .select('date, song, artist')
+            .eq('user_id', currentUser.id)
+            .eq('solved', true)
+            .gte('date', firstDay)
+            .lte('date', lastDay);
+        (data || []).forEach(row => {
+            const d = parseInt(row.date.split('-')[2]);
+            solved[d] = { song: row.song, artist: row.artist };
+        });
+    } else {
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k.startsWith('dc_') || k.startsWith('dc_lives_')) continue;
+            const dateStr = k.slice(3);
+            const [y, m, d] = dateStr.split('-').map(Number);
+            if (y === year && m - 1 === month) {
+                try { solved[d] = JSON.parse(localStorage.getItem(k)); } catch {}
+            }
         }
     }
 
@@ -779,7 +862,17 @@ async function openDailyChallenge() {
     document.getElementById('dc-feedback').style.display        = 'none';
     document.getElementById('dc-checking').style.display        = 'none';
 
-    const savedLives = parseInt(localStorage.getItem(`dc_lives_${key}`) ?? '3');
+    let savedLives = 3;
+    if (currentUser) {
+        const { data } = await sb.from('daily_results')
+            .select('lives_used, solved')
+            .eq('user_id', currentUser.id)
+            .eq('date', key)
+            .maybeSingle();
+        if (data && !data.solved) savedLives = 3 - data.lives_used;
+    } else {
+        savedLives = parseInt(localStorage.getItem(`dc_lives_${key}`) ?? '3');
+    }
     dcSetLives(savedLives);
 
     if (savedLives <= 0) {
@@ -895,7 +988,7 @@ async function dcPickSong(track) {
         const inLyrics = dcWordInText(word, lyrics);
 
         if (inTitle) {
-            dcSetLives(dcLives - 1);
+            dcSetLives(dcLives - 1, true);
             if (dcLives <= 0) { dcGameOver(word); return; }
             fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> has <strong>${word}</strong> in its title. The word must only appear in the lyrics.</div>`;
             fb.style.display = 'block';
@@ -905,6 +998,12 @@ async function dcPickSong(track) {
             // SUCCESS — save and show completion
             const key = todayKey();
             localStorage.setItem(`dc_${key}`, JSON.stringify({ song: track.name, artist }));
+            if (currentUser) {
+                (async () => { try { await sb.from('daily_results').upsert({
+                    user_id: currentUser.id, date: key,
+                    song: track.name, artist, lives_used: 3 - dcLives, solved: true
+                }, { onConflict: 'user_id,date' }); } catch {} })();
+            }
             markDoneUI();
             dcPlayPreview(track);
 
@@ -913,7 +1012,7 @@ async function dcPickSong(track) {
                 `You answered with <strong style="color:#ccc;">${dcEsc(track.name)}</strong> by ${dcEsc(artist)}`;
             document.getElementById('dc-done-banner').style.display = 'block';
         } else {
-            dcSetLives(dcLives - 1);
+            dcSetLives(dcLives - 1, true);
             if (dcLives <= 0) { dcGameOver(word); return; }
             fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> doesn't have <strong>${word}</strong> in its lyrics.</div>`;
             fb.style.display = 'block';
@@ -932,10 +1031,95 @@ async function dcPickSong(track) {
 // ── INIT ──────────────────────────────────────────────────────────────────────
 function dcEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// On page load: show today's date on the calendar button; mark done if already solved
+/// On page load: show today's date; for logged-out users check localStorage
 (function init() {
     document.getElementById('cal-day').innerText = new Date().getDate();
-    if (localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
+    if (!currentUser && localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
+})();
+
+// ── SUPABASE AUTH ─────────────────────────────────────────────────────────────
+const { createClient } = window.supabase;
+const sb = createClient(
+    'https://drspcfilywicsmfhpjyr.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyc3BjZmlseXdpY3NtZmhwanlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1Njc4OTMsImV4cCI6MjA5MjE0Mzg5M30.InweWdz0hAFuDxB4LfYIX70kvvoK6Sv7JMKKeHkqwB4'
+);
+
+// Update the button to show avatar + name when signed in, or "Sign in" when not
+function updateAuthUI(user) {
+    const btn   = document.getElementById('auth-btn');
+    const icon  = document.getElementById('auth-icon');
+    const label = document.getElementById('auth-label');
+
+    const cardLocal = document.getElementById('card-local');
+    const cardDuel  = document.getElementById('card-duel');
+    const lockLocal = document.getElementById('lock-local');
+    const lockDuel  = document.getElementById('lock-duel');
+
+    if (user) {
+        const name = user.user_metadata?.full_name?.split(' ')[0] || 'Account';
+        icon.innerText  = '▶';
+        label.innerText = name + ' · Sign out';
+        btn.title       = 'Sign out';
+        btn.classList.add('signed-in');
+
+        // Unlock Local and Duel
+        cardLocal.classList.remove('locked');
+        cardDuel.classList.remove('locked');
+        cardLocal.onclick = e => navigateTo(e, 'localmode.html');
+        cardDuel.onclick  = e => navigateTo(e, 'duel.html');
+        lockLocal.style.display = 'none';
+        lockDuel.style.display  = 'none';
+    } else {
+        icon.innerText  = '▶';
+        label.innerText = 'Sign in with Google';
+        btn.title       = 'Sign in with Google';
+        btn.classList.remove('signed-in');
+
+        // Lock Local and Duel
+        cardLocal.classList.add('locked');
+        cardDuel.classList.add('locked');
+        cardLocal.onclick = e => { e.preventDefault(); authAction(); };
+        cardDuel.onclick  = e => { e.preventDefault(); authAction(); };
+        lockLocal.style.display = 'flex';
+        lockDuel.style.display  = 'flex';
+    }
+}
+
+// Sign in or sign out depending on current state
+async function authAction() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+        await sb.auth.signOut();
+        updateAuthUI(null);
+    } else {
+        await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin }
+        });
+    }
+}
+
+// On page load: check if already signed in and update button
+(async function initAuth() {
+    updateAuthUI(null); // start locked; unlock once session confirmed
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+        currentUser = session.user;
+        updateAuthUI(session.user);
+        // Check DB for today's completion to update calendar button
+        const { data } = await sb.from('daily_results')
+            .select('solved')
+            .eq('user_id', session.user.id)
+            .eq('date', todayKey())
+            .maybeSingle();
+        if (data?.solved) markDoneUI();
+    }
+
+    // Also listen for auth changes (e.g. after redirect back from Google)
+    sb.auth.onAuthStateChange((_event, session) => {
+        currentUser = session?.user || null;
+        updateAuthUI(currentUser);
+    });
 })();
 
 function navigateTo(e, url) {
