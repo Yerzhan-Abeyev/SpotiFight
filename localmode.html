@@ -180,7 +180,7 @@
 <div id="view-select" class="w-full max-w-xl flex flex-col items-center gap-5 relative z-10">
 
     <div id="page-header" class="w-full flex items-center justify-between pt-4 pb-2">
-        <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
+        <a href="/" class="back-link" onclick="navigateTo(event,'/')">&#8592; Modes</a>
         <div style="text-align:right;">
             <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
             <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
@@ -239,7 +239,7 @@
 <div id="view-game" class="w-full max-w-xl flex flex-col items-center relative z-10" style="display:none;">
 
     <div class="w-full flex items-center justify-between pt-4 pb-2">
-        <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
+        <a href="/" class="back-link" onclick="navigateTo(event,'/')">&#8592; Modes</a>
         <div style="text-align:right;">
             <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
             <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
@@ -1122,6 +1122,9 @@ function navigateTo(e, url) {
     document.body.classList.add('page-exit');
     setTimeout(() => { window.location.href = url; }, 280);
 }
+window.addEventListener('pageshow', e => {
+    if (e.persisted) document.body.classList.remove('page-exit');
+});
 </script>
 </body>
 </html>

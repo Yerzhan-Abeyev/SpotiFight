@@ -155,7 +155,7 @@
 <body class="flex flex-col items-center min-h-screen p-5">
 
 <div id="page-header" class="w-full max-w-xl flex items-center justify-between pt-4 pb-2 relative z-10">
-    <a href="home.html" class="back-link" onclick="navigateTo(event,'home.html')">&#8592; Modes</a>
+    <a href="/" class="back-link" onclick="navigateTo(event,'/')">&#8592; Modes</a>
     <div style="text-align:right;">
         <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
         <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Online Duel</div>
@@ -556,7 +556,7 @@ socket.on('match_end', ({ winnerId, scores }) => {
         </div>
         <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${myName} vs ${oppName}</div>
         <button class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="rematch()">Play Again</button>
-        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'home.html')">Back to Modes</button>
+        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'/')">Back to Modes</button>
     `;
     showView('view-over');
 });
@@ -569,7 +569,7 @@ socket.on('opponent_disconnected', () => {
         <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:0.1em;color:#f59e0b;margin-bottom:8px;">Opponent Left</div>
         <div style="font-size:0.8rem;color:#444;margin-bottom:24px;">Your opponent disconnected.</div>
         <button class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="resetToLobby()">New Game</button>
-        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'home.html')">Back to Modes</button>
+        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'/')">Back to Modes</button>
     `;
     showView('view-over');
 });
@@ -784,6 +784,9 @@ function navigateTo(e, url) {
     document.body.classList.add('page-exit');
     setTimeout(() => { window.location.href = url; }, 280);
 }
+window.addEventListener('pageshow', e => {
+    if (e.persisted) document.body.classList.remove('page-exit');
+});
 </script>
 </body>
 </html>

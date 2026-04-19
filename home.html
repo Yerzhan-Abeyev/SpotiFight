@@ -209,6 +209,30 @@
         .dc-fb-lose { background:#2b0d0d; border:1.5px solid #ff4444; color:#ff5555; }
         .dc-fb-warn { background:#1e1a0a; border:1.5px solid #f59e0b; color:#f59e0b; }
 
+        /* ── HP / Lives ── */
+        .dc-lives-wrap { display:flex; justify-content:center; gap:10px; margin-bottom:18px; }
+        .dc-life {
+            width:46px; height:46px; border-radius:12px;
+            background:rgba(29,185,84,0.08); border:1.5px solid rgba(29,185,84,0.3);
+            display:flex; align-items:flex-end; justify-content:center;
+            gap:3px; padding-bottom:10px;
+            transition:background 0.35s, border-color 0.35s;
+        }
+        .dc-life span {
+            width:4px; border-radius:2px; background:#1DB954;
+            animation:dcBar 0.75s ease-in-out infinite alternate;
+        }
+        .dc-life span:nth-child(1) { height:8px;  animation-delay:0s; }
+        .dc-life span:nth-child(2) { height:16px; animation-delay:0.18s; }
+        .dc-life span:nth-child(3) { height:10px; animation-delay:0.09s; }
+        @keyframes dcBar { from{transform:scaleY(0.35);} to{transform:scaleY(1);} }
+        .dc-life.lost {
+            background:rgba(255,68,68,0.07); border-color:rgba(255,68,68,0.3);
+        }
+        .dc-life.lost span {
+            background:#ff4444; animation:none; height:3px !important;
+        }
+
         /* ── Waveform on title ── */
         @keyframes barPulse1 { 0%,100%{height:6px}  50%{height:18px} }
         @keyframes barPulse2 { 0%,100%{height:14px} 50%{height:5px}  }
@@ -376,6 +400,21 @@
         <div id="daily-word"></div>
     </div>
 
+    <!-- HP / Lives -->
+    <div class="dc-lives-wrap" id="dc-lives-wrap">
+        <div class="dc-life" id="dc-life-0"><span></span><span></span><span></span></div>
+        <div class="dc-life" id="dc-life-1"><span></span><span></span><span></span></div>
+        <div class="dc-life" id="dc-life-2"><span></span><span></span><span></span></div>
+    </div>
+
+    <!-- Game-over banner (all lives lost) -->
+    <div id="dc-gameover-banner" style="display:none;margin-bottom:16px;">
+        <div style="background:#1a0808;border:1.5px solid #ff4444;border-radius:12px;padding:16px 18px;text-align:center;">
+            <div style="font-weight:700;color:#ff4444;font-size:0.9rem;margin-bottom:4px;">No attempts left</div>
+            <div id="dc-gameover-word" style="font-size:0.78rem;color:#555;margin-top:4px;line-height:1.5;"></div>
+        </div>
+    </div>
+
     <!-- Already completed banner (shown instead of search if done) -->
     <div id="dc-done-banner" style="display:none;margin-bottom:16px;">
         <div style="background:#0c2418;border:1.5px solid #1DB954;border-radius:12px;padding:16px 18px;text-align:center;">
@@ -505,11 +544,80 @@ async function dcFetchLyrics(trackName, artist) {
     const title = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
     const art   = artist.split(',')[0].trim();
     try {
-        const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`);
+        const controller = new AbortController();
+        const timeout    = setTimeout(() => controller.abort(), 1500);
+        const res = await fetch(
+            `https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`,
+            { signal: controller.signal }
+        );
+        clearTimeout(timeout);
         if (!res.ok) return null;
         const data = await res.json();
         return data.lyrics || null;
     } catch { return null; }
+}
+
+// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+let dcCurrentAudio = null, dcCurrentAudioCtx = null;
+
+function dcStopAudio() {
+    if (dcCurrentAudio)    { dcCurrentAudio.pause(); dcCurrentAudio = null; }
+    if (dcCurrentAudioCtx) { dcCurrentAudioCtx.close().catch(()=>{}); dcCurrentAudioCtx = null; }
+}
+
+async function dcPlayPreview(track) {
+    dcStopAudio();
+    let url = track.preview_url || null;
+    if (!url) {
+        try {
+            const q   = `${track.name} ${track.artists.map(a => a.name).join(' ')}`;
+            const res = await fetch(`/api/deezer/preview?q=${encodeURIComponent(q)}`);
+            url = (await res.json()).preview || null;
+        } catch { url = null; }
+    }
+    if (!url) return;
+
+    const dur = 9000 + Math.random() * 1000;
+    const maxVol = 0.7, fadeIn = 1500, fadeOut = 1500;
+
+    try {
+        const ctx = new AudioContext();
+        dcCurrentAudioCtx = ctx;
+        const nBuf  = ctx.createBuffer(1, ctx.sampleRate * 1.4, ctx.sampleRate);
+        const nData = nBuf.getChannelData(0);
+        for (let i = 0; i < nData.length; i++) nData[i] = (Math.random() * 2 - 1) * 0.12;
+        const nSrc  = ctx.createBufferSource();
+        nSrc.buffer = nBuf;
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(1, ctx.currentTime);
+        nGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
+        nSrc.connect(nGain); nGain.connect(ctx.destination); nSrc.start();
+    } catch(e) {}
+
+    const audio = new Audio(url);
+    dcCurrentAudio = audio;
+    audio.volume = 0;
+    audio.play().catch(() => {});
+
+    const inSteps = 40, inInterval = fadeIn / inSteps;
+    let inStep = 0;
+    const fadeInId = setInterval(() => {
+        if (dcCurrentAudio !== audio) { clearInterval(fadeInId); return; }
+        inStep++;
+        audio.volume = Math.min(maxVol, (inStep / inSteps) * maxVol);
+        if (inStep >= inSteps) clearInterval(fadeInId);
+    }, inInterval);
+
+    setTimeout(() => {
+        const outSteps = 40, outInterval = fadeOut / outSteps;
+        let outStep = 0;
+        const fadeOutId = setInterval(() => {
+            if (dcCurrentAudio !== audio) { clearInterval(fadeOutId); return; }
+            outStep++;
+            audio.volume = Math.max(0, maxVol * (1 - outStep / outSteps));
+            if (outStep >= outSteps) { clearInterval(fadeOutId); dcStopAudio(); }
+        }, outInterval);
+    }, dur - fadeOut);
 }
 
 function dcWordInText(word, text) {
@@ -517,10 +625,35 @@ function dcWordInText(word, text) {
     return re.test(text);
 }
 
+// ── LIVES ─────────────────────────────────────────────────────────────────────
+let dcLives = 3;
+
+function dcSetLives(n) {
+    dcLives = n;
+    for (let i = 0; i < 3; i++) {
+        document.getElementById(`dc-life-${i}`).classList.toggle('lost', i >= n);
+    }
+    localStorage.setItem(`dc_lives_${todayKey()}`, n);
+}
+
+function dcGameOver(word) {
+    document.getElementById('dc-search-area').style.display     = 'none';
+    document.getElementById('dc-feedback').style.display        = 'none';
+    document.getElementById('dc-gameover-word').innerHTML       =
+        `Today's word was <strong style="color:#ccc;">${dcEsc(word.toUpperCase())}</strong>. Better luck tomorrow!`;
+    document.getElementById('dc-gameover-banner').style.display = 'block';
+    setTimeout(() => {
+        closeDailyChallenge();
+        setTimeout(() => openCalHistory(), 300);
+    }, 2200);
+}
+
 // ── CALENDAR BUTTON ROUTING ───────────────────────────────────────────────────
 function onCalClick() {
-    const completed = !!localStorage.getItem(`dc_${todayKey()}`);
-    if (completed) {
+    const key       = todayKey();
+    const completed = !!localStorage.getItem(`dc_${key}`);
+    const failed    = parseInt(localStorage.getItem(`dc_lives_${key}`) ?? '3') <= 0;
+    if (completed || failed) {
         openCalHistory();
     } else {
         openDailyChallenge();
@@ -638,18 +771,30 @@ async function openDailyChallenge() {
     const word = await fetchDailyWord();
     document.getElementById('daily-word').innerText = word.toUpperCase();
 
-    document.getElementById('dc-done-banner').style.display = 'none';
-    document.getElementById('dc-search-area').style.display = 'flex';
-    document.getElementById('dc-search-bar').value          = '';
-    document.getElementById('dc-results-wrap').style.display = 'none';
-    document.getElementById('dc-song-list').innerHTML       = '';
-    document.getElementById('dc-feedback').style.display    = 'none';
-    document.getElementById('dc-checking').style.display    = 'none';
+    document.getElementById('dc-done-banner').style.display     = 'none';
+    document.getElementById('dc-gameover-banner').style.display = 'none';
+    document.getElementById('dc-search-bar').value              = '';
+    document.getElementById('dc-results-wrap').style.display    = 'none';
+    document.getElementById('dc-song-list').innerHTML           = '';
+    document.getElementById('dc-feedback').style.display        = 'none';
+    document.getElementById('dc-checking').style.display        = 'none';
 
-    setTimeout(() => document.getElementById('dc-search-bar').focus(), 100);
+    const savedLives = parseInt(localStorage.getItem(`dc_lives_${key}`) ?? '3');
+    dcSetLives(savedLives);
+
+    if (savedLives <= 0) {
+        document.getElementById('dc-search-area').style.display = 'none';
+        document.getElementById('dc-gameover-word').innerHTML   =
+            `Today's word was <strong style="color:#ccc;">${(await fetchDailyWord()).toUpperCase()}</strong>. Better luck tomorrow!`;
+        document.getElementById('dc-gameover-banner').style.display = 'block';
+    } else {
+        document.getElementById('dc-search-area').style.display = 'flex';
+        setTimeout(() => document.getElementById('dc-search-bar').focus(), 100);
+    }
 }
 
 function closeDailyChallenge() {
+    dcStopAudio();
     const el = document.getElementById('daily-overlay');
     el.classList.add('closing');
     setTimeout(() => el.classList.remove('open', 'closing'), 240);
@@ -750,6 +895,8 @@ async function dcPickSong(track) {
         const inLyrics = dcWordInText(word, lyrics);
 
         if (inTitle) {
+            dcSetLives(dcLives - 1);
+            if (dcLives <= 0) { dcGameOver(word); return; }
             fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> has <strong>${word}</strong> in its title. The word must only appear in the lyrics.</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
@@ -759,12 +906,15 @@ async function dcPickSong(track) {
             const key = todayKey();
             localStorage.setItem(`dc_${key}`, JSON.stringify({ song: track.name, artist }));
             markDoneUI();
+            dcPlayPreview(track);
 
             document.getElementById('dc-search-area').style.display = 'none';
             document.getElementById('dc-done-song').innerHTML =
                 `You answered with <strong style="color:#ccc;">${dcEsc(track.name)}</strong> by ${dcEsc(artist)}`;
             document.getElementById('dc-done-banner').style.display = 'block';
         } else {
+            dcSetLives(dcLives - 1);
+            if (dcLives <= 0) { dcGameOver(word); return; }
             fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> doesn't have <strong>${word}</strong> in its lyrics.</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
@@ -793,6 +943,9 @@ function navigateTo(e, url) {
     document.body.classList.add('page-exit');
     setTimeout(() => { window.location.href = url; }, 280);
 }
+window.addEventListener('pageshow', e => {
+    if (e.persisted) document.body.classList.remove('page-exit');
+});
 </script>
 </body>
 </html>
