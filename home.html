@@ -117,6 +117,10 @@
             font-size: 0.45rem; color: #1DB954;
         }
 
+        /* ── Past clickable calendar cells ── */
+        .ch-cell.past-clickable { cursor: pointer; color: #444; }
+        .ch-cell.past-clickable:hover { background: #161616; color: #aaa; border-radius: 8px; }
+
         /* ── Daily modal overlay ── */
         #daily-overlay {
             position: fixed; inset: 0;
@@ -434,11 +438,16 @@
 
     <button class="modal-close" onclick="closeDailyChallenge()">&#10005;</button>
 
+    <!-- Past-mode notice (hidden for today's challenge) -->
+    <div id="dc-past-notice" style="display:none;background:#111a0a;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:0.73rem;color:#555;text-align:center;">
+        Past challenge. Solving this won't count toward your calendar.
+    </div>
+
     <!-- Header -->
     <div style="margin-bottom:20px;">
-        <div style="font-size:0.62rem;color:#1DB954;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:4px;">Daily Challenge</div>
+        <div style="font-size:0.62rem;color:#1DB954;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:4px;" id="dc-mode-label">Daily Challenge</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:#fff;line-height:1;" id="dc-date-label"></div>
-        <div style="font-size:0.75rem;color:#333;margin-top:4px;">Your musical puzzle of the day.</div>
+        <div style="font-size:0.75rem;color:#333;margin-top:4px;" id="dc-subtitle">Your musical puzzle of the day.</div>
     </div>
 
     <!-- Word of the day -->
@@ -550,7 +559,10 @@ function localFallbackWord() {
     return pool[Math.abs(h) % pool.length];
 }
 
-let dailyWordCache = null;   // set once per page load
+let dailyWordCache  = null;   // set once per page load
+let dcCurrentWord   = null;   // word currently active in the modal (today or past)
+let dcIsPastMode    = false;  // true when playing a past challenge
+let pastWordsByDate = {};     // { 'YYYY-MM-DD': 'word' } for last 5 days
 
 async function fetchDailyWord() {
     if (dailyWordCache) return dailyWordCache;
@@ -683,6 +695,7 @@ function dcSetLives(n, save = false) {
     for (let i = 0; i < 3; i++) {
         document.getElementById(`dc-life-${i}`).classList.toggle('lost', i >= n);
     }
+    if (dcIsPastMode) return;   // past challenges: no saves
     localStorage.setItem(`dc_lives_${todayKey()}`, n);
     if (save && currentUser) {
         (async () => { try { await sb.from('daily_results').upsert({
@@ -693,12 +706,13 @@ function dcSetLives(n, save = false) {
 }
 
 function dcGameOver(word) {
-    document.getElementById('dc-search-area').style.display     = 'none';
-    document.getElementById('dc-feedback').style.display        = 'none';
-    document.getElementById('dc-gameover-word').innerHTML       =
-        `Today's word was <strong style="color:#ccc;">${dcEsc(word.toUpperCase())}</strong>. Better luck tomorrow!`;
+    document.getElementById('dc-search-area').style.display = 'none';
+    document.getElementById('dc-feedback').style.display    = 'none';
+    document.getElementById('dc-gameover-word').innerHTML   =
+        `The word was <strong style="color:#ccc;">${dcEsc(word.toUpperCase())}</strong>.` +
+        (dcIsPastMode ? '' : ' Better luck tomorrow!');
     document.getElementById('dc-gameover-banner').style.display = 'block';
-    if (currentUser) {
+    if (!dcIsPastMode && currentUser) {
         (async () => { try { await sb.from('daily_results').upsert({
             user_id: currentUser.id, date: todayKey(),
             lives_used: 3, solved: false
@@ -706,7 +720,7 @@ function dcGameOver(word) {
     }
     setTimeout(() => {
         closeDailyChallenge();
-        setTimeout(() => openCalHistory(), 300);
+        if (!dcIsPastMode) setTimeout(() => openCalHistory(), 300);
     }, 2200);
 }
 
@@ -787,6 +801,16 @@ async function openCalHistory() {
         `${totalSolved} day${totalSolved !== 1 ? 's' : ''} solved this month` +
         (streak > 1 ? ` · ${streak}-day streak` : '');
 
+    // Fetch past 5 days' words so calendar cells can be clickable
+    pastWordsByDate = {};
+    try {
+        const hr = await fetch('/api/daily-history');
+        if (hr.ok) {
+            const { history } = await hr.json();
+            (history || []).forEach(({ date, word }) => { pastWordsByDate[date] = word; });
+        }
+    } catch {}
+
     // Build grid
     const firstDow  = new Date(year, month, 1).getDay();   // 0=Sun
     const daysInMon = new Date(year, month + 1, 0).getDate();
@@ -802,11 +826,15 @@ async function openCalHistory() {
         const isSolved  = !!solved[d];
         const isToday   = d === today;
         const isFuture  = d > today;
+        const dateStr   = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isPast    = !isToday && !isFuture && !!pastWordsByDate[dateStr];
         let cls = 'ch-cell';
         if (isSolved)     cls += ' solved';
         else if (isToday) cls += ' today';
-        const style = isFuture ? 'opacity:0.2;' : '';
-        html += `<div class="${cls}" style="${style}">${d}</div>`;
+        else if (isPast)  cls += ' past-clickable';
+        const style   = isFuture ? 'opacity:0.2;' : '';
+        const onclick = isPast ? `onclick="openPastChallenge('${dateStr}')"` : '';
+        html += `<div class="${cls}" style="${style}" ${onclick}>${d}</div>`;
     }
     html += `</div>`;
     document.getElementById('ch-grid').innerHTML = html;
@@ -839,19 +867,58 @@ document.getElementById('cal-history-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('cal-history-overlay')) closeCalHistory();
 });
 
+// ── PAST CHALLENGE ────────────────────────────────────────────────────────────
+function openPastChallenge(dateStr) {
+    const word = pastWordsByDate[dateStr];
+    if (!word) return;
+    closeCalHistory();
+    setTimeout(() => {
+        dcIsPastMode  = true;
+        dcCurrentWord = word;
+
+        document.getElementById('dc-past-notice').style.display = 'block';
+        document.getElementById('dc-mode-label').innerText      = 'Past Challenge';
+        document.getElementById('dc-subtitle').innerText        = '';
+        document.getElementById('dc-date-label').innerText      = formatDateLabel(dateStr);
+        document.getElementById('daily-word').innerText         = word.toUpperCase();
+
+        document.getElementById('dc-done-banner').style.display     = 'none';
+        document.getElementById('dc-gameover-banner').style.display = 'none';
+        document.getElementById('dc-search-bar').value              = '';
+        document.getElementById('dc-results-wrap').style.display    = 'none';
+        document.getElementById('dc-song-list').innerHTML           = '';
+        document.getElementById('dc-feedback').style.display        = 'none';
+        document.getElementById('dc-checking').style.display        = 'none';
+        document.getElementById('dc-search-area').style.display     = 'flex';
+        document.getElementById('dc-lives-wrap').style.display = 'none';  // no HP in past mode
+
+        const overlay = document.getElementById('daily-overlay');
+        overlay.classList.remove('open', 'closing');
+        void document.getElementById('daily-modal').offsetWidth;
+        overlay.classList.add('open');
+        setTimeout(() => document.getElementById('dc-search-bar').focus(), 100);
+    }, 260);
+}
+
 // ── MODAL OPEN / CLOSE ────────────────────────────────────────────────────────
 async function openDailyChallenge() {
     const key  = todayKey();
+    dcIsPastMode = false;
 
     // Show modal immediately with a loading placeholder, then fill in the word
-    document.getElementById('daily-word').innerText    = '…';
-    document.getElementById('dc-date-label').innerText = formatDateLabel(key);
+    document.getElementById('dc-past-notice').style.display  = 'none';
+    document.getElementById('dc-lives-wrap').style.display   = 'flex';
+    document.getElementById('dc-mode-label').innerText       = 'Daily Challenge';
+    document.getElementById('dc-subtitle').innerText         = 'Your musical puzzle of the day.';
+    document.getElementById('daily-word').innerText         = '…';
+    document.getElementById('dc-date-label').innerText      = formatDateLabel(key);
     const dailyOverlay = document.getElementById('daily-overlay');
     dailyOverlay.classList.remove('open', 'closing');
     void document.getElementById('daily-modal').offsetWidth; // force reflow → restarts animation
     dailyOverlay.classList.add('open');
 
     const word = await fetchDailyWord();
+    dcCurrentWord = word;
     document.getElementById('daily-word').innerText = word.toUpperCase();
 
     document.getElementById('dc-done-banner').style.display     = 'none';
@@ -888,6 +955,8 @@ async function openDailyChallenge() {
 
 function closeDailyChallenge() {
     dcStopAudio();
+    dcIsPastMode = false;
+    dcCurrentWord = dailyWordCache; // restore to today's word
     const el = document.getElementById('daily-overlay');
     el.classList.add('closing');
     setTimeout(() => el.classList.remove('open', 'closing'), 240);
@@ -955,7 +1024,7 @@ function dcRenderTracks(tracks) {
 
 // ── SONG PICK & VERIFY ────────────────────────────────────────────────────────
 async function dcPickSong(track) {
-    const word    = dailyWordCache;   // already fetched when modal opened
+    const word    = dcCurrentWord;   // today's word or past word
     const artUrl  = track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '';
     const artist  = track.artists.map(a => a.name).join(', ');
 
@@ -988,32 +1057,39 @@ async function dcPickSong(track) {
         const inLyrics = dcWordInText(word, lyrics);
 
         if (inTitle) {
-            dcSetLives(dcLives - 1, true);
-            if (dcLives <= 0) { dcGameOver(word); return; }
+            if (!dcIsPastMode) {
+                dcSetLives(dcLives - 1, true);
+                if (dcLives <= 0) { dcGameOver(word); return; }
+            }
             fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> has <strong>${word}</strong> in its title. The word must only appear in the lyrics.</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
             document.getElementById('dc-search-bar').disabled = false;
         } else if (inLyrics) {
-            // SUCCESS — save and show completion
-            const key = todayKey();
-            localStorage.setItem(`dc_${key}`, JSON.stringify({ song: track.name, artist }));
-            if (currentUser) {
-                (async () => { try { await sb.from('daily_results').upsert({
-                    user_id: currentUser.id, date: key,
-                    song: track.name, artist, lives_used: 3 - dcLives, solved: true
-                }, { onConflict: 'user_id,date' }); } catch {} })();
+            // SUCCESS
+            if (!dcIsPastMode) {
+                const key = todayKey();
+                localStorage.setItem(`dc_${key}`, JSON.stringify({ song: track.name, artist }));
+                if (currentUser) {
+                    (async () => { try { await sb.from('daily_results').upsert({
+                        user_id: currentUser.id, date: key,
+                        song: track.name, artist, lives_used: 3 - dcLives, solved: true
+                    }, { onConflict: 'user_id,date' }); } catch {} })();
+                }
+                markDoneUI();
             }
-            markDoneUI();
             dcPlayPreview(track);
 
             document.getElementById('dc-search-area').style.display = 'none';
             document.getElementById('dc-done-song').innerHTML =
-                `You answered with <strong style="color:#ccc;">${dcEsc(track.name)}</strong> by ${dcEsc(artist)}`;
+                `You answered with <strong style="color:#ccc;">${dcEsc(track.name)}</strong> by ${dcEsc(artist)}` +
+                (dcIsPastMode ? `<br><span style="font-size:0.7rem;color:#555;display:block;margin-top:6px;">Past challenge. Not counted.</span>` : '');
             document.getElementById('dc-done-banner').style.display = 'block';
         } else {
-            dcSetLives(dcLives - 1, true);
-            if (dcLives <= 0) { dcGameOver(word); return; }
+            if (!dcIsPastMode) {
+                dcSetLives(dcLives - 1, true);
+                if (dcLives <= 0) { dcGameOver(word); return; }
+            }
             fb.innerHTML = `<div class="dc-fb dc-fb-lose"><strong>${dcEsc(track.name)}</strong> doesn't have <strong>${word}</strong> in its lyrics.</div>`;
             fb.style.display = 'block';
             document.getElementById('dc-results-wrap').style.display = 'block';
@@ -1031,10 +1107,9 @@ async function dcPickSong(track) {
 // ── INIT ──────────────────────────────────────────────────────────────────────
 function dcEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-/// On page load: show today's date; for logged-out users check localStorage
+// On page load: show today's date
 (function init() {
     document.getElementById('cal-day').innerText = new Date().getDate();
-    if (!currentUser && localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
 })();
 
 // ── SUPABASE AUTH ─────────────────────────────────────────────────────────────
@@ -1113,6 +1188,9 @@ async function authAction() {
             .eq('date', todayKey())
             .maybeSingle();
         if (data?.solved) markDoneUI();
+    } else {
+        // Not signed in — check localStorage
+        if (localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
     }
 
     // Also listen for auth changes (e.g. after redirect back from Google)

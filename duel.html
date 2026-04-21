@@ -350,7 +350,7 @@ function getName() {
 function createRoom() {
     myName = getName();
     saveDuelName(myName);
-    socket.emit('create_room', { name: myName });
+    socket.emit('create_room', { name: myName, userId: currentUser?.id || null });
 }
 
 function joinRoom() {
@@ -358,7 +358,7 @@ function joinRoom() {
     if (code.length !== 4) { showLobbyError('Enter a 4-character room code.'); return; }
     myName = getName();
     saveDuelName(myName);
-    socket.emit('join_room', { code, name: myName });
+    socket.emit('join_room', { code, name: myName, userId: currentUser?.id || null });
 }
 
 function showLobbyError(msg) {

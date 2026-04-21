@@ -22,22 +22,41 @@ app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'home.html')));
 app.get('/Paradise_Found.mp3', (_req, res) => res.sendFile(path.join(__dirname, 'Paradise_Found.mp3')));
 
 // ── GET /api/daily ────────────────────────────────────────────────────────────
+function wordForDate(words, dateStr) {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+    const pool = isWeekend ? words.weekend : words.weekday;
+    let h = 0;
+    for (const c of dateStr) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0;
+    return pool[Math.abs(h) % pool.length];
+}
+
 app.get('/api/daily', (_req, res) => {
     try {
-        const words = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
-        const now   = new Date();
-        const day   = now.getDay();
-        const isWeekend = day === 0 || day === 6;
-        const pool  = isWeekend ? words.weekend : words.weekday;
-        const dateStr = now.toISOString().slice(0, 10);
-        let h = 0;
-        for (const c of dateStr) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0;
-        h = Math.abs(h);
-        const word = pool[h % pool.length];
-        res.json({ word, date: dateStr, type: isWeekend ? 'weekend' : 'weekday' });
+        const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
+        const dateStr = new Date().toISOString().slice(0, 10);
+        res.json({ word: wordForDate(words, dateStr), date: dateStr });
     } catch (err) {
         console.error('Daily word error:', err);
         res.status(500).json({ error: 'Could not load daily word' });
+    }
+});
+
+// ── GET /api/daily-history ────────────────────────────────────────────────────
+app.get('/api/daily-history', (_req, res) => {
+    try {
+        const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
+        const history = [];
+        for (let i = 5; i >= 1; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().slice(0, 10);
+            history.push({ date: dateStr, word: wordForDate(words, dateStr) });
+        }
+        res.json({ history });
+    } catch (err) {
+        console.error('Daily history error:', err);
+        res.status(500).json({ error: 'Could not load history' });
     }
 });
 
@@ -203,7 +222,7 @@ function startRound(code) {
 // ── DUEL: socket events ───────────────────────────────────────────────────────
 io.on('connection', socket => {
 
-    socket.on('create_room', ({ name }) => {
+    socket.on('create_room', ({ name, userId }) => {
         let code;
         do { code = generateCode(); } while (rooms.has(code));
 
@@ -211,6 +230,7 @@ io.on('connection', socket => {
             players:     [socket.id],
             names:       { [socket.id]: name || 'Player 1' },
             scores:      { [socket.id]: 0 },
+            userIds:     { [socket.id]: userId || null },
             word:        null,
             roundActive: false,
             timer:       null,
@@ -222,14 +242,22 @@ io.on('connection', socket => {
         console.log(`Room ${code} created by ${socket.id}`);
     });
 
-    socket.on('join_room', ({ code, name }) => {
+    socket.on('join_room', ({ code, name, userId }) => {
         const room = rooms.get(code);
         if (!room)                    { socket.emit('join_error', { msg: 'Room not found.' }); return; }
         if (room.players.length >= 2) { socket.emit('join_error', { msg: 'Room is full.' });  return; }
 
+        // Prevent the same account from playing against itself
+        const creatorUserId = Object.values(room.userIds || {})[0];
+        if (userId && creatorUserId && userId === creatorUserId) {
+            socket.emit('join_error', { msg: 'You can\'t play against yourself.' });
+            return;
+        }
+
         room.players.push(socket.id);
         room.names[socket.id]  = name || 'Player 2';
         room.scores[socket.id] = 0;
+        room.userIds[socket.id] = userId || null;
         socket.join(code);
         socket.roomCode = code;
 
