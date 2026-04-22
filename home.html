@@ -474,7 +474,6 @@
     <!-- Already completed banner (shown instead of search if done) -->
     <div id="dc-done-banner" style="display:none;margin-bottom:16px;">
         <div style="background:#0c2418;border:1.5px solid #1DB954;border-radius:12px;padding:16px 18px;text-align:center;">
-            <div style="font-size:1.1rem;margin-bottom:6px;">🏆</div>
             <div style="font-weight:700;color:#1DB954;font-size:0.9rem;">Challenge Complete!</div>
             <div id="dc-done-song" style="font-size:0.78rem;color:#555;margin-top:6px;line-height:1.4;"></div>
         </div>
@@ -516,7 +515,8 @@ let currentUser = null;
 
 // ── DATE UTILITIES ────────────────────────────────────────────────────────────
 function todayKey() {
-    return new Date().toISOString().slice(0, 10);  // UTC date, matches server
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function formatDateLabel(key) {
@@ -566,7 +566,7 @@ let pastWordsByDate = {};     // { 'YYYY-MM-DD': 'word' } for last 5 days
 async function fetchDailyWord() {
     if (dailyWordCache) return dailyWordCache;
     try {
-        const res = await fetch('/api/daily');
+        const res = await fetch(`/api/daily?date=${todayKey()}`);
         if (!res.ok) throw new Error();
         const data    = await res.json();
         dailyWordCache = data.word;
@@ -803,7 +803,7 @@ async function openCalHistory() {
     // Fetch past 5 days' words so calendar cells can be clickable
     pastWordsByDate = {};
     try {
-        const hr = await fetch('/api/daily-history');
+        const hr = await fetch(`/api/daily-history?date=${todayKey()}`);
         if (hr.ok) {
             const { history } = await hr.json();
             (history || []).forEach(({ date, word }) => { pastWordsByDate[date] = word; });
@@ -885,6 +885,7 @@ function openPastChallenge(dateStr) {
         document.getElementById('dc-done-banner').style.display     = 'none';
         document.getElementById('dc-gameover-banner').style.display = 'none';
         document.getElementById('dc-search-bar').value              = '';
+        document.getElementById('dc-search-bar').disabled           = false;
         document.getElementById('dc-results-wrap').style.display    = 'none';
         document.getElementById('dc-song-list').innerHTML           = '';
         document.getElementById('dc-feedback').style.display        = 'none';

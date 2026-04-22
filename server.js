@@ -31,10 +31,10 @@ function wordForDate(words, dateStr) {
     return pool[Math.abs(h) % pool.length];
 }
 
-app.get('/api/daily', (_req, res) => {
+app.get('/api/daily', (req, res) => {
     try {
         const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
-        const dateStr = new Date().toISOString().slice(0, 10);
+        const dateStr = req.query.date || new Date().toISOString().slice(0, 10);
         res.json({ word: wordForDate(words, dateStr), date: dateStr });
     } catch (err) {
         console.error('Daily word error:', err);
@@ -43,13 +43,15 @@ app.get('/api/daily', (_req, res) => {
 });
 
 // ── GET /api/daily-history ────────────────────────────────────────────────────
-app.get('/api/daily-history', (_req, res) => {
+app.get('/api/daily-history', (req, res) => {
     try {
         const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
+        const baseStr = req.query.date || new Date().toISOString().slice(0, 10);
+        const base    = new Date(baseStr + 'T12:00:00Z');
         const history = [];
         for (let i = 5; i >= 1; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
+            const d = new Date(base);
+            d.setUTCDate(d.getUTCDate() - i);
             const dateStr = d.toISOString().slice(0, 10);
             history.push({ date: dateStr, word: wordForDate(words, dateStr) });
         }

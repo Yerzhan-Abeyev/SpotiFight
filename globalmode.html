@@ -171,13 +171,13 @@
     <div id="pre-game" class="w-full flex flex-col gap-5">
 
         <!-- One-liner -->
-        <div style="text-align:center;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
             <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Global Mode</div>
-            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Find a song where the word lives in the lyrics, not in the title.</div>
+            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Find a song where the word appears in the lyrics, not in the title.</div>
         </div>
 
-        <!-- Difficulty progression -->
-        <div style="background:#0d0d0d;border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:22px 20px;">
+        <!-- Difficulty progression (hidden for signed-in users) -->
+        <div id="diff-desc" style="background:#0d0d0d;border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:22px 20px;">
             <div style="font-size:0.6rem;color:#2a2a2a;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:14px;">Difficulty</div>
             <div style="display:flex;flex-direction:column;gap:12px;">
                 <div style="display:flex;align-items:center;gap:12px;">
@@ -196,7 +196,7 @@
         </div>
 
         <!-- Personal best (shown if a previous run exists) -->
-        <div id="best-row" style="display:none;text-align:center;border-top:1px solid rgba(255,255,255,0.04);padding-top:16px;">
+        <div id="best-row" style="display:none;text-align:center;">
             <div style="font-size:0.6rem;color:#2a2a2a;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">Personal Best</div>
             <div id="best-row-val" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#555;letter-spacing:0.06em;"></div>
         </div>
@@ -772,6 +772,10 @@ sb.auth.getSession().then(({ data: { session } }) => {
 });
 
 function onUserReady(user) {
+    // Hide difficulty description for returning users who already know the rules
+    const diffDesc = document.getElementById('diff-desc');
+    if (diffDesc) diffDesc.style.display = 'none';
+
     // Sync best score from DB into localStorage so the pre-game row shows DB value
     sb.from('global_scores').select('best_score,best_streak').eq('user_id', user.id).maybeSingle()
         .then(({ data }) => {
