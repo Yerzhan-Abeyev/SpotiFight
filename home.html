@@ -516,8 +516,7 @@ let currentUser = null;
 
 // ── DATE UTILITIES ────────────────────────────────────────────────────────────
 function todayKey() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return new Date().toISOString().slice(0, 10);  // UTC date, matches server
 }
 
 function formatDateLabel(key) {
@@ -882,6 +881,7 @@ function openPastChallenge(dateStr) {
         document.getElementById('dc-date-label').innerText      = formatDateLabel(dateStr);
         document.getElementById('daily-word').innerText         = word.toUpperCase();
 
+        clearTimeout(dcDebounce);
         document.getElementById('dc-done-banner').style.display     = 'none';
         document.getElementById('dc-gameover-banner').style.display = 'none';
         document.getElementById('dc-search-bar').value              = '';
@@ -921,6 +921,7 @@ async function openDailyChallenge() {
     dcCurrentWord = word;
     document.getElementById('daily-word').innerText = word.toUpperCase();
 
+    clearTimeout(dcDebounce);
     document.getElementById('dc-done-banner').style.display     = 'none';
     document.getElementById('dc-gameover-banner').style.display = 'none';
     document.getElementById('dc-search-bar').value              = '';
@@ -957,6 +958,7 @@ function closeDailyChallenge() {
     dcStopAudio();
     dcIsPastMode = false;
     dcCurrentWord = dailyWordCache; // restore to today's word
+    clearTimeout(dcDebounce);       // cancel any pending search
     const el = document.getElementById('daily-overlay');
     el.classList.add('closing');
     setTimeout(() => el.classList.remove('open', 'closing'), 240);

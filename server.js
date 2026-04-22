@@ -158,8 +158,20 @@ const DUEL_WORDS = [
     'summer','winter','morning','midnight','silence','music','beat','party','memory','chance',
 ];
 
-function pickDuelWord() {
-    return DUEL_WORDS[Math.floor(Math.random() * DUEL_WORDS.length)];
+function shuffleWords() {
+    const a = [...DUEL_WORDS];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function pickDuelWord(room) {
+    if (!room.wordQueue || room.wordQueue.length === 0) {
+        room.wordQueue = shuffleWords();   // reshuffle when exhausted
+    }
+    return room.wordQueue.pop();
 }
 
 function wordInText(word, text) {
@@ -201,7 +213,7 @@ function startRound(code) {
     if (!room) return;
 
     clearTimeout(room.timer);
-    const word        = pickDuelWord();
+    const word        = pickDuelWord(room);
     room.word         = word;
     room.roundActive  = true;
     room.roundNum     = (room.roundNum || 0) + 1;
@@ -230,6 +242,7 @@ io.on('connection', socket => {
             players:     [socket.id],
             names:       { [socket.id]: name || 'Player 1' },
             scores:      { [socket.id]: 0 },
+            wordQueue:   shuffleWords(),
             userIds:     { [socket.id]: userId || null },
             word:        null,
             roundActive: false,
@@ -239,6 +252,11 @@ io.on('connection', socket => {
         socket.join(code);
         socket.roomCode = code;
         socket.emit('room_created', { code });
+        // Clean up waiting room if no opponent joins within 5 minutes
+        setTimeout(() => {
+            const r = rooms.get(code);
+            if (r && r.players.length < 2) { rooms.delete(code); }
+        }, 5 * 60 * 1000);
         console.log(`Room ${code} created by ${socket.id}`);
     });
 

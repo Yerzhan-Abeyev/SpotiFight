@@ -451,6 +451,7 @@ let spotifyExpiry     = 0;
 let selectedArtist    = null;   // { id, name, image }
 let artistWordPool    = null;   // { easy:[], medium:[], hard:[] }
 let currentArtistSongs = [];    // names of analyzed songs (for in-game local search)
+let pickGeneration    = 0;      // incremented on each pickArtist call to abort stale loads
 let currentWord       = '';
 let roundActive       = false;
 let currentAudio      = null;
@@ -618,6 +619,7 @@ function renderArtists(artists) {
 async function pickArtist(artist) {
     const img = artist.images?.[1]?.url || artist.images?.[0]?.url || '';
     selectedArtist = { id: artist.id, name: artist.name, image: img };
+    const myGen = ++pickGeneration;   // capture generation; if user changes artist, myGen won't match
     syncArtistBestFromDB(artist.id);
 
     // Transition to loading view
@@ -632,6 +634,7 @@ async function pickArtist(artist) {
 
     try {
         const tracks = await getTopSongs(artist.id, artist.name);
+        if (myGen !== pickGeneration) return;   // artist changed while fetching
 
         if (tracks.length < 5) {
             showAnalysisError(`${artist.name} doesn't have enough songs on Spotify. Please choose a different artist.`);
@@ -644,6 +647,7 @@ async function pickArtist(artist) {
         let   success   = 0;
 
         for (let i = 0; i < tracks.length; i++) {
+            if (myGen !== pickGeneration) return;   // artist changed during lyrics loop
             const track  = tracks[i];
             const lyrics = await fetchLyrics(track.name, track.artists[0].name);
 
@@ -681,6 +685,7 @@ async function pickArtist(artist) {
         document.getElementById('load-status-text').innerText   = '';
 
         setTimeout(() => {
+            if (myGen !== pickGeneration) return;   // artist changed during delay
             showView('view-game');
             // Populate artist context bar
             const ctxImg  = document.getElementById('ctx-img');
@@ -716,6 +721,7 @@ function changeArtist() {
     cancelAnimationFrame(timerRAF);
     timerRAF    = null;
     roundActive = false;
+    pickGeneration++;              // cancel any in-flight pickArtist
 
     selectedArtist     = null;
     artistWordPool     = null;
@@ -939,13 +945,16 @@ function onSearchInput(val) {
     document.getElementById('loader-area').style.display = 'block';
 
     searchDebounce = setTimeout(async () => {
+        if (!selectedArtist) return;   // artist changed while debounce was pending
         try {
             const token = await getSpotifyToken();
+            if (!selectedArtist) return;   // artist changed during token fetch
             const res   = await fetch(
                 `https://api.spotify.com/v1/search?q=${encodeURIComponent(q + ' ' + selectedArtist.name)}&type=track&limit=5`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             document.getElementById('loader-area').style.display = 'none';
+            if (!selectedArtist) return;   // artist changed during fetch
             if (!res.ok) throw new Error();
             const items = ((await res.json()).tracks?.items || [])
                 .filter(t => t.artists.some(a => a.id === selectedArtist.id));
@@ -1095,6 +1104,7 @@ function endRound(result, track, pointsEarned) {
 }
 
 function showGameOver() {
+    if (!selectedArtist) return;   // artist was changed mid-round
     const diff      = getDifficulty();
     const diffLabel = diff.toUpperCase();
 

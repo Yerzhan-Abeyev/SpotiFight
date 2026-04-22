@@ -462,6 +462,7 @@ socket.on('round_start', ({ word, roundNum }) => {
 });
 
 socket.on('submit_result', ({ result }) => {
+    document.getElementById('opponent-status').innerText = '';  // clear stale opponent message
     const fb = document.getElementById('feedback');
     if (result === 'wrong') {
         // Permanent lockout for this round
@@ -500,6 +501,7 @@ socket.on('round_end', ({ winnerId, track, scores, word, submissions }) => {
     hide('search-container');
     hide('timer-container');
     hide('word-container');
+    document.getElementById('opponent-status').innerText = '';
 
     // Update score bar
     const ids   = Object.keys(scores);
@@ -630,7 +632,7 @@ function renderResults(tracks) {
         return;
     }
     tracks.forEach(track => {
-        const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
+        const art     = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
         const artists = track.artists.map(a => a.name).join(', ');
         const li      = document.createElement('li');
         li.className  = 'song-item';

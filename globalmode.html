@@ -610,7 +610,7 @@ function renderResults(tracks) {
         return;
     }
     tracks.forEach(track => {
-        const art     = track.album.images[2]?.url || track.album.images[0]?.url || '';
+        const art     = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
         const artists = track.artists.map(a => a.name).join(', ');
         const li      = document.createElement('li');
         li.className  = 'song-item';
@@ -639,7 +639,7 @@ async function pickSong(track) {
     hide('timer-container');
     hide('word-container');
 
-    const art = track.album.images[1]?.url || track.album.images[0]?.url || '';
+    const art = track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || '';
     document.getElementById('ck-art').src         = art;
     document.getElementById('ck-title').innerText  = track.name;
     document.getElementById('ck-status').innerHTML = 'Checking lyrics<span>.</span><span>.</span><span>.</span>';
