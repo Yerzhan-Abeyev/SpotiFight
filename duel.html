@@ -49,6 +49,7 @@
         .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
         .song-item:last-child { border-bottom: none; }
         .song-item:hover { background: #1c1c1c; }
+        .song-item.highlighted { background: #222; }
         .song-item img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
         .song-placeholder { width: 44px; height: 44px; border-radius: 6px; background: #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
         .song-title { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -306,13 +307,14 @@
 // ── SOCKET ────────────────────────────────────────────────────────────────────
 const socket = io();
 
-let myId         = null;
-let myName       = '';
-let oppName      = '';
-let roomCode     = null;
-let currentWord  = '';
-let roundActive  = false;
-let lockedOut    = false;   // true after a wrong answer — can't pick again this round
+let myId             = null;
+let myName           = '';
+let oppName          = '';
+let roomCode         = null;
+let currentWord      = '';
+let roundActive      = false;
+let lockedOut        = false;   // true after a wrong answer — can't pick again this round
+let highlightedIndex = -1;
 let timerRAF     = null;
 let roundStartAt = null;
 let currentAudio    = null;
@@ -430,7 +432,18 @@ socket.on('game_start', ({ players }) => {
     document.getElementById('my-score').innerText  = '0';
     document.getElementById('opp-score').innerText = '0';
 
+    // Store for reconnection
+    try { sessionStorage.setItem('sf_duel_rejoin', JSON.stringify({ code: roomCode, userId: currentUser?.id || null })); } catch {}
+
     showView('view-game');
+});
+
+// Attempt rejoin on socket reconnect (e.g. brief network drop)
+socket.on('connect', () => {
+    try {
+        const stored = JSON.parse(sessionStorage.getItem('sf_duel_rejoin'));
+        if (stored?.code) socket.emit('rejoin_room', { code: stored.code, userId: stored.userId });
+    } catch {}
 });
 
 socket.on('round_start', ({ word, roundNum }) => {
@@ -573,16 +586,92 @@ socket.on('match_end', ({ winnerId, scores }) => {
             ${scores[myId] ?? 0} — ${scores[oppId] ?? 0}
         </div>
         <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${myName} vs ${oppName}</div>
-        <button class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="rematch()">Play Again</button>
-        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="navigateTo(event,'/')">Back to Modes</button>
+        <button id="rematch-btn" class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="requestRematch()">Rematch</button>
+        <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="declineRematch()">Back to Modes</button>
     `;
     showView('view-over');
+});
+
+socket.on('rematch_requested', () => {
+    const btn = document.getElementById('rematch-btn');
+    if (!btn) return;
+    btn.disabled    = false;
+    btn.innerText   = 'Accept Rematch';
+    btn.style.background = '#17a349';
+});
+
+socket.on('rematch_start', ({ players }) => {
+    const ids   = Object.keys(players);
+    myId        = socket.id;
+    const oppId = ids.find(id => id !== myId);
+    myName  = players[myId]?.name  || myName;
+    oppName = players[oppId]?.name || oppName;
+    document.getElementById('my-name-label').innerText  = myName;
+    document.getElementById('opp-name-label').innerText = oppName;
+    document.getElementById('my-score').innerText  = '0';
+    document.getElementById('opp-score').innerText = '0';
+    hide('feedback');
+    hide('word-container');
+    hide('search-container');
+    document.getElementById('opponent-status').innerText = '';
+    showView('view-game');
+});
+
+socket.on('rematch_declined', () => {
+    const over = document.getElementById('over-card');
+    if (over) {
+        const btn = document.getElementById('rematch-btn');
+        if (btn) { btn.disabled = true; btn.innerText = 'Opponent declined'; }
+    }
+    setTimeout(() => resetToLobby(), 1500);
+});
+
+socket.on('opponent_reconnecting', ({ seconds }) => {
+    let s = seconds;
+    document.getElementById('opponent-status').innerText = `Opponent disconnected. Waiting ${s}s…`;
+    document.getElementById('opponent-status').className = 'opponent-status';
+    clearInterval(window._reconnectCountdown);
+    window._reconnectCountdown = setInterval(() => {
+        s--;
+        if (s <= 0) { clearInterval(window._reconnectCountdown); return; }
+        document.getElementById('opponent-status').innerText = `Opponent reconnecting… ${s}s`;
+    }, 1000);
+});
+
+socket.on('opponent_reconnected', () => {
+    clearInterval(window._reconnectCountdown);
+    document.getElementById('opponent-status').innerText = 'Opponent reconnected!';
+    document.getElementById('opponent-status').className = 'opponent-status found';
+    setTimeout(() => {
+        if (roundActive) document.getElementById('opponent-status').innerText = `${oppName} is searching…`;
+        document.getElementById('opponent-status').className = 'opponent-status';
+    }, 2000);
+});
+
+socket.on('rejoin_success', ({ myId: newId, word, scores, players }) => {
+    sessionStorage.removeItem('sf_duel_rejoin');
+    myId = newId;
+    const ids   = Object.keys(players);
+    const oppId = ids.find(id => id !== myId);
+    myName  = players[myId]?.name  || myName;
+    oppName = players[oppId]?.name || oppName;
+    document.getElementById('my-name-label').innerText  = myName;
+    document.getElementById('opp-name-label').innerText = oppName;
+    document.getElementById('my-score').innerText  = scores[myId]  ?? 0;
+    document.getElementById('opp-score').innerText = scores[oppId] ?? 0;
+    document.getElementById('opponent-status').innerText = 'Reconnected! Next round starting…';
+    showView('view-game');
+});
+
+socket.on('rejoin_failed', () => {
+    sessionStorage.removeItem('sf_duel_rejoin');
 });
 
 socket.on('opponent_disconnected', () => {
     roundActive = false;
     cancelAnimationFrame(timerRAF);
     hideCountdown();
+    clearInterval(window._reconnectCountdown);
     document.getElementById('over-card').innerHTML = `
         <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:0.1em;color:#f59e0b;margin-bottom:8px;">Opponent Left</div>
         <div style="font-size:0.8rem;color:#444;margin-bottom:24px;">Your opponent disconnected.</div>
@@ -597,6 +686,7 @@ let searchDebounce = null;
 
 function onSearchInput(val) {
     clearTimeout(searchDebounce);
+    highlightedIndex = -1;
     const q = val.trim();
     document.getElementById('songs-list').innerHTML = '';
 
@@ -624,6 +714,7 @@ function onSearchInput(val) {
 }
 
 function renderResults(tracks) {
+    highlightedIndex = -1;
     const list = document.getElementById('songs-list');
     list.innerHTML = '';
     if (!tracks.length) {
@@ -646,6 +737,27 @@ function renderResults(tracks) {
         list.appendChild(li);
     });
 }
+
+document.addEventListener('keydown', e => {
+    if (!roundActive || lockedOut) return;
+    const items = document.querySelectorAll('#songs-list .song-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('highlighted', i === highlightedIndex));
+        items[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlightedIndex = Math.max(highlightedIndex - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('highlighted', i === highlightedIndex));
+        items[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const idx = highlightedIndex >= 0 ? highlightedIndex : 0;
+        items[idx]?.click();
+    }
+});
 
 function pickSong(track) {
     if (!roundActive || lockedOut) return;
@@ -772,14 +884,23 @@ function hideCountdown() {
 }
 
 // ── MISC ──────────────────────────────────────────────────────────────────────
-function rematch() {
-    resetToLobby();
+function requestRematch() {
+    socket.emit('rematch_request');
+    const btn = document.getElementById('rematch-btn');
+    if (btn) { btn.disabled = true; btn.innerText = 'Waiting for opponent…'; }
+}
+
+function declineRematch() {
+    socket.emit('rematch_decline');
+    try { sessionStorage.removeItem('sf_duel_rejoin'); } catch {}
+    navigateTo(null, '/');
 }
 
 function resetToLobby() {
     myId = null; roomCode = null; currentWord = ''; roundActive = false;
     cancelAnimationFrame(timerRAF);
     hideCountdown();
+    try { sessionStorage.removeItem('sf_duel_rejoin'); } catch {}
     document.getElementById('lobby-error').style.display = 'none';
     document.getElementById('code-input').value          = '';
     showView('view-lobby');

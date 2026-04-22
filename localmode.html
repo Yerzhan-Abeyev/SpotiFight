@@ -208,6 +208,16 @@
                 <div style="font-size:0.78rem;color:#444;margin-top:6px;">Pick an artist. Find songs from their catalog where the word appears in the lyrics.</div>
             </div>
 
+            <!-- Last used artist shortcut (hidden until loaded) -->
+            <div id="last-artist-row" style="display:none;align-items:center;gap:12px;padding:14px 16px;background:#0d0d0d;border:1px solid rgba(255,255,255,0.06);border-radius:14px;cursor:pointer;" onclick="continueLastArtist()">
+                <img id="last-artist-img" src="" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:0.6rem;color:#444;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:2px;">Continue with</div>
+                    <div id="last-artist-name" style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                </div>
+                <div style="font-size:0.8rem;color:#1DB954;flex-shrink:0;">Play &#8594;</div>
+            </div>
+
             <!-- Artist search bar -->
             <input id="artist-search" class="search-input" type="text"
                    placeholder="Search any artist…" autocomplete="off"
@@ -700,6 +710,9 @@ async function pickArtist(artist) {
             } else {
                 ctxBest.style.display  = 'none';
             }
+            // Remember this artist for next session
+            try { localStorage.setItem('sf_last_artist', JSON.stringify({ id: artist.id, name: artist.name, image: img })); } catch {}
+
             startGame();
         }, 1400);
 
@@ -1191,6 +1204,26 @@ function navigateTo(e, url) {
 window.addEventListener('pageshow', e => {
     if (e.persisted) document.body.classList.remove('page-exit');
 });
+
+// ── REMEMBER LAST ARTIST ──────────────────────────────────────────────────────
+(function initLastArtist() {
+    try {
+        const stored = JSON.parse(localStorage.getItem('sf_last_artist'));
+        if (!stored?.id) return;
+        document.getElementById('last-artist-img').src         = stored.image || '';
+        document.getElementById('last-artist-img').style.display = stored.image ? 'block' : 'none';
+        document.getElementById('last-artist-name').innerText  = stored.name;
+        document.getElementById('last-artist-row').style.display = 'flex';
+    } catch {}
+})();
+
+function continueLastArtist() {
+    try {
+        const stored = JSON.parse(localStorage.getItem('sf_last_artist'));
+        if (!stored?.id) return;
+        pickArtist({ id: stored.id, name: stored.name, images: [{ url: stored.image }] });
+    } catch {}
+}
 </script>
 </body>
 </html>

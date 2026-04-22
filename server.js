@@ -341,8 +341,11 @@ io.on('connection', socket => {
             // (handles deuce at 4-4, 5-5, etc.)
             const matchOver = myScore >= ROUNDS_TO_WIN && myScore - oppScore >= 2;
             if (matchOver) {
+                room.matchEnded   = true;
+                room.rematchVotes = new Set();
                 io.to(code).emit('match_end', { winnerId: socket.id, scores });
-                rooms.delete(code);
+                // Auto-cleanup if nobody requests rematch within 40s
+                room.cleanupTimer = setTimeout(() => rooms.delete(code), 40_000);
             } else {
                 setTimeout(() => startRound(code), 3500);
             }
@@ -364,15 +367,118 @@ io.on('connection', socket => {
         }
     });
 
+    socket.on('rematch_request', () => {
+        const code = socket.roomCode;
+        const room = rooms.get(code);
+        if (!room || !room.matchEnded) return;
+
+        room.rematchVotes.add(socket.id);
+        const oppId = room.players.find(id => id !== socket.id);
+        if (oppId) io.to(oppId).emit('rematch_requested');
+
+        if (room.rematchVotes.size >= room.players.length) {
+            clearTimeout(room.cleanupTimer);
+            room.matchEnded   = false;
+            room.rematchVotes = null;
+            Object.keys(room.scores).forEach(id => { room.scores[id] = 0; });
+            room.roundNum   = 0;
+            room.wordQueue  = shuffleWords();
+            room.roundActive = false;
+            const [p1, p2] = room.players;
+            io.to(code).emit('rematch_start', {
+                players: {
+                    [p1]: { name: room.names[p1], score: 0 },
+                    [p2]: { name: room.names[p2], score: 0 },
+                },
+            });
+            setTimeout(() => startRound(code), 1500);
+        }
+    });
+
+    socket.on('rematch_decline', () => {
+        const code = socket.roomCode;
+        const room = rooms.get(code);
+        if (!room) return;
+        clearTimeout(room.cleanupTimer);
+        const oppId = room.players.find(id => id !== socket.id);
+        if (oppId) io.to(oppId).emit('rematch_declined');
+        rooms.delete(code);
+    });
+
     socket.on('disconnect', () => {
         const code = socket.roomCode;
         if (!code) return;
         const room = rooms.get(code);
         if (!room) return;
         clearTimeout(room.timer);
-        io.to(code).emit('opponent_disconnected');
-        rooms.delete(code);
-        console.log(`Room ${code} closed — player disconnected`);
+        clearTimeout(room.cleanupTimer);
+
+        // Grace period: if game was in progress give opponent 15s to reconnect
+        if (room.players.length === 2 && room.roundNum > 0 && !room.matchEnded) {
+            room.roundActive = false;
+            room.disconnectInfo = {
+                socketId: socket.id,
+                userId:   room.userIds[socket.id],
+                name:     room.names[socket.id],
+            };
+            io.to(code).emit('opponent_reconnecting', { seconds: 15 });
+            room.reconnectTimer = setTimeout(() => {
+                const r = rooms.get(code);
+                if (!r) return;
+                io.to(code).emit('opponent_disconnected');
+                rooms.delete(code);
+                console.log(`Room ${code} closed — reconnect timeout`);
+            }, 15_000);
+        } else {
+            io.to(code).emit('opponent_disconnected');
+            rooms.delete(code);
+            console.log(`Room ${code} closed — player disconnected`);
+        }
+    });
+
+    socket.on('rejoin_room', ({ code, userId }) => {
+        const room = rooms.get(code);
+        if (!room || !room.disconnectInfo) { socket.emit('rejoin_failed'); return; }
+
+        const info = room.disconnectInfo;
+        if (userId && info.userId && userId !== info.userId) { socket.emit('rejoin_failed'); return; }
+
+        clearTimeout(room.reconnectTimer);
+
+        const oldId = info.socketId;
+        const idx   = room.players.indexOf(oldId);
+        if (idx === -1) { socket.emit('rejoin_failed'); return; }
+
+        room.players[idx]       = socket.id;
+        room.names[socket.id]   = info.name;
+        room.scores[socket.id]  = room.scores[oldId] || 0;
+        room.userIds[socket.id] = userId || null;
+        delete room.names[oldId];
+        delete room.scores[oldId];
+        delete room.userIds[oldId];
+        delete room.disconnectInfo;
+        delete room.reconnectTimer;
+
+        socket.join(code);
+        socket.roomCode = code;
+
+        const [p1, p2] = room.players;
+        socket.emit('rejoin_success', {
+            myId:   socket.id,
+            word:   room.word,
+            scores: { ...room.scores },
+            players: {
+                [p1]: { name: room.names[p1], score: room.scores[p1] || 0 },
+                [p2]: { name: room.names[p2], score: room.scores[p2] || 0 },
+            },
+        });
+
+        const oppId = room.players.find(id => id !== socket.id);
+        if (oppId) io.to(oppId).emit('opponent_reconnected');
+
+        // Resume — start a fresh round with the same word pool
+        setTimeout(() => startRound(code), 1000);
+        console.log(`Room ${code}: ${info.name} rejoined`);
     });
 });
 
