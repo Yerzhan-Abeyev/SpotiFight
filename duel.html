@@ -55,6 +55,16 @@
         .song-title { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .song-artist { font-size: 0.75rem; color: #666; margin-top: 2px; }
 
+        .preview-btn {
+            flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+            background: rgba(29,185,84,0.08); border: 1px solid rgba(29,185,84,0.2);
+            color: #1DB954; font-size: 0.65rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .preview-btn:hover  { background: rgba(29,185,84,0.18); border-color: #1DB954; }
+        .preview-btn.playing { background: rgba(29,185,84,0.25); border-color: #1DB954; }
+
         .empty-state { padding: 24px; text-align: center; color: #444; font-size: 0.82rem; }
         .dot-loader { display: flex; gap: 6px; justify-content: center; padding: 20px; }
         .dot-loader span { width: 7px; height: 7px; background: #1DB954; border-radius: 50%; animation: bounce 1s infinite ease-in-out; }
@@ -315,6 +325,7 @@ let currentWord      = '';
 let roundActive      = false;
 let lockedOut        = false;   // true after a wrong answer — can't pick again this round
 let highlightedIndex = -1;
+let previewingBtn    = null;    // currently active preview button
 let timerRAF     = null;
 let roundStartAt = null;
 let currentAudio    = null;
@@ -741,6 +752,14 @@ function renderResults(tracks) {
                 <div class="song-title">${esc(track.name)}</div>
                 <div class="song-artist">${esc(artists)}</div>
             </div>`;
+
+        const btn = document.createElement('button');
+        btn.className = 'preview-btn';
+        btn.innerHTML = '&#9654;';
+        btn.title     = 'Preview';
+        btn.onclick   = e => { e.stopPropagation(); toggleSearchPreview(track, btn); };
+        li.appendChild(btn);
+
         li.onclick = () => pickSong(track);
         list.appendChild(li);
     });
@@ -769,6 +788,7 @@ document.addEventListener('keydown', e => {
 
 function pickSong(track) {
     if (!roundActive || lockedOut) return;
+    stopSearchPreview();
     const artists = track.artists.map(a => a.name).join(', ');
     socket.emit('submit_song', {
         trackName: track.name,
@@ -782,6 +802,33 @@ function pickSong(track) {
     document.getElementById('empty-state').innerText     = 'Checking lyrics…';
     document.getElementById('empty-state').style.display = 'block';
     document.getElementById('loader-area').style.display = 'none';
+}
+
+// ── SEARCH RESULT PREVIEW ─────────────────────────────────────────────────────
+function toggleSearchPreview(track, btn) {
+    if (previewingBtn === btn) {
+        stopAudio();
+        btn.innerHTML = '&#9654;';
+        btn.classList.remove('playing');
+        previewingBtn = null;
+        return;
+    }
+    if (previewingBtn) {
+        previewingBtn.innerHTML = '&#9654;';
+        previewingBtn.classList.remove('playing');
+    }
+    previewingBtn = btn;
+    btn.innerHTML = '&#9646;&#9646;';
+    btn.classList.add('playing');
+    playPreview(track);
+}
+
+function stopSearchPreview() {
+    if (previewingBtn) {
+        previewingBtn.innerHTML = '&#9654;';
+        previewingBtn.classList.remove('playing');
+        previewingBtn = null;
+    }
 }
 
 // ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
