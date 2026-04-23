@@ -413,7 +413,7 @@ io.on('connection', socket => {
         clearTimeout(room.timer);
         clearTimeout(room.cleanupTimer);
 
-        // Grace period: if game was in progress give opponent 15s to reconnect
+        // Grace period for mid-game disconnect
         if (room.players.length === 2 && room.roundNum > 0 && !room.matchEnded) {
             room.roundActive = false;
             room.disconnectInfo = {
@@ -429,6 +429,15 @@ io.on('connection', socket => {
                 rooms.delete(code);
                 console.log(`Room ${code} closed — reconnect timeout`);
             }, 15_000);
+        } else if (room.players.length === 1 && !room.matchEnded) {
+            // Creator disconnected while waiting — keep room alive so the code stays valid.
+            // The 5-min cleanup timer is already running; just store reconnect info.
+            room.disconnectInfo = {
+                socketId: socket.id,
+                userId:   room.userIds[socket.id],
+                name:     room.names[socket.id],
+            };
+            console.log(`Room ${code}: creator disconnected while waiting — room kept alive`);
         } else {
             io.to(code).emit('opponent_disconnected');
             rooms.delete(code);
@@ -462,6 +471,13 @@ io.on('connection', socket => {
         socket.join(code);
         socket.roomCode = code;
 
+        // Waiting room rejoin (game not yet started)
+        if (room.roundNum === 0) {
+            socket.emit('rejoin_waiting', { code });
+            console.log(`Room ${code}: creator rejoined while waiting`);
+            return;
+        }
+
         const [p1, p2] = room.players;
         socket.emit('rejoin_success', {
             myId:   socket.id,
@@ -481,6 +497,9 @@ io.on('connection', socket => {
         console.log(`Room ${code}: ${info.name} rejoined`);
     });
 });
+
+// ── Keep-alive (prevents free-tier sleep) ────────────────────────────────────
+app.get('/ping', (_req, res) => res.send('ok'));
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;

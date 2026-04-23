@@ -405,6 +405,14 @@ function renderSubmissions(submissions) {
 socket.on('room_created', ({ code }) => {
     roomCode = code;
     document.getElementById('waiting-code').innerText = code;
+    try { sessionStorage.setItem('sf_duel_rejoin', JSON.stringify({ code, userId: currentUser?.id || null })); } catch {}
+    showView('view-waiting');
+});
+
+socket.on('rejoin_waiting', ({ code }) => {
+    roomCode = code;
+    document.getElementById('waiting-code').innerText = code;
+    try { sessionStorage.setItem('sf_duel_rejoin', JSON.stringify({ code, userId: currentUser?.id || null })); } catch {}
     showView('view-waiting');
 });
 
