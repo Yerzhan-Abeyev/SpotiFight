@@ -1025,6 +1025,13 @@ async function pickSong(track) {
     const trackName = track.name;
     const artist    = track.artists.map(a => a.name).join(', ');
 
+    // Rule: word must NOT appear in the title
+    if (wordInText(currentWord, trackName)) {
+        hide('checking-box');
+        endRound('word-in-title', track);
+        return;
+    }
+
     try {
         const lyrics = await fetchLyrics(trackName, artist);
         hide('checking-box');
@@ -1081,8 +1088,10 @@ function endRound(result, track, pointsEarned) {
         btn.onclick   = startRound;
         btn.style.display = 'block';
 
-    } else if (result === 'no-lyrics' || result === 'error') {
-        const msg = result === 'no-lyrics'
+    } else if (result === 'word-in-title' || result === 'no-lyrics' || result === 'error') {
+        const msg = result === 'word-in-title'
+            ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
+            : result === 'no-lyrics'
             ? `Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
             : `Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
