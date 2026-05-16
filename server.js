@@ -62,57 +62,29 @@ app.get('/api/daily-history', (req, res) => {
     }
 });
 
-// ── In-memory token cache ─────────────────────────────────────────────────────
-let cachedToken = null;
-let tokenExpiry = 0;
-
-async function getSpotifyToken() {
-    if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-    const res = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Basic ${Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString('base64')}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'grant_type=client_credentials',
-    });
-    if (!res.ok) {
-        const errBody = await res.text();
-        console.error(`Spotify token error ${res.status}:`, errBody);
-        throw new Error(`Spotify token error: ${res.status}`);
-    }
-    const data = await res.json();
-    cachedToken = data.access_token;
-    tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
-    return cachedToken;
-}
-
-// ── GET /api/spotify/token ────────────────────────────────────────────────────
-app.get('/api/spotify/token', async (_req, res) => {
+// ── GET /api/deezer/search ────────────────────────────────────────────────────
+app.get('/api/deezer/search', async (req, res) => {
     try {
-        const token = await getSpotifyToken();
-        res.json({ access_token: token });
+        const { q, type = 'track', limit = 8 } = req.query;
+        if (!q) return res.status(400).json({ error: 'Missing query' });
+        const endpoint = type === 'artist' ? 'search/artist' : 'search/track';
+        const r = await fetch(`https://api.deezer.com/${endpoint}?q=${encodeURIComponent(q)}&limit=${limit}`);
+        if (!r.ok) throw new Error(`Deezer error: ${r.status}`);
+        const data = await r.json();
+        res.json(data.data || []);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// ── GET /api/spotify/search ───────────────────────────────────────────────────
-app.get('/api/spotify/search', async (req, res) => {
+// ── GET /api/deezer/artist/:id/top ───────────────────────────────────────────
+app.get('/api/deezer/artist/:id/top', async (req, res) => {
     try {
-        const { q, type = 'track' } = req.query;
-        if (!q) return res.status(400).json({ error: 'Missing query' });
-        const limit = type === 'artist' ? 5 : 20;
-        const token = await getSpotifyToken();
-        const url   = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&market=US`;
-        const spotRes = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!spotRes.ok) {
-            const errBody = await spotRes.text();
-            throw new Error(`Spotify search error: ${spotRes.status} — ${errBody}`);
-        }
-        const data  = await spotRes.json();
-        const items = type === 'artist' ? data.artists?.items : data.tracks?.items;
-        res.json(items || []);
+        const r = await fetch(`https://api.deezer.com/artist/${encodeURIComponent(req.params.id)}/top?limit=50`);
+        if (!r.ok) throw new Error(`Deezer error: ${r.status}`);
+        const data = await r.json();
+        res.json(data.data || []);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
@@ -266,6 +238,7 @@ io.on('connection', socket => {
         const room = rooms.get(code);
         if (!room)                    { socket.emit('join_error', { msg: 'Room not found.' }); return; }
         if (room.players.length >= 2) { socket.emit('join_error', { msg: 'Room is full.' });  return; }
+        if (room.disconnectInfo)      { socket.emit('join_error', { msg: 'Room not found.' }); return; }
 
         // Prevent the same account from playing against itself
         const creatorUserId = Object.values(room.userIds || {})[0];
@@ -319,6 +292,10 @@ io.on('connection', socket => {
 
         // Fetch lyrics server-side — timer keeps running during this
         const lyrics = await fetchLyricsServer(trackName, artist);
+
+        // Guard: round may have expired or word changed while awaiting lyrics
+        if (!room.roundActive || room.word !== word) return;
+
         if (!lyrics) {
             socket.emit('submit_result', { result: 'no_lyrics' });
             return;

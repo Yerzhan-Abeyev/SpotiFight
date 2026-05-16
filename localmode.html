@@ -232,7 +232,7 @@
         </div>
     </div>
 
-    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -254,7 +254,7 @@
         <div id="load-dots" class="dot-loader" style="padding:14px;"><span></span><span></span><span></span></div>
     </div>
 
-    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -342,7 +342,7 @@
     </div>
     </div>
 
-    <p class="note" style="margin-bottom:16px;">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note" style="margin-bottom:16px;">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <script>
@@ -381,49 +381,39 @@ const STOP_WORDS = new Set([
 // and adverbs (not/just/only/even/still/again/never/always) are intentionally
 // NOT filtered — they reflect an artist's signature voice and make valid game words.
 
-// ── TOP SONGS VIA SPOTIFY ─────────────────────────────────────────────────────
-// Uses track search filtered to the primary artist, sorted by popularity.
-// (The /artists/{id}/top-tracks endpoint requires extended API access not
-//  available under basic Client Credentials, hence the search approach.)
-async function getTopSongs(artistId, artistName) {
-    const token = await getSpotifyToken();
-    const terms = [
-        artistName,
-        `${artistName} love`,
-        `${artistName} night`,
-        `${artistName} heart`,
-        `${artistName} time`,
-        `${artistName} life`,
-    ];
+// ── TOP SONGS VIA DEEZER ──────────────────────────────────────────────────────
+function normalizeDeezerTrack(t) {
+    return {
+        name:        t.title,
+        artists:     [{ name: t.artist.name, id: t.artist.id }],
+        album:       { images: [
+            { url: t.album.cover_big    || '' },
+            { url: t.album.cover_medium || '' },
+            { url: t.album.cover_small  || '' },
+        ]},
+        preview_url: t.preview || null,
+    };
+}
 
-    const seen  = new Set();
-    const items = [];
+function normalizeDeezerArtist(a) {
+    return {
+        id:     a.id,
+        name:   a.name,
+        images: [
+            { url: a.picture_big    || '' },
+            { url: a.picture_medium || '' },
+            { url: a.picture_small  || '' },
+        ],
+        genres: [],
+    };
+}
 
-    for (const term of terms) {
-        try {
-            const res  = await fetch(
-                `https://api.spotify.com/v1/search?q=${encodeURIComponent(term)}&type=track&limit=5`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if (!res.ok) continue;
-            const data = await res.json();
-            for (const t of data.tracks?.items || []) {
-                if (!t?.artists?.[0] || t.artists[0].id !== artistId) continue;
-                const key = t.name.toLowerCase().replace(/\s*[\(\[].*/, '');
-                if (seen.has(key)) continue;
-                seen.add(key);
-                items.push(t);
-            }
-        } catch { continue; }
-    }
-
-    const unique = items;
-
-    const count = 5 + Math.floor(Math.random() * 3); // 5, 6 or 7
-    return unique
-        .sort((a, b) => b.popularity - a.popularity)
-        .slice(0, count)
-        .map(t => ({ name: t.name, artists: t.artists, album: t.album }));
+async function getTopSongs(artistId) {
+    const res = await fetch(`/api/deezer/artist/${artistId}/top`);
+    if (!res.ok) throw new Error('Deezer artist top tracks error');
+    const tracks = await res.json();
+    const count  = 5 + Math.floor(Math.random() * 3); // 5, 6 or 7
+    return tracks.slice(0, count).map(normalizeDeezerTrack);
 }
 
 // ── PERSONAL BEST (per artist) ────────────────────────────────────────────────
@@ -456,8 +446,6 @@ const SCORE_CONFIG  = {
     hard:   { base: 500, timeBonus: 0 },
 };
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let spotifyToken      = null;
-let spotifyExpiry     = 0;
 let selectedArtist    = null;   // { id, name, image }
 let artistWordPool    = null;   // { easy:[], medium:[], hard:[] }
 let currentArtistSongs = [];    // names of analyzed songs (for in-game local search)
@@ -513,24 +501,14 @@ function buildWordPool(freq, songCount) {
     };
 }
 
-// ── SPOTIFY ───────────────────────────────────────────────────────────────────
-async function getSpotifyToken() {
-    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
-    const res = await fetch('/api/spotify/token');
-    if (!res.ok) throw new Error(`Token error: ${res.status}`);
-    const data    = await res.json();
-    spotifyToken  = data.access_token;
-    spotifyExpiry = Date.now() + 55 * 60 * 1000;
-    return spotifyToken;
-}
-
+// ── DEEZER ────────────────────────────────────────────────────────────────────
 async function searchArtists(query) {
-    const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&type=artist&limit=5`);
+    const res = await fetch(`/api/deezer/search?q=${encodeURIComponent(query)}&type=artist&limit=5`);
     if (!res.ok) throw new Error(`Artist search error: ${res.status}`);
-    return await res.json();
+    return (await res.json()).map(normalizeDeezerArtist);
 }
 
-// Search within the analyzed songs for the current artist — no Spotify API needed
+// Search within the analyzed songs for the current artist
 function searchLocalSongs(query) {
     const q = query.toLowerCase();
     return currentArtistSongs
@@ -643,11 +621,11 @@ async function pickArtist(artist) {
     document.getElementById('load-dots').style.display   = 'flex';
 
     try {
-        const tracks = await getTopSongs(artist.id, artist.name);
+        const tracks = await getTopSongs(artist.id);
         if (myGen !== pickGeneration) return;   // artist changed while fetching
 
         if (tracks.length < 5) {
-            showAnalysisError(`${artist.name} doesn't have enough songs on Spotify. Please choose a different artist.`);
+            showAnalysisError(`${artist.name} doesn't have enough songs available. Please choose a different artist.`);
             return;
         }
 
@@ -958,19 +936,17 @@ function onSearchInput(val) {
     document.getElementById('loader-area').style.display = 'block';
 
     searchDebounce = setTimeout(async () => {
-        if (!selectedArtist) return;   // artist changed while debounce was pending
+        if (!selectedArtist) return;
         try {
-            const token = await getSpotifyToken();
-            if (!selectedArtist) return;   // artist changed during token fetch
-            const res   = await fetch(
-                `https://api.spotify.com/v1/search?q=${encodeURIComponent(q + ' ' + selectedArtist.name)}&type=track&limit=5`,
-                { headers: { Authorization: `Bearer ${token}` } }
+            const res = await fetch(
+                `/api/deezer/search?q=${encodeURIComponent(q + ' ' + selectedArtist.name)}&limit=5`
             );
             document.getElementById('loader-area').style.display = 'none';
-            if (!selectedArtist) return;   // artist changed during fetch
+            if (!selectedArtist) return;
             if (!res.ok) throw new Error();
-            const items = ((await res.json()).tracks?.items || [])
-                .filter(t => t.artists.some(a => a.id === selectedArtist.id));
+            const items = (await res.json())
+                .map(normalizeDeezerTrack)
+                .filter(t => t.artists[0]?.id === selectedArtist.id);
             if (items.length === 0) {
                 document.getElementById('empty-state').innerText     = `No songs found for "${q}" by ${selectedArtist.name}.`;
                 document.getElementById('empty-state').style.display = 'block';

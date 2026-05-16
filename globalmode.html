@@ -242,7 +242,7 @@
 </div>
 </div>
 
-<p class="note" style="margin-top:18px;">Powered by Spotify &amp; lyrics.ovh</p>
+<p class="note" style="margin-top:18px;">Powered by Deezer &amp; lyrics.ovh</p>
 
 <script>
 // WORD BANKS
@@ -310,8 +310,6 @@ const SCORE_CONFIG = {
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-let spotifyToken   = null;
-let spotifyExpiry  = 0;
 let currentWord    = '';
 let roundActive    = false;
 let currentAudio   = null;
@@ -369,25 +367,24 @@ function updateDiffBadge() {
     wd.className = diff;   // easy / medium / hard — drives CSS gradient
 }
 
-// ── SPOTIFY ───────────────────────────────────────────────────────────────────
-async function getSpotifyToken() {
-    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
-    const res = await fetch('/api/spotify/token');
-    if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
-    const data    = await res.json();
-    spotifyToken  = data.access_token;
-    spotifyExpiry = Date.now() + 55 * 60 * 1000;
-    return spotifyToken;
+// ── DEEZER SEARCH ─────────────────────────────────────────────────────────────
+function normalizeDeezerTrack(t) {
+    return {
+        name:       t.title,
+        artists:    [{ name: t.artist.name, id: t.artist.id }],
+        album:      { images: [
+            { url: t.album.cover_big    || '' },
+            { url: t.album.cover_medium || '' },
+            { url: t.album.cover_small  || '' },
+        ]},
+        preview_url: t.preview || null,
+    };
 }
 
-async function searchSpotify(query) {
-    const token = await getSpotifyToken();
-    const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=8`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) throw new Error(`Spotify search error: ${res.status}`);
-    return (await res.json()).tracks.items;
+async function searchDeezer(query) {
+    const res = await fetch(`/api/deezer/search?q=${encodeURIComponent(query)}&limit=8`);
+    if (!res.ok) throw new Error(`Search error: ${res.status}`);
+    return (await res.json()).map(normalizeDeezerTrack);
 }
 
 // ── LYRICS ────────────────────────────────────────────────────────────────────
@@ -590,12 +587,12 @@ function onSearchInput(val) {
 
     searchDebounce = setTimeout(async () => {
         try {
-            const tracks = await searchSpotify(q);
+            const tracks = await searchDeezer(q);
             document.getElementById('loader-area').style.display = 'none';
             renderResults(tracks);
         } catch {
             document.getElementById('loader-area').style.display = 'none';
-            document.getElementById('empty-state').innerText     = 'Spotify search failed.';
+            document.getElementById('empty-state').innerText     = 'Search failed. Try again.';
             document.getElementById('empty-state').style.display = 'block';
         }
     }, 350);

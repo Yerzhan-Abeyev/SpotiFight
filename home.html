@@ -401,7 +401,7 @@
 
 </div>
 
-<p class="note relative z-10">Powered by Spotify &amp; lyrics.ovh</p>
+<p class="note relative z-10">Powered by Deezer &amp; lyrics.ovh</p>
 
 <!-- ══════════════════════════════════════════════
      CALENDAR HISTORY OVERLAY
@@ -482,7 +482,7 @@
     <!-- Search area (hidden when done) -->
     <div id="dc-search-area" style="display:flex;flex-direction:column;gap:10px;">
         <input id="dc-search-bar" class="dc-search" type="text"
-               placeholder="Search a song on Spotify…" autocomplete="off"
+               placeholder="Search a song…" autocomplete="off"
                oninput="dcOnSearch(this.value)">
 
         <div id="dc-results-wrap" style="display:none;">
@@ -577,27 +577,24 @@ async function fetchDailyWord() {
     return dailyWordCache;
 }
 
-// ── SPOTIFY ───────────────────────────────────────────────────────────────────
-let dcToken = null, dcExpiry = 0;
-
-async function dcGetToken() {
-    if (dcToken && Date.now() < dcExpiry) return dcToken;
-    const res = await fetch('/api/spotify/token');
-    if (!res.ok) throw new Error(`Token error: ${res.status}`);
-    const data = await res.json();
-    dcToken  = data.access_token;
-    dcExpiry = Date.now() + 55 * 60 * 1000;
-    return dcToken;
+// ── DEEZER SEARCH ─────────────────────────────────────────────────────────────
+function normalizeDeezerTrack(t) {
+    return {
+        name:        t.title,
+        artists:     [{ name: t.artist.name, id: t.artist.id }],
+        album:       { images: [
+            { url: t.album.cover_big    || '' },
+            { url: t.album.cover_medium || '' },
+            { url: t.album.cover_small  || '' },
+        ]},
+        preview_url: t.preview || null,
+    };
 }
 
-async function dcSearchSpotify(q) {
-    const token = await dcGetToken();
-    const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=8`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+async function dcSearchDeezer(q) {
+    const res = await fetch(`/api/deezer/search?q=${encodeURIComponent(q)}&limit=8`);
     if (!res.ok) throw new Error(`Search error: ${res.status}`);
-    return (await res.json()).tracks.items;
+    return (await res.json()).map(normalizeDeezerTrack);
 }
 
 // ── LYRICS ────────────────────────────────────────────────────────────────────
@@ -990,7 +987,7 @@ function dcOnSearch(val) {
 
     dcDebounce = setTimeout(async () => {
         try {
-            const tracks = await dcSearchSpotify(q);
+            const tracks = await dcSearchDeezer(q);
             loader.style.display = 'none';
             if (tracks.length === 0) {
                 empty.innerText     = 'No songs found.';

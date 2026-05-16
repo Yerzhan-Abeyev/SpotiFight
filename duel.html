@@ -218,7 +218,7 @@
         </div>
     </div>
 
-    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -238,7 +238,7 @@
         </div>
     </div>
 
-    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -296,7 +296,7 @@
     <!-- Opponent status -->
     <div id="opponent-status"></div>
 
-    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -304,7 +304,7 @@
      ══════════════════════════════════════════════ -->
 <div id="view-over" class="w-full max-w-xl flex flex-col gap-4 relative z-10" style="display:none;">
     <div class="card w-full rounded-2xl p-7 shadow-2xl" style="text-align:center;" id="over-card"></div>
-    <p class="note">Powered by Spotify &amp; lyrics.ovh</p>
+    <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
 
 <!-- Countdown overlay (shown between rounds) -->
@@ -332,27 +332,24 @@ let currentAudio    = null;
 let currentAudioCtx = null;
 const ROUND_TIME = 20;
 
-// ── SPOTIFY ───────────────────────────────────────────────────────────────────
-let spotifyToken = null, spotifyExpiry = 0;
-
-async function getSpotifyToken() {
-    if (spotifyToken && Date.now() < spotifyExpiry) return spotifyToken;
-    const res  = await fetch('/api/spotify/token');
-    if (!res.ok) throw new Error('Token fetch failed');
-    const data = await res.json();
-    spotifyToken  = data.access_token;
-    spotifyExpiry = Date.now() + 55 * 60 * 1000;
-    return spotifyToken;
+// ── DEEZER SEARCH ─────────────────────────────────────────────────────────────
+function normalizeDeezerTrack(t) {
+    return {
+        name:       t.title,
+        artists:    [{ name: t.artist.name, id: t.artist.id }],
+        album:      { images: [
+            { url: t.album.cover_big    || '' },
+            { url: t.album.cover_medium || '' },
+            { url: t.album.cover_small  || '' },
+        ]},
+        preview_url: t.preview || null,
+    };
 }
 
-async function searchSpotify(q) {
-    const token = await getSpotifyToken();
-    const res   = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=8`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
+async function searchDeezer(q) {
+    const res = await fetch(`/api/deezer/search?q=${encodeURIComponent(q)}&limit=8`);
     if (!res.ok) throw new Error('Search failed');
-    return (await res.json()).tracks.items;
+    return (await res.json()).map(normalizeDeezerTrack);
 }
 
 // ── LOBBY ACTIONS ─────────────────────────────────────────────────────────────
@@ -721,7 +718,7 @@ function onSearchInput(val) {
 
     searchDebounce = setTimeout(async () => {
         try {
-            const tracks = await searchSpotify(q);
+            const tracks = await searchDeezer(q);
             document.getElementById('loader-area').style.display = 'none';
             renderResults(tracks);
         } catch {
@@ -1001,7 +998,7 @@ function saveDuelName(name) {
     (async () => { try { await sb.from('profiles').update({ display_name: name }).eq('id', currentUser.id); } catch {} })();
 }
 function navigateTo(e, url) {
-    e.preventDefault();
+    e?.preventDefault();
     document.body.classList.add('page-exit');
     setTimeout(() => { window.location.href = url; }, 280);
 }
