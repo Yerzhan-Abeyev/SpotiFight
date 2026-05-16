@@ -1,11 +1,11 @@
 # SpotiFight
 
-A music lyrics word-guessing game powered by Spotify. A word is given, find a song where that word appears in the lyrics but not in the title. One wrong answer and the game is over.
+A music lyrics word-guessing game. A word is given — find a song where that word appears in the lyrics but **not** in the title. One wrong answer ends the game.
 
 ## Modes
 
 ### Global Songs
-Search any song on Spotify. The word must be hidden in the lyrics, not in the title.
+Search any song. The word must be hidden in the lyrics, not in the title.
 Difficulty scales with your streak, unlocking harder words and higher point multipliers.
 
 | Streak | Difficulty | Points |
@@ -15,39 +15,37 @@ Difficulty scales with your streak, unlocking harder words and higher point mult
 | 12+    | Hard       | 500 pts + time bonus |
 
 ### Local Songs
-Pick an artist. The game analyzes their catalog and builds a word pool from their lyrics.
-Every session is unique to the artist, their signature words, their themes.
-Search any song from their full Spotify catalog during gameplay. The word just needs to appear in the lyrics — it can also be in the title.
+Pick an artist. The game fetches their top tracks via Deezer, analyzes the lyrics, and builds a word pool from their signature vocabulary. Every session is unique to the artist and their themes.
 
 ### Duel Mode
-Real-time 1v1 — create or join a room with a 4-letter code. Both players get the same word and race to find a valid song. First to **6 points** with a **2-point lead** wins.
+Real-time 1v1 — create or join a room with a 4-letter code. Both players get the same word and race to find a valid song. First to **6 points** with a **2-point lead** wins (deuce rule).
 
 - Wrong answer locks you out for the round; your opponent sees what you picked.
 - Round ends when one player answers correctly, both get it wrong, or the 20-second timer runs out.
-- A short Spotify/Deezer preview plays after each correct answer.
+- A short audio preview plays after each correct answer.
 - Scores are shown live throughout the match.
 
 ### Daily Challenge
-One word per day, the same for every player. Solved days are tracked in your calendar.
+One word per day, shared across all players. Solved days are tracked in a calendar. You have 3 attempts before the challenge locks for the day.
 
 ## Song Previews
 
-After a correct answer in any mode, a 9–10 second audio preview of the chosen song plays automatically. Previews come from Spotify's `preview_url`; if unavailable, the Deezer API is used as a fallback.
+After a correct answer, a 9–10 second audio preview plays automatically with a fade-in/out effect and a brief radio-static intro. Previews are sourced from the Deezer API.
 
 ## Personal Records
 
-- **Global mode:** your all-time best score and streak are saved and shown before each game.
-- **Local mode:** each artist has their own record, displayed in the artist bar during play.
+- **Global mode:** all-time best score and streak, shown before each game.
+- **Local mode:** per-artist record, displayed in the artist bar during play.
 
-Records are stored locally in the browser via `localStorage`.
+Records are stored in the browser via `localStorage` and synced to Supabase when signed in.
 
 ## Tech
 
 - Node.js + Express backend
 - Socket.io for real-time duel matchmaking and gameplay
-- Spotify Web API (Client Credentials flow), token served by the backend, credentials never exposed to the browser
-- [Deezer API](https://developers.deezer.com) as a free preview fallback (no key required)
+- [Deezer API](https://developers.deezer.com) for track search, artist top tracks, and previews — no API key required
 - [lyrics.ovh](https://lyrics.ovh) for lyric verification
+- Supabase for Google OAuth, user profiles, and score persistence
 - Vanilla JS, no frontend framework
 - Tailwind CSS via CDN
 
@@ -55,7 +53,6 @@ Records are stored locally in the browser via `localStorage`.
 
 ### Prerequisites
 - Node.js 18+
-- A Spotify developer app, create one at [developer.spotify.com](https://developer.spotify.com)
 
 ### Install
 
@@ -70,10 +67,10 @@ npm install
 Create a `.env` file in the project root:
 
 ```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
 PORT=3000
 ```
+
+No API keys required — Deezer is open and lyrics.ovh requires no auth.
 
 ### Run
 
@@ -86,18 +83,18 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Project Structure
 
 ```
-├── server.js          # Express + Socket.io server, Spotify token proxy, duel logic, daily word API
-├── home.html          # Landing page, mode selection, daily challenge
+├── server.js          # Express + Socket.io server, Deezer proxy, duel logic, daily word API
+├── home.html          # Landing page, mode selection, daily challenge modal
 ├── globalmode.html    # Global mode
 ├── localmode.html     # Local mode
 ├── duel.html          # Duel mode (real-time 1v1)
 ├── daily-words.json   # Word pools for daily challenges (weekday / weekend)
-├── .env               # Credentials, never committed
+├── .env               # Optional: PORT override
 └── package.json
 ```
 
 ## Notes
 
-- Spotify's track search API rejects limits above 5 per request from server-side calls. Local mode works around this by running 6 parallel searches with different query terms and deduplicating results.
-- Lyric verification is best-effort and capped at 1 second server-side. If lyrics cannot be found, the player is warned and the round resumes without penalty.
-- Duel mode win condition uses deuce-style scoring: first to 6 points with a minimum 2-point lead.
+- Lyric verification is capped at 1 second server-side. If lyrics cannot be found, the player is warned and may retry without penalty.
+- Duel mode uses deuce-style scoring: first to 6 points with a minimum 2-point lead.
+- Local and Duel modes require a Supabase account (Google sign-in). Global mode and Daily Challenge are playable without signing in.
