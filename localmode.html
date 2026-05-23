@@ -286,6 +286,26 @@
      ══════════════════════════════════════════════ -->
 <div id="view-game" class="w-full flex flex-col items-center relative z-10" style="display:none;">
 
+    <div class="w-full max-w-xl flex items-center justify-between pt-4 pb-2">
+        <a href="/" class="back-link" onclick="navigateTo(event,'/')">&#8592; Modes</a>
+        <div style="text-align:right;">
+            <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
+            <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
+        </div>
+    </div>
+
+    <!-- Artist context bar -->
+    <div id="artist-ctx" class="w-full max-w-xl" style="margin-bottom:12px;">
+        <img id="ctx-img" src="" alt="">
+        <div>
+            <div id="ctx-label">Artist</div>
+            <div id="ctx-name"></div>
+            <div id="ctx-best" style="display:none;font-size:0.65rem;color:#1DB954;margin-top:2px;letter-spacing:0.06em;"></div>
+        </div>
+        <button id="change-btn" onclick="changeArtist()">Change artist</button>
+    </div>
+
+<!-- ── Leaderboard + game column wrapper ── -->
 <div class="lb-layout">
 
 <!-- LEFT: leaderboard panel (desktop only) -->
@@ -298,25 +318,6 @@
 
 <!-- RIGHT: game content -->
 <div class="lb-game-col">
-
-    <div class="w-full flex items-center justify-between pt-4 pb-2">
-        <a href="/" class="back-link" onclick="navigateTo(event,'/')">&#8592; Modes</a>
-        <div style="text-align:right;">
-            <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
-            <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Local Songs</div>
-        </div>
-    </div>
-
-    <!-- Artist context bar -->
-    <div id="artist-ctx" style="margin-bottom:12px;">
-        <img id="ctx-img" src="" alt="">
-        <div>
-            <div id="ctx-label">Artist</div>
-            <div id="ctx-name"></div>
-            <div id="ctx-best" style="display:none;font-size:0.65rem;color:#1DB954;margin-top:2px;letter-spacing:0.06em;"></div>
-        </div>
-        <button id="change-btn" onclick="changeArtist()">Change artist</button>
-    </div>
 
     <!-- Stats -->
     <div id="score-area" style="display:none;width:100%;margin-bottom:12px;">
