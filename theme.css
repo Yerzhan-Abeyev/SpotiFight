@@ -325,3 +325,7 @@ html.light .artist-card:hover {
     background: #ebebeb !important;
     border-color: #1DB954 !important;
 }
+
+/* ── Username modal ──────────────────────────────────────────────────────────── */
+html.light #username-modal          { background: #fff !important; border-color: rgba(0,0,0,0.1) !important; }
+html.light #username-input          { background: #f5f5f5 !important; color: #111 !important; border-color: rgba(0,0,0,0.1) !important; }
