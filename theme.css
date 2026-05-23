@@ -42,12 +42,26 @@ html.light .mode-card {
     border-color: rgba(0,0,0,0.16) !important;
     border-width: 1.5px !important;
 }
-html.light .mode-card:hover { border-color: rgba(29,185,84,0.6) !important; }
-html.light .mode-num  { color: #d0d0d0 !important; }
+html.light .mode-card:not(.disabled):hover {
+    border-color: rgba(29,185,84,0.6) !important;
+    box-shadow: 0 8px 40px rgba(29,185,84,0.16) !important;
+}
+html.light .mode-num   { color: #ddd !important; }
 html.light .mode-title { color: #111 !important; }
 html.light .mode-desc  { color: #777 !important; }
-html.light .divider    { background: rgba(0,0,0,0.1) !important; }
-html.light .card       { background: #ffffff !important; border-color: rgba(0,0,0,0.16) !important; border-width: 1.5px !important; }
+html.light .mode-tag   { color: #1DB954 !important; }
+html.light .mode-arrow {
+    background: rgba(29,185,84,0.12) !important;
+    border-color: rgba(29,185,84,0.4) !important;
+}
+html.light .soon-badge {
+    background: #eeeeee !important;
+    color: #bbb !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+html.light .note   { color: #bbb !important; }
+html.light .divider { background: rgba(0,0,0,0.1) !important; }
+html.light .card   { background: #ffffff !important; border-color: rgba(0,0,0,0.16) !important; border-width: 1.5px !important; }
 html.light .mode-card.locked::after { background: rgba(240,240,240,0.78) !important; }
 html.light .lock-badge { color: #888 !important; }
 
@@ -75,15 +89,25 @@ html.light #cal-history-modal {
     border-width: 1.5px !important;
 }
 html.light .modal-close {
-    color: #888 !important;
-    border-color: rgba(0,0,0,0.1) !important;
+    background: #f0f0f0 !important;
+    color: #777 !important;
+    border-color: rgba(0,0,0,0.12) !important;
 }
-html.light .modal-close:hover { color: #111 !important; border-color: rgba(0,0,0,0.25) !important; }
+html.light .modal-close:hover {
+    background: #e4e4e4 !important;
+    color: #111 !important;
+    border-color: rgba(0,0,0,0.28) !important;
+}
+
+/* ── Calendar month label ────────────────────────────────────────────────────── */
+html.light #ch-month-label { color: #111 !important; }
 
 /* ── Calendar cells ────────────────────────────────────────────────────────── */
-html.light .ch-cell              { background: #ebebeb !important; color: #999 !important; }
+html.light .ch-day-name          { color: #bbb !important; }
+html.light .ch-cell              { background: #ebebeb !important; color: #ccc !important; }
 html.light .ch-cell.solved       { background: #d4f0df !important; color: #0e7a38 !important; }
-html.light .ch-cell.today        { border-color: rgba(0,0,0,0.15) !important; color: #555 !important; }
+html.light .ch-cell.today        { background: #ffffff !important; border-color: rgba(0,0,0,0.2) !important; color: #444 !important; }
+html.light .ch-cell.past-clickable { color: #888 !important; }
 html.light .ch-cell.past-clickable:hover { background: #ddd !important; color: #333 !important; }
 
 /* ── Daily challenge modal internals ────────────────────────────────────────── */
@@ -123,7 +147,9 @@ html.light .track-item {
     border-width: 1.5px !important;
 }
 html.light .song-item:hover,
-html.light .track-item:hover { background: #ebebeb !important; border-color: rgba(29,185,84,0.4) !important; }
+html.light .track-item:hover { background: #e8e8e8 !important; border-color: rgba(29,185,84,0.4) !important; }
+html.light .song-item.highlighted { background: #e0e0e0 !important; }
+html.light .song-item { border-bottom-color: rgba(0,0,0,0.06) !important; }
 html.light .song-title  { color: #111 !important; }
 html.light .song-artist { color: #777 !important; }
 html.light .feedback-box {
@@ -141,6 +167,14 @@ html.light .btn-secondary {
 }
 html.light .btn-secondary:hover { border-color: #1DB954 !important; color: #111 !important; }
 
+/* ── Game over screen ────────────────────────────────────────────────────────── */
+html.light .go-title { color: #c0392b !important; }
+html.light .go-score { color: #111 !important; }
+html.light #game-over-box strong { color: #555 !important; }
+html.light #over-card .card-title { color: #111 !important; }
+html.light .over-lose { color: #c0392b !important; }
+html.light .over-win  { color: #1a9e4a !important; }
+
 /* ── Word display ────────────────────────────────────────────────────────────── */
 html.light #word-display { color: #111 !important; }
 html.light #word-display.medium { background: rgba(245,158,11,0.08) !important; }
@@ -153,8 +187,141 @@ html.light .player-name-label { color: #999 !important; }
 html.light .player-score-val  { color: #111 !important; }
 html.light #opponent-status   { color: #888 !important; }
 
+/* ── Duel page specifics ─────────────────────────────────────────────────────── */
+html.light .code-char {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.14) !important;
+    color: #111 !important;
+}
+html.light .code-char:focus { border-color: #1DB954 !important; }
+html.light .code-char::placeholder { color: #ccc !important; }
+html.light .room-code-display {
+    background: #edfbf3 !important;
+    border-color: rgba(29,185,84,0.3) !important;
+}
+html.light .room-code-display:hover { background: #ddf5ea !important; }
+html.light .copy-hint { color: #1DB954 !important; }
+
+/* ── Card titles (Global Mode / Local Mode / Online Duel) ────────────────────── */
+html.light .card-title { color: #111 !important; }
+
+/* ── Duel lobby name input ──────────────────────────────────────────────────── */
+html.light .name-input {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.12) !important;
+    color: #111 !important;
+}
+html.light .name-input::placeholder { color: #bbb !important; }
+
+/* ── Past challenge notice ───────────────────────────────────────────────────── */
+html.light #dc-past-notice {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #999 !important;
+}
+
+/* ── Daily challenge — word box + banners ──────────────────────────────────── */
+html.light #dc-word-box {
+    background: #f0f0f0 !important;
+    border-color: rgba(29,185,84,0.3) !important;
+}
+html.light #dc-word-box > div:first-child { color: #aaa !important; }
+html.light #dc-gameover-inner {
+    background: rgba(200,50,50,0.08) !important;
+    border-color: rgba(200,50,50,0.5) !important;
+}
+html.light #dc-done-inner {
+    background: rgba(29,185,84,0.1) !important;
+    border-color: rgba(29,185,84,0.5) !important;
+}
+
+/* ── Daily challenge — search + results ─────────────────────────────────────── */
+html.light .dc-search {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #111 !important;
+}
+html.light .dc-search::placeholder { color: #bbb !important; }
+html.light .dc-results {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+html.light .dc-song { border-bottom-color: rgba(0,0,0,0.06) !important; }
+html.light .dc-song:hover { background: #ebebeb !important; }
+html.light .dc-song-ph { background: #e0e0e0 !important; }
+html.light .dc-checking {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+/* ── Checking box (shown while verifying selected song) ─────────────────────── */
+html.light #checking-box {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.12) !important;
+}
+html.light .ck-title { color: #111 !important; }
+html.light .ck-status { color: #999 !important; }
+
+/* ── Search results window ───────────────────────────────────────────────────── */
+html.light .results-window {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+html.light .song-placeholder { background: #e0e0e0 !important; }
+html.light .search-input {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.12) !important;
+    color: #111 !important;
+}
+html.light .search-input::placeholder { color: #bbb !important; }
+html.light .empty-state { color: #bbb !important; }
+
+/* ── Difficulty badges ──────────────────────────────────────────────────────── */
+html.light .diff-easy   { background: rgba(29,185,84,0.12) !important; }
+html.light .diff-medium { background: rgba(245,158,11,0.12) !important; }
+html.light .diff-hard   { background: rgba(255,85,85,0.1)  !important; }
+
+/* ── Timer track ─────────────────────────────────────────────────────────────── */
+html.light .timer-track { background: #e0e0e0 !important; }
+
+/* ── Stat divider line ───────────────────────────────────────────────────────── */
+html.light .stat-divider { background: #ddd !important; }
+
+/* ── Back link ───────────────────────────────────────────────────────────────── */
+html.light .back-link { color: #888 !important; }
+html.light .back-link:hover { color: #111 !important; }
+
+/* ── Duel "or" divider ───────────────────────────────────────────────────────── */
+html.light .divider { color: #bbb !important; }
+html.light .divider::before,
+html.light .divider::after { background: #ddd !important; }
+html.light .score-divider { color: #ccc !important; }
+
+/* ── Local mode: artist context bar + controls ──────────────────────────────── */
+html.light #artist-ctx {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+html.light #change-btn {
+    border-color: rgba(0,0,0,0.15) !important;
+    color: #666 !important;
+}
+html.light #change-btn:hover { border-color: #1DB954 !important; color: #111 !important; }
+html.light #last-artist-row {
+    background: #f5f5f5 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+html.light .load-artist-name { color: #111 !important; }
+html.light .ck-title-el { color: #111 !important; }
+html.light .artist-placeholder { background: #e0e0e0 !important; }
+html.light .track-status-item { border-bottom-color: rgba(0,0,0,0.06) !important; }
+
 /* ── Artist / search page specifics ─────────────────────────────────────────── */
 html.light .artist-card {
     background: linear-gradient(145deg, #ffffff, #f5f5f5) !important;
     border-color: rgba(0,0,0,0.08) !important;
+}
+html.light .artist-card:hover {
+    background: #ebebeb !important;
+    border-color: #1DB954 !important;
 }

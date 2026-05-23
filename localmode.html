@@ -207,7 +207,7 @@
     <div class="card w-full rounded-2xl p-7 shadow-2xl">
         <div class="flex flex-col gap-5">
             <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
-                <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Local Mode</div>
+                <div class="card-title" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Local Mode</div>
                 <div style="font-size:0.78rem;color:#444;margin-top:6px;">Pick an artist. Find songs from their catalog where the word appears in the lyrics.</div>
             </div>
 
@@ -314,7 +314,7 @@
         </div>
 
         <div id="timer-container" class="w-full" style="display:none;">
-            <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
+            <div class="timer-track" style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
                 <div id="timer-bar"></div>
             </div>
             <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">30s</p>
@@ -822,7 +822,7 @@ async function playPreview(track) {
         const nSrc  = ctx.createBufferSource();
         nSrc.buffer = nBuf;
         const nGain = ctx.createGain();
-        nGain.gain.setValueAtTime(1, ctx.currentTime);
+        nGain.gain.setValueAtTime(maxVol, ctx.currentTime);
         nGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
         nSrc.connect(nGain);
         nGain.connect(ctx.destination);

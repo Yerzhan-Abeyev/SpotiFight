@@ -76,14 +76,16 @@
         @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4;} 40%{transform:scale(1);opacity:1;} }
 
         /* Code input */
-        #code-input {
+        #code-inputs { display: flex; gap: 8px; justify-content: center; }
+        .code-char {
+            width: 44px; height: 52px; border-radius: 10px;
             background: #111; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
-            border-radius: 12px; padding: 14px 18px; font-size: 1.4rem; font-family: 'Bebas Neue', sans-serif;
-            letter-spacing: 0.25em; text-align: center; width: 100%; outline: none;
+            font-size: 1.4rem; font-family: 'Bebas Neue', sans-serif;
+            text-align: center; outline: none; caret-color: transparent;
             transition: border-color 0.2s; text-transform: uppercase;
         }
-        #code-input:focus { border-color: #1DB954; }
-        #code-input::placeholder { color: #2a2a2a; letter-spacing: 0.1em; font-size: 1rem; font-family: 'Inter', sans-serif; }
+        .code-char:focus { border-color: #1DB954; }
+        .code-char::placeholder { color: #2a2a2a; font-size: 1rem; }
 
         .name-input {
             background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
@@ -197,7 +199,7 @@
 
     <div class="card w-full rounded-2xl p-7 shadow-2xl">
         <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:20px;">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Online Duel</div>
+            <div class="card-title" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Online Duel</div>
             <div style="font-size:0.78rem;color:#444;margin-top:6px;">Race a friend to find the word in the lyrics first. First to 6 rounds wins.</div>
         </div>
 
@@ -209,7 +211,14 @@
 
             <div>
                 <label style="font-size:0.65rem;color:#444;letter-spacing:0.15em;text-transform:uppercase;display:block;margin-bottom:6px;">Room code</label>
-                <input id="code-input" type="text" placeholder="XXXX" maxlength="4" autocomplete="off">
+                <div id="code-inputs">
+                    <input class="code-char" type="text" maxlength="1" placeholder="X" autocomplete="off">
+                    <input class="code-char" type="text" maxlength="1" placeholder="X" autocomplete="off">
+                    <input class="code-char" type="text" maxlength="1" placeholder="X" autocomplete="off">
+                    <input class="code-char" type="text" maxlength="1" placeholder="X" autocomplete="off">
+                    <input class="code-char" type="text" maxlength="1" placeholder="X" autocomplete="off">
+                    <input class="code-char" type="text" maxlength="1" placeholder="X" autocomplete="off">
+                </div>
             </div>
             <button class="btn-primary" onclick="joinRoom()">Join Room</button>
 
@@ -239,6 +248,8 @@
         <div style="margin-top:20px;">
             <div class="dot-loader" style="padding:10px;"><span></span><span></span><span></span></div>
         </div>
+
+        <button class="btn-secondary" onclick="leaveWaiting()" style="margin-top:16px;">← Back</button>
     </div>
 
     <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
@@ -273,7 +284,7 @@
 
             <!-- Timer -->
             <div id="timer-container" class="w-full" style="display:none;">
-                <div style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
+                <div class="timer-track" style="background:#1a1a1a;height:5px;border-radius:999px;overflow:hidden;">
                     <div id="timer-bar" style="width:100%;height:100%;"></div>
                 </div>
                 <p id="timer-text" style="color:#444;font-size:0.72rem;text-align:right;margin-top:5px;font-variant-numeric:tabular-nums;">20s</p>
@@ -366,11 +377,16 @@ function createRoom() {
 }
 
 function joinRoom() {
-    const code = document.getElementById('code-input').value.trim().toUpperCase();
-    if (code.length !== 4) { showLobbyError('Enter a 4-character room code.'); return; }
+    const code = [...document.querySelectorAll('.code-char')].map(e => e.value).join('').toUpperCase();
+    if (code.length !== 6) { showLobbyError('Enter the 6-character room code.'); return; }
     myName = getName();
     saveDuelName(myName);
     socket.emit('join_room', { code, name: myName, userId: currentUser?.id || null });
+}
+
+function leaveWaiting() {
+    socket.emit('leave_room');
+    resetToLobby();
 }
 
 function showLobbyError(msg) {
@@ -597,10 +613,10 @@ socket.on('match_end', ({ winnerId, scores }) => {
     const iWon  = winnerId === myId;
 
     document.getElementById('over-card').innerHTML = `
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:0.1em;color:${iWon ? '#1DB954' : '#ff4444'};line-height:1;margin-bottom:8px;">
+        <div class="over-result ${iWon ? 'over-win' : 'over-lose'}" style="font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:0.1em;color:${iWon ? '#1DB954' : '#ff4444'};line-height:1;margin-bottom:8px;">
             ${iWon ? 'You Win!' : 'You Lost'}
         </div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#fff;letter-spacing:0.06em;margin-bottom:6px;">
+        <div class="card-title" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#fff;letter-spacing:0.06em;margin-bottom:6px;">
             ${scores[myId] ?? 0} — ${scores[oppId] ?? 0}
         </div>
         <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${esc(myName)} vs ${esc(oppName)}</div>
@@ -865,7 +881,7 @@ async function playPreview(track) {
         const nSrc  = ctx.createBufferSource();
         nSrc.buffer = nBuf;
         const nGain = ctx.createGain();
-        nGain.gain.setValueAtTime(1, ctx.currentTime);
+        nGain.gain.setValueAtTime(maxVol, ctx.currentTime);
         nGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
         nSrc.connect(nGain);
         nGain.connect(ctx.destination);
@@ -958,7 +974,7 @@ function resetToLobby() {
     hideCountdown();
     try { sessionStorage.removeItem('sf_duel_rejoin'); } catch {}
     document.getElementById('lobby-error').style.display = 'none';
-    document.getElementById('code-input').value          = '';
+    document.querySelectorAll('.code-char').forEach(e => e.value = '');
     showView('view-lobby');
 }
 
@@ -996,6 +1012,27 @@ function onUserReady(user) {
             if (name && !input.value) input.value = name;
         });
 }
+
+// ── Code char boxes: auto-advance, backspace, paste, Enter ───────────────────
+(function initCodeChars() {
+    const els = [...document.querySelectorAll('.code-char')];
+    els.forEach((el, i) => {
+        el.addEventListener('input', () => {
+            el.value = el.value.replace(/[^a-zA-Z0-9]/g, '').slice(-1).toUpperCase();
+            if (el.value && i < els.length - 1) els[i + 1].focus();
+        });
+        el.addEventListener('keydown', e => {
+            if (e.key === 'Backspace' && !el.value && i > 0) els[i - 1].focus();
+            if (e.key === 'Enter') joinRoom();
+        });
+        el.addEventListener('paste', e => {
+            e.preventDefault();
+            const text = (e.clipboardData.getData('text') || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+            [...text].forEach((c, j) => { if (els[i + j]) els[i + j].value = c; });
+            els[Math.min(i + text.length, els.length - 1)].focus();
+        });
+    });
+})();
 
 function saveDuelName(name) {
     if (!currentUser || !name) return;
