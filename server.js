@@ -183,18 +183,38 @@ function wordInText(word, text) {
 async function fetchLyricsServer(trackName, artist) {
     const title = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
     const art   = artist.split(',')[0].trim();
+
+    // 1. lyrics.ovh
     try {
-        const controller = new AbortController();
-        const timeout    = setTimeout(() => controller.abort(), 1000);
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1500);
         const res = await fetch(
             `https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`,
-            { signal: controller.signal }
+            { signal: ctrl.signal }
         );
-        clearTimeout(timeout);
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.lyrics || null;
-    } catch { return null; }
+        clearTimeout(t);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.lyrics) return data.lyrics;
+        }
+    } catch { /* fall through */ }
+
+    // 2. lrclib.net
+    try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1500);
+        const res = await fetch(
+            `https://lrclib.net/api/get?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`,
+            { signal: ctrl.signal }
+        );
+        clearTimeout(t);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.plainLyrics) return data.plainLyrics;
+        }
+    } catch { /* fall through */ }
+
+    return null;
 }
 
 function generateCode() {

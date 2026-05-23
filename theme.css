@@ -104,10 +104,10 @@ html.light #ch-month-label { color: #111 !important; }
 
 /* ── Calendar cells ────────────────────────────────────────────────────────── */
 html.light .ch-day-name          { color: #bbb !important; }
-html.light .ch-cell              { background: #ebebeb !important; color: #ccc !important; }
-html.light .ch-cell.solved       { background: #d4f0df !important; color: #0e7a38 !important; }
-html.light .ch-cell.today        { background: #ffffff !important; border-color: rgba(0,0,0,0.2) !important; color: #444 !important; }
-html.light .ch-cell.past-clickable { color: #888 !important; }
+html.light .ch-cell              { background: #ebebeb !important; color: #ccc !important; font-weight: 600 !important; }
+html.light .ch-cell.solved       { background: #d4f0df !important; color: #0e7a38 !important; font-weight: 600 !important; }
+html.light .ch-cell.today        { background: #ffffff !important; border-color: rgba(0,0,0,0.2) !important; color: #444 !important; font-weight: 600 !important; }
+html.light .ch-cell.past-clickable { color: #888 !important; font-weight: 600 !important; }
 html.light .ch-cell.past-clickable:hover { background: #ddd !important; color: #333 !important; }
 
 /* ── Daily challenge modal internals ────────────────────────────────────────── */

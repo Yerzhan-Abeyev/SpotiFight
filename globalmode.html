@@ -375,18 +375,38 @@ async function searchDeezer(query) {
 async function fetchLyrics(trackName, artist) {
     const cleanTitle  = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
     const cleanArtist = artist.split(',')[0].trim();
+
+    // 1. lyrics.ovh
     try {
-        const controller = new AbortController();
-        const timeout    = setTimeout(() => controller.abort(), 1500);
-        const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`;
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.lyrics || null;
-    } catch {
-        return null;
-    }
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1500);
+        const res = await fetch(
+            `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
+            { signal: ctrl.signal }
+        );
+        clearTimeout(t);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.lyrics) return data.lyrics;
+        }
+    } catch { /* fall through */ }
+
+    // 2. lrclib.net
+    try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1500);
+        const res = await fetch(
+            `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
+            { signal: ctrl.signal }
+        );
+        clearTimeout(t);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.plainLyrics) return data.plainLyrics;
+        }
+    } catch { /* fall through */ }
+
+    return null;
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
