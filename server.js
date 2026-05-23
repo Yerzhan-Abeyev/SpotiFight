@@ -6,12 +6,29 @@ import { readFileSync } from 'fs';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import * as dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app        = express();
 const httpServer = createServer(app);
 const io         = new Server(httpServer);
+
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use(helmet({
+    contentSecurityPolicy: false,   // CDN scripts (Tailwind, Supabase) need inline allowed
+    crossOriginEmbedderPolicy: false,
+}));
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+const apiLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please slow down.' },
+});
 
 // ── Static files ──────────────────────────────────────────────────────────────
 const HTML_FILES = ['home.html', 'globalmode.html', 'localmode.html', 'duel.html', 'test.html'];
@@ -20,6 +37,12 @@ HTML_FILES.forEach(f => {
 });
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'home.html')));
 app.get('/Paradise_Found.mp3', (_req, res) => res.sendFile(path.join(__dirname, 'Paradise_Found.mp3')));
+app.get('/theme.css', (_req, res) => res.sendFile(path.join(__dirname, 'theme.css')));
+
+// ── Date validation helper ────────────────────────────────────────────────────
+function safeDate(raw) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : new Date().toISOString().slice(0, 10);
+}
 
 // ── GET /api/daily ────────────────────────────────────────────────────────────
 function wordForDate(words, dateStr) {
@@ -31,10 +54,10 @@ function wordForDate(words, dateStr) {
     return pool[Math.abs(h) % pool.length];
 }
 
-app.get('/api/daily', (req, res) => {
+app.get('/api/daily', apiLimiter, (req, res) => {
     try {
         const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
-        const dateStr = req.query.date || new Date().toISOString().slice(0, 10);
+        const dateStr = safeDate(req.query.date);
         res.json({ word: wordForDate(words, dateStr), date: dateStr });
     } catch (err) {
         console.error('Daily word error:', err);
@@ -43,10 +66,10 @@ app.get('/api/daily', (req, res) => {
 });
 
 // ── GET /api/daily-history ────────────────────────────────────────────────────
-app.get('/api/daily-history', (req, res) => {
+app.get('/api/daily-history', apiLimiter, (req, res) => {
     try {
         const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
-        const baseStr = req.query.date || new Date().toISOString().slice(0, 10);
+        const baseStr = safeDate(req.query.date);
         const base    = new Date(baseStr + 'T12:00:00Z');
         const history = [];
         for (let i = 5; i >= 1; i--) {
@@ -63,9 +86,11 @@ app.get('/api/daily-history', (req, res) => {
 });
 
 // ── GET /api/deezer/search ────────────────────────────────────────────────────
-app.get('/api/deezer/search', async (req, res) => {
+app.get('/api/deezer/search', apiLimiter, async (req, res) => {
     try {
-        const { q, type = 'track', limit = 8 } = req.query;
+        const q     = String(req.query.q || '').slice(0, 200);
+        const type  = req.query.type === 'artist' ? 'artist' : 'track';
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 8, 1), 50);
         if (!q) return res.status(400).json({ error: 'Missing query' });
         const endpoint = type === 'artist' ? 'search/artist' : 'search/track';
         const r = await fetch(`https://api.deezer.com/${endpoint}?q=${encodeURIComponent(q)}&limit=${limit}`);
@@ -79,9 +104,11 @@ app.get('/api/deezer/search', async (req, res) => {
 });
 
 // ── GET /api/deezer/artist/:id/top ───────────────────────────────────────────
-app.get('/api/deezer/artist/:id/top', async (req, res) => {
+app.get('/api/deezer/artist/:id/top', apiLimiter, async (req, res) => {
     try {
-        const r = await fetch(`https://api.deezer.com/artist/${encodeURIComponent(req.params.id)}/top?limit=50`);
+        const id = String(req.params.id).replace(/[^0-9]/g, '');
+        if (!id) return res.status(400).json({ error: 'Invalid artist id' });
+        const r = await fetch(`https://api.deezer.com/artist/${id}/top?limit=50`);
         if (!r.ok) throw new Error(`Deezer error: ${r.status}`);
         const data = await r.json();
         res.json(data.data || []);
@@ -92,9 +119,9 @@ app.get('/api/deezer/artist/:id/top', async (req, res) => {
 });
 
 // ── GET /api/deezer/preview ───────────────────────────────────────────────────
-app.get('/api/deezer/preview', async (req, res) => {
+app.get('/api/deezer/preview', apiLimiter, async (req, res) => {
     try {
-        const { q } = req.query;
+        const q = String(req.query.q || '').slice(0, 200);
         if (!q) return res.status(400).json({ error: 'Missing query' });
         const r = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=1`);
         if (!r.ok) throw new Error('Deezer error');
@@ -172,7 +199,11 @@ async function fetchLyricsServer(trackName, artist) {
 
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function sanitizeName(raw) {
+    return String(raw || '').replace(/[<>"'&]/g, '').slice(0, 32).trim() || 'Player';
 }
 
 // ── DUEL: room state ──────────────────────────────────────────────────────────
@@ -214,7 +245,7 @@ io.on('connection', socket => {
 
         rooms.set(code, {
             players:     [socket.id],
-            names:       { [socket.id]: name || 'Player 1' },
+            names:       { [socket.id]: sanitizeName(name) },
             scores:      { [socket.id]: 0 },
             wordQueue:   shuffleWords(),
             userIds:     { [socket.id]: userId || null },
@@ -248,7 +279,7 @@ io.on('connection', socket => {
         }
 
         room.players.push(socket.id);
-        room.names[socket.id]  = name || 'Player 2';
+        room.names[socket.id]  = sanitizeName(name);
         room.scores[socket.id] = 0;
         room.userIds[socket.id] = userId || null;
         socket.join(code);
@@ -271,27 +302,36 @@ io.on('connection', socket => {
         setTimeout(() => startRound(code), 1000);
     });
 
-    socket.on('submit_song', async ({ trackName, artist, trackData }) => {
+    socket.on('submit_song', async ({ trackName, artist }) => {
         const code = socket.roomCode;
         const room = rooms.get(code);
         if (!room || !room.roundActive) return;
 
+        // Per-socket rate limit: ignore submissions faster than 500ms
+        const now = Date.now();
+        if (socket._lastSubmit && now - socket._lastSubmit < 500) return;
+        socket._lastSubmit = now;
+
         // Player already got a wrong answer this round — ignore
         if (room.wrongPlayers.has(socket.id)) return;
+
+        // Sanitize incoming strings
+        const safeTrack  = String(trackName  || '').slice(0, 200);
+        const safeArtist = String(artist || '').slice(0, 200);
 
         const word = room.word;
 
         // Word in title — not a lockout, just a reminder
-        if (wordInText(word, trackName)) {
+        if (wordInText(word, safeTrack)) {
             socket.emit('submit_result', { result: 'word_in_title' });
             return;
         }
 
         // Record this submission (past the title check, so it's a real attempt)
-        room.submissions[socket.id] = { trackName, artist };
+        room.submissions[socket.id] = { trackName: safeTrack, artist: safeArtist };
 
         // Fetch lyrics server-side — timer keeps running during this
-        const lyrics = await fetchLyricsServer(trackName, artist);
+        const lyrics = await fetchLyricsServer(safeTrack, safeArtist);
 
         // Guard: round may have expired or word changed while awaiting lyrics
         if (!room.roundActive || room.word !== word) return;
@@ -312,7 +352,8 @@ io.on('connection', socket => {
             const oppId    = room.players.find(id => id !== socket.id);
             const oppScore = room.scores[oppId] || 0;
 
-            io.to(code).emit('round_end', { winnerId: socket.id, track: trackData, scores, word, submissions: room.submissions });
+            // Emit only server-verified track info — never trust client trackData
+            io.to(code).emit('round_end', { winnerId: socket.id, track: { title: safeTrack, artist: safeArtist }, scores, word, submissions: room.submissions });
 
             // Win condition: reach ROUNDS_TO_WIN AND be at least 2 ahead
             // (handles deuce at 4-4, 5-5, etc.)
@@ -332,7 +373,7 @@ io.on('connection', socket => {
             socket.emit('submit_result', { result: 'wrong' });
             // Signal the opponent with the song that was tried
             const oppId = room.players.find(id => id !== socket.id);
-            if (oppId) io.to(oppId).emit('opponent_wrong', { trackName, artist });
+            if (oppId) io.to(oppId).emit('opponent_wrong', { trackName: safeTrack, artist: safeArtist });
 
             // If every player is now locked out, skip to next word immediately
             if (room.wrongPlayers.size >= room.players.length) {
