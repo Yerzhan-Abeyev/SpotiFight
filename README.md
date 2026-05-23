@@ -18,7 +18,7 @@ Difficulty scales with your streak, unlocking harder words and higher point mult
 Pick an artist. The game fetches their top tracks via Deezer, analyzes the lyrics, and builds a word pool from their signature vocabulary. Every session is unique to the artist and their themes.
 
 ### Duel Mode
-Real-time 1v1 — create or join a room with a 4-letter code. Both players get the same word and race to find a valid song. First to **6 points** with a **2-point lead** wins (deuce rule).
+Real-time 1v1 — create or join a room with a 6-character code. Both players get the same word and race to find a valid song. First to **6 points** with a **2-point lead** wins (deuce rule).
 
 - Wrong answer locks you out for the round; your opponent sees what you picked.
 - Round ends when one player answers correctly, both get it wrong, or the 20-second timer runs out.
@@ -30,7 +30,7 @@ One word per day, shared across all players. Solved days are tracked in a calend
 
 ## Song Previews
 
-After a correct answer, a 9–10 second audio preview plays automatically with a fade-in/out effect and a brief radio-static intro. Previews are sourced from the Deezer API.
+After a correct answer, a 9–10 second audio preview plays automatically with a fade-in/out effect and a brief radio-static intro. Previews are sourced from the Deezer API. Volume is adjustable via the volume control and persisted across sessions.
 
 ## Personal Records
 
@@ -38,6 +38,22 @@ After a correct answer, a 9–10 second audio preview plays automatically with a
 - **Local mode:** per-artist record, displayed in the artist bar during play.
 
 Records are stored in the browser via `localStorage` and synced to Supabase when signed in.
+
+## Settings
+
+A controls panel in the top-right corner provides:
+
+- **Theme toggle** — switch between dark and light mode with a gradual transition. Preference is saved to `localStorage`.
+- **Volume control** — a vertical slider sets preview volume (0–100%). Saved to `localStorage`.
+- **Calendar** — opens the daily challenge history.
+- **Google sign-in** — authenticate to persist scores.
+
+## Security
+
+- HTTP security headers via [Helmet](https://helmetjs.github.io)
+- Rate limiting on all API routes (60 requests/min)
+- All user-supplied inputs are sanitized and length-capped server-side
+- Socket.io events rate-limited per connection (500ms cooldown on song submissions)
 
 ## Tech
 
@@ -88,6 +104,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ├── globalmode.html    # Global mode
 ├── localmode.html     # Local mode
 ├── duel.html          # Duel mode (real-time 1v1)
+├── theme.css          # Light/dark theme overrides and transition styles
 ├── daily-words.json   # Word pools for daily challenges (weekday / weekend)
 ├── .env               # Optional: PORT override
 └── package.json
