@@ -6,6 +6,9 @@
     <title>SpotiFight – Duel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <script>if(localStorage.getItem('dc_theme')==='light')document.documentElement.classList.add('light');</script>
 <script>
 // ── AUTH GUARD ────────────────────────────────────────────────────────────────
 // Redirect to home if not signed in
@@ -265,7 +268,6 @@
 
             <!-- Word -->
             <div id="word-container" class="text-center" style="display:none;">
-                <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">In lyrics, not in title</p>
                 <div id="word-display"></div>
             </div>
 
@@ -543,7 +545,7 @@ socket.on('round_end', ({ winnerId, track, scores, word, submissions }) => {
     fb.innerHTML = `
         <div class="feedback-box ${iWon ? 'fb-win' : 'fb-lose'}">
             ${iWon ? 'You found it!' : `${esc(oppName)} found it!`}
-            <div style="font-size:0.75rem;font-weight:400;opacity:0.7;margin-top:4px;">"${esc(track.name)}" · next round starting…</div>
+            <div style="font-size:0.75rem;font-weight:400;opacity:0.7;margin-top:4px;">"${esc(track.title)}" · next round starting…</div>
         </div>
         ${renderSubmissions(submissions)}`;
     fb.style.display = 'block';
@@ -601,7 +603,7 @@ socket.on('match_end', ({ winnerId, scores }) => {
         <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#fff;letter-spacing:0.06em;margin-bottom:6px;">
             ${scores[myId] ?? 0} — ${scores[oppId] ?? 0}
         </div>
-        <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${myName} vs ${oppName}</div>
+        <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${esc(myName)} vs ${esc(oppName)}</div>
         <button id="rematch-btn" class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="requestRematch()">Rematch</button>
         <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="declineRematch()">Back to Modes</button>
     `;
@@ -835,6 +837,8 @@ function stopAudio() {
 }
 
 async function playPreview(track) {
+    const vol = parseInt(localStorage.getItem('dc_volume') ?? '70') / 100;
+    if (vol === 0) return;
     stopAudio();
     let url = track.preview_url || null;
     if (!url) {
@@ -847,7 +851,7 @@ async function playPreview(track) {
     if (!url) return;
 
     const dur     = 9000 + Math.random() * 1000; // 9–10s
-    const maxVol  = 0.7;
+    const maxVol  = parseInt(localStorage.getItem('dc_volume') ?? '70') / 100;
     const fadeIn  = 1500;
     const fadeOut = 1500;
 

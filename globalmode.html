@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <script>if(localStorage.getItem('dc_theme')==='light')document.documentElement.classList.add('light');</script>
     <style>
         * { box-sizing: border-box; }
         body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
@@ -173,7 +175,6 @@
         <!-- One-liner -->
         <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
             <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Global Mode</div>
-            <div style="font-size:0.78rem;color:#444;margin-top:6px;">Find a song where the word appears in the lyrics, not in the title.</div>
         </div>
 
         <!-- Difficulty progression (hidden for signed-in users) -->
@@ -197,15 +198,14 @@
 
         <!-- Personal best (shown if a previous run exists) -->
         <div id="best-row" style="display:none;text-align:center;">
-            <div style="font-size:0.6rem;color:#2a2a2a;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">Personal Best</div>
-            <div id="best-row-val" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#555;letter-spacing:0.06em;"></div>
+            <div style="font-size:0.72rem;color:#111;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;font-weight:700;">Personal Best</div>
+            <div id="best-row-val" style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:#222;letter-spacing:0.06em;"></div>
         </div>
 
     </div>
     <!-- ── End pre-game ── -->
 
     <div id="word-container" class="text-center" style="display:none;">
-        <p style="color:#444;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">In lyrics, not in title</p>
         <div id="word-display"></div>
     </div>
 
@@ -258,12 +258,14 @@ const WORDS_EASY = [
     'hard','deep','high','low','slow','fast','good','bad','safe','bright',
     // People
     'girl','boy','baby','friend','angel','mother','father','king','queen',
-    'woman','man','lover','brother','sister','hero','ghost',
+    'woman','man','lover','brother','sister','hero','soldier',
     // Nature & place
     'night','day','life','time','home','world','road','sky','sun','moon',
-    'stars','rain','fire','light','dark','storm','shadow','ocean','river',
-    'door','city','street','room','wall','bed','ground','earth','sea','air',
-    'water','wind','floor','window','town','place','wave','smoke','hill',
+    'stars','rain','fire','light','dark','storm','ocean','river',
+    'door','city','street','room','wall','bed','earth','sea','air',
+    'water','wind','town','place','smoke','snow','blood',
+    // Colors
+    'black','white','blue','red','gold','silver','green',
     // Actions
     'run','fall','fly','rise','dance','fight','hold','break','leave','find',
     'come','walk','lose','move','save','burn','stay','give','take','play',
@@ -272,9 +274,9 @@ const WORDS_EASY = [
     'look','open','close','forget','remember','believe','see','say','want','need',
     // Common song words
     'song','name','way','back','away','tonight','forever','better','never','always',
-    'still','together','again','money','gold','summer','winter','morning','midnight',
+    'still','together','again','money','summer','winter','morning','midnight',
     'music','beat','party','memory','chance','truth','lie','war','peace',
-    'promise','word','dream','light','fire','time','love',
+    'promise','word','crazy','beautiful','perfect','change','down','long',
 ];
 
 // Medium (100): appear in lyrics but need a specific song in mind
@@ -446,6 +448,8 @@ function stopAudio() {
 }
 
 async function playPreview(track) {
+    const vol = parseInt(localStorage.getItem('dc_volume') ?? '70') / 100;
+    if (vol === 0) return;
     stopAudio();
     let url = track.preview_url || null;
     if (!url) {
@@ -458,7 +462,7 @@ async function playPreview(track) {
     if (!url) return;
 
     const dur     = 9000 + Math.random() * 1000; // 9–10s
-    const maxVol  = 0.7;
+    const maxVol  = parseInt(localStorage.getItem('dc_volume') ?? '70') / 100;
     const fadeIn  = 1500;
     const fadeOut = 1500;
 

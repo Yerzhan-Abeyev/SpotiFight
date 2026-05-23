@@ -6,6 +6,9 @@
     <title>SpotiFight – Local Songs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <script>if(localStorage.getItem('dc_theme')==='light')document.documentElement.classList.add('light');</script>
 <script>
 // ── AUTH GUARD ────────────────────────────────────────────────────────────────
 // Redirect to home if not signed in
@@ -804,7 +807,8 @@ async function playPreview(track) {
     if (!url) return;
 
     const dur     = 9000 + Math.random() * 1000; // 9–10s
-    const maxVol  = 0.7;
+    const maxVol  = parseInt(localStorage.getItem('dc_volume') ?? '70') / 100;
+    if (maxVol === 0) return;
     const fadeIn  = 1500;
     const fadeOut = 1500;
 
