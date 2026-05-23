@@ -134,6 +134,27 @@
             .search-input { padding: 12px 14px; font-size: 0.9rem; }
             .btn-icon { display: none; }
         }
+
+        /* ── Leaderboard layout ── */
+        .lb-layout { position: relative; width: 100%; max-width: 576px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .lb-game-col { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .lb-panel { display: none; position: absolute; right: calc(100% + 64px); top: 0; width: 300px; }
+        @media (min-width: 1000px) {
+            .lb-panel.visible { display: block; }
+        }
+        .lb-card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 16px; width: 100%; }
+        .lb-title { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #1DB954; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .lb-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; margin-bottom: 2px; }
+        .lb-row.lb-me { background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.2); }
+        .lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: #333; width: 20px; text-align: center; flex-shrink: 0; }
+        .lb-row.lb-me .lb-rank { color: #1DB954; }
+        .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #777; font-size: 0.78rem; }
+        .lb-row.lb-me .lb-name { color: #fff; font-weight: 600; }
+        .lb-score-val { font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: #444; flex-shrink: 0; }
+        .lb-row.lb-me .lb-score-val { color: #1DB954; }
+        .lb-separator { height: 1px; background: rgba(255,255,255,0.05); margin: 6px 0; }
+        .lb-empty { color: #333; font-size: 0.75rem; text-align: center; padding: 20px 0; line-height: 1.6; }
+        .lb-loading { color: #333; font-size: 0.75rem; text-align: center; padding: 20px 0; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
@@ -143,6 +164,21 @@
     <div style="text-align:right;">
         <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:1.7rem;letter-spacing:0.02em;color:#1DB954;line-height:1;">SpotiFight</div>
         <div style="font-size:0.62rem;color:#2a2a2a;letter-spacing:0.2em;text-transform:uppercase;">Global Songs</div>
+    </div>
+</div>
+
+<!-- Stats bar (shown before game) -->
+<div id="pre-game-stats" class="w-full max-w-xl mb-3 px-1 relative z-10">
+    <div style="display:flex;justify-content:flex-start;align-items:center;gap:20px;">
+        <div>
+            <div class="stat-label">Personal Best</div>
+            <div class="stat-val" id="pg-best-val">—</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div>
+            <div class="stat-label">Games Played</div>
+            <div class="stat-val" id="pg-games-val">0</div>
+        </div>
     </div>
 </div>
 
@@ -166,7 +202,21 @@
     </div>
 </div>
 
-<div class="card w-full max-w-xl rounded-2xl p-7 shadow-2xl relative z-10">
+<!-- ── Leaderboard + game column wrapper ── -->
+<div class="lb-layout">
+
+<!-- LEFT: leaderboard panel (desktop only) -->
+<div id="lb-global" class="lb-panel">
+    <div class="lb-card">
+        <div class="lb-title">Leaderboard</div>
+        <div id="lb-global-list"><div class="lb-loading">Loading…</div></div>
+    </div>
+</div>
+
+<!-- RIGHT: game content -->
+<div class="lb-game-col">
+
+<div class="card w-full rounded-2xl p-7 shadow-2xl relative z-10">
 <div class="flex flex-col items-center gap-5">
 
     <!-- ── Pre-game intro (hidden once game starts) ── -->
@@ -176,12 +226,6 @@
         <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
             <div class="card-title" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.1em;color:#fff;line-height:1;">Global Mode</div>
             <div style="font-size:0.78rem;color:#444;margin-top:6px;">Search any song. The word must appear in the lyrics, not in the title.</div>
-        </div>
-
-        <!-- Personal best (shown if a previous run exists) -->
-        <div id="best-row" style="display:none;text-align:center;">
-            <div style="font-size:0.65rem;color:#333;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">Personal Best</div>
-            <div id="best-row-val" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#444;letter-spacing:0.06em;"></div>
         </div>
 
     </div>
@@ -225,6 +269,9 @@
 </div>
 
 <p class="note" style="margin-top:18px;">Powered by Deezer &amp; lyrics.ovh</p>
+
+</div><!-- end lb-game-col -->
+</div><!-- end lb-layout -->
 
 <script>
 // WORD BANKS
@@ -435,13 +482,22 @@ function saveGlobalBest(s, st) {
         }, { onConflict: 'user_id' }); } catch {} })();
     }
 }
-(function initBestRow() {
+async function incrementGamesPlayed() {
+    if (!currentUser) return;
+    const { data } = await sb.from('global_scores')
+        .select('games_played').eq('user_id', currentUser.id).maybeSingle();
+    const next = (data?.games_played || 0) + 1;
+    await sb.from('global_scores').upsert({
+        user_id: currentUser.id, games_played: next, updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    document.getElementById('pg-games-val').innerText = next;
+}
+function updatePreGameStats(gamesPlayed) {
     const best = getGlobalBest();
-    if (best) {
-        document.getElementById('best-row').style.display = 'block';
-        document.getElementById('best-row-val').innerText = `${best.score} pts  ·  Streak ${best.streak}`;
-    }
-})();
+    document.getElementById('pg-best-val').innerText  = best ? `${best.score} pts` : '—';
+    document.getElementById('pg-games-val').innerText = gamesPlayed ?? '—';
+}
+(function initPreGameStats() { updatePreGameStats(null); })();
 
 // ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
 function stopAudio() {
@@ -513,6 +569,63 @@ async function playPreview(track) {
 }
 
 // ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
+// ── LEADERBOARD ───────────────────────────────────────────────────────────────
+async function loadGlobalLeaderboard() {
+    const listEl = document.getElementById('lb-global-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="lb-loading">Loading…</div>';
+
+    const { data: top10 } = await sb
+        .from('global_scores')
+        .select('best_score, user_id, profiles(username)')
+        .order('best_score', { ascending: false })
+        .limit(10);
+
+    if (!top10?.length) {
+        listEl.innerHTML = '<div class="lb-empty">No scores yet.<br>Be the first!</div>';
+        return;
+    }
+
+    const inTop10 = currentUser && top10.some(r => r.user_id === currentUser.id);
+    let userExtra = null;
+
+    if (currentUser && !inTop10) {
+        const { data: mine } = await sb.from('global_scores')
+            .select('best_score').eq('user_id', currentUser.id).maybeSingle();
+        if (mine) {
+            const { count } = await sb.from('global_scores')
+                .select('*', { count: 'exact', head: true })
+                .gt('best_score', mine.best_score);
+            const { data: myProf } = await sb.from('profiles')
+                .select('username').eq('id', currentUser.id).maybeSingle();
+            userExtra = { rank: (count || 0) + 1, score: mine.best_score, username: myProf?.username || 'You' };
+        }
+    }
+
+    let html = '';
+    top10.forEach((row, i) => {
+        const isMe = row.user_id === currentUser?.id;
+        const name = row.profiles?.username || 'Anonymous';
+        html += `<div class="lb-row${isMe ? ' lb-me' : ''}">
+            <span class="lb-rank">${i + 1}</span>
+            <span class="lb-name">${name}</span>
+            <span class="lb-score-val">${row.best_score}</span>
+        </div>`;
+    });
+    if (userExtra) {
+        html += '<div class="lb-separator"></div>';
+        html += `<div class="lb-row lb-me">
+            <span class="lb-rank">${userExtra.rank}</span>
+            <span class="lb-name">${userExtra.username}</span>
+            <span class="lb-score-val">${userExtra.score}</span>
+        </div>`;
+    }
+    listEl.innerHTML = html;
+}
+
+function showLb() { document.getElementById('lb-global').classList.add('visible'); }
+function hideLb() { document.getElementById('lb-global').classList.remove('visible'); }
+
 function startGame() {
     score  = 0;
     streak = 0;
@@ -520,6 +633,7 @@ function startGame() {
     document.getElementById('score-val').innerText  = '0';
     document.getElementById('streak-val').innerText = '0';
     document.getElementById('score-area').style.display = 'flex';
+    document.getElementById('pre-game-stats').style.display = 'none';
     updateDiffBadge();
     hide('game-over-box');
     hide('pre-game');
@@ -772,11 +886,12 @@ let currentUser = null;
 sb.auth.getSession().then(({ data: { session } }) => {
     currentUser = session?.user || null;
     if (currentUser) onUserReady(currentUser);
+    showLb();
+    loadGlobalLeaderboard();
 });
 
 function onUserReady(user) {
-    // Sync best score from DB into localStorage so the pre-game row shows DB value
-    sb.from('global_scores').select('best_score,best_streak').eq('user_id', user.id).maybeSingle()
+    sb.from('global_scores').select('best_score,best_streak,games_played').eq('user_id', user.id).maybeSingle()
         .then(({ data }) => {
             if (!data) return;
             const local = getGlobalBest();
@@ -784,13 +899,8 @@ function onUserReady(user) {
                 localStorage.setItem('sf_global_best', JSON.stringify({
                     score: data.best_score, streak: data.best_streak, date: ''
                 }));
-                const row = document.getElementById('best-row');
-                const val = document.getElementById('best-row-val');
-                if (row && val && data.best_score > 0) {
-                    val.innerText = `${data.best_score} pts  ·  Streak ${data.best_streak}`;
-                    row.style.display = 'block';
-                }
             }
+            updatePreGameStats(data.games_played || 0);
         });
 }
 function navigateTo(e, url) {
@@ -808,12 +918,9 @@ function showGameOver() {
 
     const prev        = getGlobalBest();
     const isNewRecord = score > 0 && (!prev || score > prev.score);
-    if (isNewRecord) {
-        saveGlobalBest(score, streak);
-        // Update the pre-game best row so it's fresh next time
-        document.getElementById('best-row').style.display  = 'block';
-        document.getElementById('best-row-val').innerText  = `${score} pts  ·  Streak ${streak}`;
-    }
+    if (isNewRecord) saveGlobalBest(score, streak);
+    incrementGamesPlayed();
+    updatePreGameStats();
 
     const recordHtml = isNewRecord
         ? `<div style="font-size:0.7rem;color:#1DB954;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px;">New Record!</div>`
@@ -832,11 +939,16 @@ function showGameOver() {
         </div>
     `;
     box.style.display = 'block';
+    document.getElementById('score-area').style.display = 'none';
+    document.getElementById('pre-game-stats').style.display = 'block';
 
     const btn     = document.getElementById('start-btn');
     btn.innerHTML = '<span class="btn-icon">&#9654;</span> Play Again';
     btn.onclick   = startGame;
     btn.style.display = 'block';
+
+    showLb();
+    loadGlobalLeaderboard();
 }
 </script>
 </body>

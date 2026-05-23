@@ -187,6 +187,27 @@
             #artist-ctx { padding: 8px 12px; }
             .btn-icon { display: none; }
         }
+
+        /* ── Leaderboard layout ── */
+        .lb-layout { position: relative; width: 100%; max-width: 576px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .lb-game-col { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .lb-panel { display: none; position: absolute; right: calc(100% + 64px); top: 0; width: 300px; }
+        @media (min-width: 1000px) {
+            .lb-panel.visible { display: block; }
+        }
+        .lb-card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 16px; width: 100%; }
+        .lb-title { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #1DB954; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .lb-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; margin-bottom: 2px; }
+        .lb-row.lb-me { background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.2); }
+        .lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: #333; width: 20px; text-align: center; flex-shrink: 0; }
+        .lb-row.lb-me .lb-rank { color: #1DB954; }
+        .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #777; font-size: 0.78rem; }
+        .lb-row.lb-me .lb-name { color: #fff; font-weight: 600; }
+        .lb-score-val { font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: #444; flex-shrink: 0; }
+        .lb-row.lb-me .lb-score-val { color: #1DB954; }
+        .lb-separator { height: 1px; background: rgba(255,255,255,0.05); margin: 6px 0; }
+        .lb-empty { color: #333; font-size: 0.75rem; text-align: center; padding: 20px 0; line-height: 1.6; }
+        .lb-loading { color: #333; font-size: 0.75rem; text-align: center; padding: 20px 0; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
@@ -263,7 +284,20 @@
 <!-- ══════════════════════════════════════════════
      VIEW 3: Game
      ══════════════════════════════════════════════ -->
-<div id="view-game" class="w-full max-w-xl flex flex-col items-center relative z-10" style="display:none;">
+<div id="view-game" class="w-full flex flex-col items-center relative z-10" style="display:none;">
+
+<div class="lb-layout">
+
+<!-- LEFT: leaderboard panel (desktop only) -->
+<div id="lb-local" class="lb-panel">
+    <div class="lb-card">
+        <div class="lb-title">Artist Leaderboard</div>
+        <div id="lb-local-list"><div class="lb-loading">Loading…</div></div>
+    </div>
+</div>
+
+<!-- RIGHT: game content -->
+<div class="lb-game-col">
 
     <div class="w-full flex items-center justify-between pt-4 pb-2">
         <a href="/" class="back-link" onclick="navigateTo(event,'/')">&#8592; Modes</a>
@@ -346,7 +380,10 @@
     </div>
 
     <p class="note" style="margin-bottom:16px;">Powered by Deezer &amp; lyrics.ovh</p>
-</div>
+
+</div><!-- end lb-game-col -->
+</div><!-- end lb-layout -->
+</div><!-- end view-game -->
 
 <script>
 // ── CREDENTIALS ───────────────────────────────────────────────────────────────
@@ -714,6 +751,8 @@ async function pickArtist(artist) {
             // Remember this artist for next session
             try { localStorage.setItem('sf_last_artist', JSON.stringify({ id: artist.id, name: artist.name, image: img })); } catch {}
 
+            showLb();
+            loadLocalLeaderboard(artist.id);
             startGame();
         }, 1400);
 
@@ -877,6 +916,65 @@ async function playPreview(track) {
 }
 
 // ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
+// ── LEADERBOARD ───────────────────────────────────────────────────────────────
+async function loadLocalLeaderboard(artistId) {
+    const listEl = document.getElementById('lb-local-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="lb-loading">Loading…</div>';
+
+    const { data: top10 } = await sb
+        .from('local_scores')
+        .select('best_score, user_id, profiles(username)')
+        .eq('artist_id', artistId)
+        .order('best_score', { ascending: false })
+        .limit(10);
+
+    if (!top10?.length) {
+        listEl.innerHTML = '<div class="lb-empty">No scores yet.<br>Be the first!</div>';
+        return;
+    }
+
+    const inTop10 = currentUser && top10.some(r => r.user_id === currentUser.id);
+    let userExtra = null;
+
+    if (currentUser && !inTop10) {
+        const { data: mine } = await sb.from('local_scores')
+            .select('best_score').eq('user_id', currentUser.id).eq('artist_id', artistId).maybeSingle();
+        if (mine) {
+            const { count } = await sb.from('local_scores')
+                .select('*', { count: 'exact', head: true })
+                .eq('artist_id', artistId)
+                .gt('best_score', mine.best_score);
+            const { data: myProf } = await sb.from('profiles')
+                .select('username').eq('id', currentUser.id).maybeSingle();
+            userExtra = { rank: (count || 0) + 1, score: mine.best_score, username: myProf?.username || 'You' };
+        }
+    }
+
+    let html = '';
+    top10.forEach((row, i) => {
+        const isMe = row.user_id === currentUser?.id;
+        const name = row.profiles?.username || 'Anonymous';
+        html += `<div class="lb-row${isMe ? ' lb-me' : ''}">
+            <span class="lb-rank">${i + 1}</span>
+            <span class="lb-name">${name}</span>
+            <span class="lb-score-val">${row.best_score}</span>
+        </div>`;
+    });
+    if (userExtra) {
+        html += '<div class="lb-separator"></div>';
+        html += `<div class="lb-row lb-me">
+            <span class="lb-rank">${userExtra.rank}</span>
+            <span class="lb-name">${userExtra.username}</span>
+            <span class="lb-score-val">${userExtra.score}</span>
+        </div>`;
+    }
+    listEl.innerHTML = html;
+}
+
+function showLb() { document.getElementById('lb-local').classList.add('visible'); }
+function hideLb() { document.getElementById('lb-local').classList.remove('visible'); }
+
 function startGame() {
     score  = 0;
     streak = 0;
@@ -1161,6 +1259,9 @@ function showGameOver() {
     btn.onclick   = startGame;
     btn.style.display = 'block';
     show('change-btn');   // re-enable artist change after game over
+
+    showLb();
+    loadLocalLeaderboard(selectedArtist.id);
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
