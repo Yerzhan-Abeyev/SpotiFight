@@ -336,9 +336,63 @@ html.light .lb-title  { color: #1DB954 !important; border-bottom-color: rgba(0,0
 html.light .lb-rank   { color: #bbb !important; }
 html.light .lb-name   { color: #999 !important; }
 html.light .lb-score-val { color: #bbb !important; }
+html.light .lb-score  { color: #bbb !important; }
 html.light .lb-row.lb-me { background: rgba(29,185,84,0.08) !important; }
-html.light .lb-row.lb-me .lb-rank  { color: #1DB954 !important; }
-html.light .lb-row.lb-me .lb-name  { color: #111 !important; }
+html.light .lb-row.lb-me .lb-rank     { color: #1DB954 !important; }
+html.light .lb-row.lb-me .lb-name     { color: #111 !important; }
 html.light .lb-row.lb-me .lb-score-val { color: #1DB954 !important; }
+html.light .lb-row.lb-me .lb-score    { color: #1DB954 !important; }
 html.light .lb-separator { background: rgba(0,0,0,0.06) !important; }
 html.light .lb-empty, html.light .lb-loading { color: #bbb !important; }
+
+/* ── Home page side panels (leaderboard + profile) ───────────────────────────── */
+html.light #home-lb-panel,
+html.light #home-profile-panel {
+    background: linear-gradient(145deg,#fff,#f5f5f5) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+html.light .lb-panel-title  { color: #1DB954 !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
+html.light .prof-panel-title { color: #1DB954 !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
+
+/* Avatar */
+html.light .prof-avatar {
+    background: rgba(29,185,84,0.1) !important;
+    border-color: rgba(29,185,84,0.3) !important;
+}
+
+/* Username + edit button */
+html.light #prof-username { color: #111 !important; }
+html.light .prof-edit-btn { color: #bbb !important; }
+html.light .prof-edit-btn:hover { color: #1DB954 !important; }
+
+/* Username edit input */
+html.light #prof-username-input {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #111 !important;
+}
+html.light #prof-username-input:focus { border-color: #1DB954 !important; }
+
+/* Save / cancel action buttons */
+html.light .prof-action-btn[style*="1DB954"] { border-color: rgba(29,185,84,0.35) !important; }
+html.light .prof-action-btn[style*="555"]    { border-color: rgba(0,0,0,0.1) !important; color: #aaa !important; }
+
+/* Stat rows */
+html.light .prof-stat-row   { border-bottom-color: rgba(0,0,0,0.06) !important; }
+html.light .prof-stat-label { color: #aaa !important; }
+html.light .prof-stat-val   { color: #555 !important; }
+
+/* Avatar section divider */
+html.light #prof-signed-in > div:first-child {
+    border-bottom-color: rgba(0,0,0,0.07) !important;
+}
+
+/* Friends button */
+html.light .prof-friends-btn {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.08) !important;
+    color: #ccc !important;
+}
+
+/* Signed-out state */
+html.light #prof-signed-out > div { color: #aaa !important; }
