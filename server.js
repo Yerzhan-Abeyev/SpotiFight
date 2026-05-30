@@ -313,6 +313,7 @@ io.on('connection', socket => {
                 [p1]: { name: room.names[p1], score: 0 },
                 [p2]: { name: room.names[p2], score: 0 },
             },
+            userIds: { [p1]: room.userIds[p1], [p2]: room.userIds[p2] },
         });
         // Also tell p1 their own id via a targeted emit
         io.to(p1).emit('your_id', { id: p1 });
@@ -381,7 +382,7 @@ io.on('connection', socket => {
             if (matchOver) {
                 room.matchEnded   = true;
                 room.rematchVotes = new Set();
-                io.to(code).emit('match_end', { winnerId: socket.id, scores });
+                io.to(code).emit('match_end', { winnerId: socket.id, scores, userIds: { ...room.userIds } });
                 // Auto-cleanup if nobody requests rematch within 40s
                 room.cleanupTimer = setTimeout(() => rooms.delete(code), 40_000);
             } else {
