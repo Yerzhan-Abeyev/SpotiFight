@@ -466,11 +466,79 @@
         }
         .prof-friends-btn {
             width: 100%; margin-top: 14px; padding: 10px 14px;
-            background: #111; border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 10px; color: #2a2a2a; font-size: 0.76rem;
-            font-family: 'Inter', sans-serif; cursor: not-allowed;
+            background: #111; border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 10px; color: #777; font-size: 0.76rem;
+            font-family: 'Inter', sans-serif; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: border-color 0.15s, color 0.15s;
         }
+        .prof-friends-btn:hover { border-color: #1DB954; color: #aaa; }
+
+        /* ── Friends modal ── */
+        #friends-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+            z-index: 200; display: flex; align-items: center; justify-content: center;
+            padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+        }
+        #friends-overlay.open    { opacity: 1; pointer-events: auto; }
+        #friends-overlay.closing { opacity: 0; pointer-events: none; }
+        #friends-modal {
+            background: #111; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; width: 100%; max-width: 420px;
+            padding: 28px; position: relative;
+            max-height: 90vh; overflow-y: auto;
+        }
+        #friends-modal::-webkit-scrollbar { width: 4px; }
+        #friends-modal::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
+        #friends-overlay.open    #friends-modal { animation: modalIn  0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+        #friends-overlay.closing #friends-modal { animation: modalOut 0.25s cubic-bezier(0.4,0,1,1) both; }
+
+        #friends-search-input {
+            width: 100%; background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 11px 16px; font-size: 0.88rem;
+            color: #fff; outline: none; font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s; margin-bottom: 8px;
+        }
+        #friends-search-input:focus { border-color: #1DB954; }
+        #friends-search-input::placeholder { color: #444; }
+
+        .fr-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; border-radius: 10px; margin-bottom: 4px;
+            background: #0d0d0d; border: 1px solid rgba(255,255,255,0.04);
+        }
+        .fr-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Bebas Neue', sans-serif; font-size: 1rem; color: #1DB954;
+            flex-shrink: 0;
+        }
+        .fr-name  { flex: 1; font-size: 0.82rem; font-weight: 600; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fr-score { font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem; color: #444; flex-shrink: 0; }
+        .fr-btn {
+            padding: 5px 12px; border-radius: 8px; font-size: 0.72rem;
+            font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer;
+            border: 1px solid; transition: opacity 0.15s; flex-shrink: 0;
+        }
+        .fr-btn:hover { opacity: 0.75; }
+        .fr-btn-add     { background: rgba(29,185,84,0.1);  border-color: rgba(29,185,84,0.3);   color: #1DB954; }
+        .fr-btn-accept  { background: rgba(29,185,84,0.1);  border-color: rgba(29,185,84,0.3);   color: #1DB954; }
+        .fr-btn-decline { background: rgba(255,68,68,0.08); border-color: rgba(255,68,68,0.25);  color: #ff5555; }
+        .fr-btn-pending { background: transparent; border-color: rgba(255,255,255,0.06); color: #444; cursor: default; }
+        .fr-btn-remove  { background: transparent; border-color: rgba(255,255,255,0.06); color: #333; }
+        .fr-btn-remove:hover { border-color: rgba(255,68,68,0.3); color: #ff5555; opacity: 1; }
+
+        .fr-section-title {
+            font-size: 0.58rem; font-weight: 700; letter-spacing: 0.22em;
+            text-transform: uppercase; color: #333;
+            margin: 16px 0 8px; padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .fr-badge { background: #1DB954; color: #000; font-size: 0.6rem; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
+        .fr-empty   { font-size: 0.76rem; color: #333; text-align: center; padding: 14px 0; line-height: 1.6; }
+        .fr-loading { font-size: 0.76rem; color: #333; text-align: center; padding: 10px 0; }
 
         /* ── Mobile ── */
         @media (max-width: 480px) {
@@ -611,10 +679,10 @@
                 </div>
             </div>
 
-            <!-- Friends (coming soon) -->
-            <button class="prof-friends-btn" disabled>
+            <!-- Friends -->
+            <button id="prof-friends-btn" class="prof-friends-btn" onclick="openFriends()">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Friends · Coming Soon
+                Friends
             </button>
         </div>
     </div>
@@ -661,6 +729,36 @@
 </div>
 
 <p class="note relative z-10">Powered by Deezer &amp; lyrics.ovh</p>
+
+<!-- ══════════════════════════════════════════════
+     FRIENDS MODAL
+     ══════════════════════════════════════════════ -->
+<div id="friends-overlay">
+<div id="friends-modal">
+    <button class="modal-close" onclick="closeFriends()">&#10005;</button>
+
+    <div style="margin-bottom:20px;">
+        <div style="font-size:0.62rem;color:#1DB954;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:4px;">Social</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:#fff;line-height:1;">Friends</div>
+    </div>
+
+    <!-- Search -->
+    <input id="friends-search-input" type="text" placeholder="Search by username…" autocomplete="off" oninput="onFriendsSearch(this.value)">
+    <div id="friends-search-results"></div>
+
+    <!-- Incoming requests -->
+    <div id="fr-requests-section" style="display:none;">
+        <div class="fr-section-title">Requests <span class="fr-badge" id="fr-req-badge"></span></div>
+        <div id="fr-requests-list"></div>
+    </div>
+
+    <!-- Friends list -->
+    <div>
+        <div class="fr-section-title">Your Friends</div>
+        <div id="fr-friends-list"><div class="fr-loading">Loading…</div></div>
+    </div>
+</div>
+</div>
 
 <!-- ══════════════════════════════════════════════
      USERNAME SETUP MODAL
@@ -1716,6 +1814,165 @@ async function loadHomeLeaderboard() {
         </div>`;
     }
     listEl.innerHTML = html;
+}
+
+// ── FRIENDS ───────────────────────────────────────────────────────────────────
+let frSearchDebounce = null;
+
+async function openFriends() {
+    if (!currentUser) { authAction(); return; }
+    const overlay = document.getElementById('friends-overlay');
+    overlay.classList.remove('open', 'closing');
+    void document.getElementById('friends-modal').offsetWidth;
+    overlay.classList.add('open');
+    document.getElementById('friends-search-input').value = '';
+    document.getElementById('friends-search-results').innerHTML = '';
+    loadFriendsList();
+}
+
+function closeFriends() {
+    const el = document.getElementById('friends-overlay');
+    el.classList.add('closing');
+    setTimeout(() => el.classList.remove('open', 'closing'), 240);
+}
+
+document.getElementById('friends-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('friends-overlay')) closeFriends();
+});
+
+async function loadFriendsList() {
+    const friendsList = document.getElementById('fr-friends-list');
+    const reqSection  = document.getElementById('fr-requests-section');
+    const reqList     = document.getElementById('fr-requests-list');
+    friendsList.innerHTML = '<div class="fr-loading">Loading…</div>';
+
+    const { data: ships } = await sb.from('friendships')
+        .select('id, requester_id, addressee_id, status')
+        .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`);
+
+    if (!ships) { friendsList.innerHTML = '<div class="fr-empty">Could not load.</div>'; return; }
+
+    const otherIds = [...new Set(ships.map(s => s.requester_id === currentUser.id ? s.addressee_id : s.requester_id))];
+
+    const [profRes, scoreRes] = await Promise.all([
+        otherIds.length ? sb.from('profiles').select('id, username').in('id', otherIds) : Promise.resolve({ data: [] }),
+        otherIds.length ? sb.from('global_scores').select('user_id, best_score').in('user_id', otherIds) : Promise.resolve({ data: [] }),
+    ]);
+
+    const profMap  = Object.fromEntries((profRes.data  || []).map(p => [p.id, p.username]));
+    const scoreMap = Object.fromEntries((scoreRes.data || []).map(s => [s.user_id, s.best_score]));
+
+    const accepted = ships.filter(s => s.status === 'accepted');
+    const incoming = ships.filter(s => s.status === 'pending' && s.addressee_id === currentUser.id);
+
+    // Incoming requests
+    if (incoming.length) {
+        reqSection.style.display = 'block';
+        document.getElementById('fr-req-badge').textContent = incoming.length;
+        reqList.innerHTML = incoming.map(s => {
+            const name = profMap[s.requester_id] || 'Unknown';
+            return `<div class="fr-row">
+                <div class="fr-avatar">${name.charAt(0).toUpperCase()}</div>
+                <span class="fr-name">${dcEsc(name)}</span>
+                <button class="fr-btn fr-btn-accept"  onclick="respondRequest('${s.id}','accepted')">Accept</button>
+                <button class="fr-btn fr-btn-decline" onclick="respondRequest('${s.id}','declined')">Decline</button>
+            </div>`;
+        }).join('');
+    } else {
+        reqSection.style.display = 'none';
+    }
+    updateFriendsBadge(incoming.length);
+
+    // Friends list
+    if (!accepted.length) {
+        friendsList.innerHTML = '<div class="fr-empty">No friends yet.<br>Search for players above to add them.</div>';
+        return;
+    }
+    friendsList.innerHTML = accepted.map(s => {
+        const fId  = s.requester_id === currentUser.id ? s.addressee_id : s.requester_id;
+        const name = profMap[fId] || 'Unknown';
+        const best = scoreMap[fId] ?? null;
+        return `<div class="fr-row">
+            <div class="fr-avatar">${name.charAt(0).toUpperCase()}</div>
+            <span class="fr-name">${dcEsc(name)}</span>
+            ${best !== null ? `<span class="fr-score">${best}</span>` : ''}
+            <button class="fr-btn fr-btn-remove" onclick="removeFriend('${s.id}')" title="Remove">&#10005;</button>
+        </div>`;
+    }).join('');
+}
+
+function updateFriendsBadge(count) {
+    const btn = document.getElementById('prof-friends-btn');
+    if (!btn) return;
+    const old = btn.querySelector('.fr-notif');
+    if (old) old.remove();
+    if (count > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'fr-notif fr-badge';
+        badge.textContent = count;
+        badge.style.marginLeft = '4px';
+        btn.appendChild(badge);
+    }
+}
+
+let frSearchActive = false;
+function onFriendsSearch(val) {
+    clearTimeout(frSearchDebounce);
+    const el = document.getElementById('friends-search-results');
+    if (!val.trim()) { el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="fr-loading">Searching…</div>';
+    frSearchDebounce = setTimeout(() => runFriendsSearch(val.trim()), 350);
+}
+
+async function runFriendsSearch(q) {
+    const el = document.getElementById('friends-search-results');
+
+    const [usersRes, shipsRes] = await Promise.all([
+        sb.from('profiles').select('id, username').ilike('username', `%${q}%`).neq('id', currentUser.id).limit(6),
+        sb.from('friendships').select('id, requester_id, addressee_id, status')
+            .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`),
+    ]);
+
+    const users = usersRes.data || [];
+    if (!users.length) { el.innerHTML = '<div class="fr-empty">No users found.</div>'; return; }
+
+    const shipMap = {};
+    (shipsRes.data || []).forEach(s => {
+        const otherId = s.requester_id === currentUser.id ? s.addressee_id : s.requester_id;
+        shipMap[otherId] = s;
+    });
+
+    el.innerHTML = users.map(u => {
+        const ship = shipMap[u.id];
+        let btn = `<button class="fr-btn fr-btn-add" onclick="sendFriendRequest('${u.id}',this)">Add</button>`;
+        if (ship) {
+            if (ship.status === 'accepted')                      btn = `<span class="fr-btn fr-btn-pending">Friends</span>`;
+            else if (ship.requester_id === currentUser.id)       btn = `<span class="fr-btn fr-btn-pending">Sent</span>`;
+            else btn = `<button class="fr-btn fr-btn-accept" onclick="respondRequest('${ship.id}','accepted')">Accept</button>`;
+        }
+        return `<div class="fr-row">
+            <div class="fr-avatar">${u.username.charAt(0).toUpperCase()}</div>
+            <span class="fr-name">${dcEsc(u.username)}</span>
+            ${btn}
+        </div>`;
+    }).join('');
+}
+
+async function sendFriendRequest(addresseeId, btn) {
+    btn.textContent = '…'; btn.disabled = true;
+    const { error } = await sb.from('friendships').insert({ requester_id: currentUser.id, addressee_id: addresseeId });
+    if (error) { btn.textContent = 'Error'; btn.disabled = false; return; }
+    btn.textContent = 'Sent'; btn.className = 'fr-btn fr-btn-pending';
+}
+
+async function respondRequest(shipId, status) {
+    await sb.from('friendships').update({ status }).eq('id', shipId);
+    loadFriendsList();
+}
+
+async function removeFriend(shipId) {
+    await sb.from('friendships').delete().eq('id', shipId);
+    loadFriendsList();
 }
 
 function navigateTo(e, url) {

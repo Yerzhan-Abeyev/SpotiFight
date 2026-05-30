@@ -390,9 +390,27 @@ html.light #prof-signed-in > div:first-child {
 /* Friends button */
 html.light .prof-friends-btn {
     background: #f0f0f0 !important;
-    border-color: rgba(0,0,0,0.08) !important;
-    color: #ccc !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #888 !important;
 }
+html.light .prof-friends-btn:hover { border-color: #1DB954 !important; color: #444 !important; }
 
 /* Signed-out state */
 html.light #prof-signed-out > div { color: #aaa !important; }
+
+/* ── Friends modal ───────────────────────────────────────────────────────────── */
+html.light #friends-overlay  { background: rgba(220,220,220,0.92) !important; }
+html.light #friends-modal    { background: #fff !important; border-color: rgba(0,0,0,0.12) !important; }
+html.light #friends-search-input {
+    background: #f5f5f5 !important; border-color: rgba(0,0,0,0.1) !important; color: #111 !important;
+}
+html.light #friends-search-input::placeholder { color: #bbb !important; }
+html.light .fr-row    { background: #f5f5f5 !important; border-color: rgba(0,0,0,0.06) !important; }
+html.light .fr-name   { color: #222 !important; }
+html.light .fr-score  { color: #bbb !important; }
+html.light .fr-avatar { background: rgba(29,185,84,0.1) !important; border-color: rgba(29,185,84,0.3) !important; }
+html.light .fr-section-title { color: #bbb !important; border-bottom-color: rgba(0,0,0,0.07) !important; }
+html.light .fr-btn-pending { border-color: rgba(0,0,0,0.08) !important; color: #bbb !important; }
+html.light .fr-btn-remove  { border-color: rgba(0,0,0,0.08) !important; color: #ccc !important; }
+html.light .fr-btn-remove:hover { border-color: rgba(200,50,50,0.4) !important; color: #c0392b !important; }
+html.light .fr-empty, html.light .fr-loading { color: #bbb !important; }
