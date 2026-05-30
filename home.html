@@ -1705,11 +1705,12 @@ async function authAction() {
 // On page load: check if already signed in and update button
 (async function initAuth() {
     const { data: { session } } = await sb.auth.getSession();
+
     if (session) {
         currentUser = session.user;
         updateAuthUI(session.user);
         checkUsername(session.user);
-        setupPresence(session.user.id);
+        if (!presenceChannel) setupPresence(session.user.id);
         subscribeToNotifications(session.user.id);
         loadNotifications();
         // Check DB for today's completion to update calendar button
@@ -1720,20 +1721,24 @@ async function authAction() {
             .maybeSingle();
         if (data?.solved) markDoneUI();
     } else {
-        // Not signed in — check localStorage
+        // Not signed in — restore correct onclick handlers for locked cards
+        updateAuthUI(null);
         if (localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
     }
 
     loadHomeLeaderboard();
     loadHomeProfile();
 
-    // Also listen for auth changes (e.g. after redirect back from Google)
-    sb.auth.onAuthStateChange((_event, session) => {
-        currentUser = session?.user || null;
+    // Listen for auth changes (e.g. after redirect back from Google)
+    sb.auth.onAuthStateChange((_event, newSession) => {
+        const newUser = newSession?.user || null;
+        // Skip redundant fires for the same signed-in user (TOKEN_REFRESHED, INITIAL_SESSION)
+        if (newUser?.id && newUser.id === currentUser?.id) return;
+        currentUser = newUser;
         updateAuthUI(currentUser);
         if (currentUser) {
             checkUsername(currentUser);
-            setupPresence(currentUser.id);
+            if (!presenceChannel) setupPresence(currentUser.id);
             subscribeToNotifications(currentUser.id);
             loadNotifications();
         }
@@ -2201,7 +2206,10 @@ async function notifDeclineDuel(inviteId) {
     loadNotifications();
 }
 
+let notifSubscribedUserId = null;
 function subscribeToNotifications(userId) {
+    if (notifSubscribedUserId === userId) return;
+    notifSubscribedUserId = userId;
     sb.channel('notif:duel:' + userId)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'duel_invites', filter: `receiver_id=eq.${userId}` }, loadNotifications)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'duel_invites', filter: `receiver_id=eq.${userId}` }, loadNotifications)
