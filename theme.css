@@ -414,3 +414,28 @@ html.light .fr-btn-pending { border-color: rgba(0,0,0,0.08) !important; color: #
 html.light .fr-btn-remove  { border-color: rgba(0,0,0,0.08) !important; color: #ccc !important; }
 html.light .fr-btn-remove:hover { border-color: rgba(200,50,50,0.4) !important; color: #c0392b !important; }
 html.light .fr-empty, html.light .fr-loading { color: #bbb !important; }
+
+/* ── Friend code row in profile ────────────────────────────────────────────── */
+html.light #prof-friend-code { color: #888 !important; }
+html.light .prof-code-copy   { color: #bbb !important; }
+html.light .prof-code-copy:hover { color: #1DB954 !important; }
+
+/* ── Notifications section in profile ─────────────────────────────────────── */
+html.light #prof-notif-section { border-top-color: rgba(0,0,0,0.07) !important; }
+html.light #prof-notif-title   { color: #aaa !important; }
+html.light .notif-item { background: #f0f0f0 !important; border-color: rgba(0,0,0,0.06) !important; }
+html.light .notif-item-name { color: #222 !important; }
+html.light .notif-item-type { color: #aaa !important; }
+html.light .notif-btn-decline { border-color: rgba(0,0,0,0.08) !important; color: #bbb !important; }
+html.light .notif-btn-decline:hover { border-color: rgba(200,50,50,0.4) !important; color: #c0392b !important; opacity: 1 !important; }
+
+/* ── Online dot + duel button in friends list ─────────────────────────────── */
+html.light .fr-btn-duel { background: rgba(29,185,84,0.08) !important; border-color: rgba(29,185,84,0.25) !important; }
+
+/* ── My friend code in friends modal ──────────────────────────────────────── */
+html.light #friends-my-id-box {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+html.light #friends-my-id-label { color: #aaa !important; }
+html.light #friends-my-id-val   { color: #1DB954 !important; }

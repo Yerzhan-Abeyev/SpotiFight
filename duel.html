@@ -333,7 +333,9 @@ const socket = io();
 let myId             = null;
 let myName           = '';
 let oppName          = '';
+let oppUserId        = null;
 let roomCode         = null;
+let pendingChallengeFriendId = null;
 let currentWord      = '';
 let roundActive      = false;
 let lockedOut        = false;   // true after a wrong answer — can't pick again this round
@@ -432,6 +434,18 @@ socket.on('room_created', ({ code }) => {
     roomCode = code;
     document.getElementById('waiting-code').innerText = code;
     try { sessionStorage.setItem('sf_duel_rejoin', JSON.stringify({ code, userId: currentUser?.id || null })); } catch {}
+
+    // If this room was created for a friend challenge, record the invite
+    if (pendingChallengeFriendId && currentUser) {
+        sb.from('duel_invites').insert({
+            sender_id:   currentUser.id,
+            receiver_id: pendingChallengeFriendId,
+            room_code:   code,
+            status:      'sent',
+        }).then();
+        pendingChallengeFriendId = null;
+    }
+
     showView('view-waiting');
 });
 
@@ -450,16 +464,15 @@ socket.on('join_error', ({ msg }) => {
     showLobbyError(msg);
 });
 
-socket.on('game_start', ({ players }) => {
+socket.on('game_start', ({ players, userIds }) => {
     // Determine my id vs opponent id
     const ids = Object.keys(players);
-    // myId is set via 'your_id' — but join_room fires game_start first for p2,
-    // so we set myId from socket.id directly
     myId = socket.id;
     const oppId = ids.find(id => id !== myId);
 
-    myName  = players[myId]?.name  || 'You';
-    oppName = players[oppId]?.name || 'Opponent';
+    myName   = players[myId]?.name  || 'You';
+    oppName  = players[oppId]?.name || 'Opponent';
+    oppUserId = userIds?.[oppId] || null;
 
     document.getElementById('my-name-label').innerText  = myName;
     document.getElementById('opp-name-label').innerText = oppName;
@@ -603,7 +616,7 @@ socket.on('opponent_wrong', ({ trackName, artist }) => {
     }, 3000);
 });
 
-socket.on('match_end', ({ winnerId, scores }) => {
+socket.on('match_end', ({ winnerId, scores, userIds }) => {
     roundActive = false;
     cancelAnimationFrame(timerRAF);
     hideCountdown();
@@ -611,6 +624,13 @@ socket.on('match_end', ({ winnerId, scores }) => {
     const ids   = Object.keys(scores);
     const oppId = ids.find(id => id !== myId);
     const iWon  = winnerId === myId;
+
+    // Update oppUserId if server sent it
+    if (userIds) oppUserId = userIds[oppId] || oppUserId;
+
+    const addFriendBtn = (oppUserId && currentUser && oppUserId !== currentUser.id)
+        ? `<button id="add-opp-friend-btn" class="btn-secondary" style="max-width:240px;margin:0 auto 10px;" onclick="addFriendAfterDuel('${oppUserId}')">+ Add Friend</button>`
+        : '';
 
     document.getElementById('over-card').innerHTML = `
         <div class="over-result ${iWon ? 'over-win' : 'over-lose'}" style="font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:0.1em;color:${iWon ? '#1DB954' : '#ff4444'};line-height:1;margin-bottom:8px;">
@@ -621,6 +641,7 @@ socket.on('match_end', ({ winnerId, scores }) => {
         </div>
         <div style="font-size:0.75rem;color:#444;margin-bottom:24px;">${esc(myName)} vs ${esc(oppName)}</div>
         <button id="rematch-btn" class="btn-primary" style="max-width:240px;margin:0 auto 10px;" onclick="requestRematch()">Rematch</button>
+        ${addFriendBtn}
         <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="declineRematch()">Back to Modes</button>
     `;
     showView('view-over');
@@ -1004,13 +1025,49 @@ sb.auth.getSession().then(({ data: { session } }) => {
 });
 
 function onUserReady(user) {
-    // Load saved display name from profiles table, fallback to Google full_name
     sb.from('profiles').select('display_name').eq('id', user.id).maybeSingle()
         .then(({ data }) => {
             const name = data?.display_name || user.user_metadata?.full_name?.split(' ')[0] || '';
             const input = document.getElementById('name-input');
             if (name && !input.value) input.value = name;
+
+            // Handle ?challengeFriend=<receiverId> — auto-create room
+            const params   = new URLSearchParams(window.location.search);
+            const chalId   = params.get('challengeFriend');
+            const accId    = params.get('acceptInvite');
+            const accCode  = params.get('roomCode');
+
+            if (chalId) {
+                pendingChallengeFriendId = chalId;
+                myName = input.value || name || 'Player';
+                socket.emit('create_room', { name: myName, userId: user.id });
+                // Clean URL so a refresh doesn't re-trigger
+                history.replaceState({}, '', 'duel.html');
+            } else if (accId && accCode) {
+                myName = input.value || name || 'Player';
+                input.value = myName;
+                const code = accCode.toUpperCase();
+                [...document.querySelectorAll('.code-char')].forEach((el, i) => { el.value = code[i] || ''; });
+                socket.emit('join_room', { code, name: myName, userId: user.id });
+                sb.from('duel_invites').update({ status: 'accepted' }).eq('id', accId).then();
+                history.replaceState({}, '', 'duel.html');
+            }
         });
+
+    // Presence: mark this user as online
+    const ch = sb.channel('presence:online', { config: { presence: { key: user.id } } });
+    ch.subscribe(async status => { if (status === 'SUBSCRIBED') await ch.track({ userId: user.id }); });
+}
+
+async function addFriendAfterDuel(userId) {
+    const btn = document.getElementById('add-opp-friend-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    const { error } = await sb.from('friendships').insert({ requester_id: currentUser.id, addressee_id: userId });
+    if (btn) {
+        if (error && error.code === '23505') { btn.textContent = 'Already friends'; }
+        else if (error) { btn.textContent = 'Error'; btn.disabled = false; }
+        else { btn.textContent = 'Request Sent!'; btn.style.opacity = '0.55'; }
+    }
 }
 
 // ── Code char boxes: auto-advance, backspace, paste, Enter ───────────────────

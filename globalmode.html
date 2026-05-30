@@ -891,6 +891,10 @@ sb.auth.getSession().then(({ data: { session } }) => {
 });
 
 function onUserReady(user) {
+    // Track online presence so friends can see us
+    const _pCh = sb.channel('presence:online', { config: { presence: { key: user.id } } });
+    _pCh.subscribe(async s => { if (s === 'SUBSCRIBED') await _pCh.track({ userId: user.id }); });
+
     sb.from('global_scores').select('best_score,best_streak,games_played').eq('user_id', user.id).maybeSingle()
         .then(({ data }) => {
             if (!data) return;

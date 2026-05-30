@@ -1289,7 +1289,9 @@ sb.auth.getSession().then(({ data: { session } }) => {
 });
 
 function onUserReady(user) {
-    // Called when user is confirmed — artist sync happens per-artist on selection
+    // Track online presence so friends can see us
+    const _pCh = sb.channel('presence:online', { config: { presence: { key: user.id } } });
+    _pCh.subscribe(async s => { if (s === 'SUBSCRIBED') await _pCh.track({ userId: user.id }); });
 }
 
 async function syncArtistBestFromDB(artistId) {

@@ -539,6 +539,40 @@
         .fr-badge { background: #1DB954; color: #000; font-size: 0.6rem; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
         .fr-empty   { font-size: 0.76rem; color: #333; text-align: center; padding: 14px 0; line-height: 1.6; }
         .fr-loading { font-size: 0.76rem; color: #333; text-align: center; padding: 10px 0; }
+        .fr-btn-duel { background: rgba(29,185,84,0.08); border-color: rgba(29,185,84,0.2); color: #1DB954; font-size: 0.65rem; letter-spacing: 0.06em; }
+        .fr-btn-duel:hover { background: rgba(29,185,84,0.16); opacity: 1; }
+
+        /* ── Online dot ── */
+        .online-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #1DB954;
+            position: absolute; bottom: -1px; right: -1px;
+            border: 2px solid #111;
+        }
+        .fr-avatar-wrap { position: relative; flex-shrink: 0; }
+
+        /* ── Notification items in profile ── */
+        .notif-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border-radius: 8px; margin-bottom: 4px;
+            background: #0d0d0d; border: 1px solid rgba(255,255,255,0.05); font-size: 0.74rem;
+        }
+        .notif-item-name { flex: 1; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+        .notif-item-type { font-size: 0.62rem; color: #444; margin-top: 1px; }
+        .notif-btn { padding: 4px 10px; border-radius: 6px; font-size: 0.68rem; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; border: 1px solid; transition: opacity 0.15s; flex-shrink: 0; }
+        .notif-btn:hover { opacity: 0.75; }
+        .notif-btn-accept  { background: rgba(29,185,84,0.1);  border-color: rgba(29,185,84,0.3);   color: #1DB954; }
+        .notif-btn-join    { background: rgba(29,185,84,0.1);  border-color: rgba(29,185,84,0.3);   color: #1DB954; font-size: 0.72rem; letter-spacing: 0.04em; }
+        .notif-btn-decline { background: transparent; border-color: rgba(255,255,255,0.06); color: #333; }
+        .notif-btn-decline:hover { border-color: rgba(255,68,68,0.3); color: #ff5555; opacity: 1; }
+
+        /* ── Friend code in friends modal ── */
+        #friends-my-id-box {
+            background: #0d0d0d; border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px; padding: 9px 12px; margin-bottom: 14px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        #friends-my-id-label { font-size: 0.58rem; color: #333; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 2px; }
+        #friends-my-id-val   { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.12em; color: #1DB954; }
 
         /* ── Mobile ── */
         @media (max-width: 480px) {
@@ -647,6 +681,13 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                     </div>
+                    <!-- Friend ID row -->
+                    <div id="prof-friend-code-row" style="display:none;align-items:center;gap:5px;margin-top:3px;">
+                        <span id="prof-friend-code" style="font-family:'Bebas Neue',sans-serif;font-size:0.78rem;letter-spacing:0.12em;color:#333;"></span>
+                        <button class="prof-code-copy" onclick="copyFriendCode()" title="Copy Friend ID" style="background:none;border:none;color:#333;cursor:pointer;padding:2px;display:flex;align-items:center;transition:color 0.15s;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                    </div>
                     <!-- Edit mode -->
                     <div id="prof-name-edit" style="display:none;">
                         <input id="prof-username-input" type="text" maxlength="20" autocomplete="off" oninput="onProfUsernameInput()" onkeydown="onProfUsernameKey(event)">
@@ -677,6 +718,15 @@
                     <span class="prof-stat-label">Daily Streak</span>
                     <span class="prof-stat-val" id="prof-streak">—</span>
                 </div>
+            </div>
+
+            <!-- Notifications -->
+            <div id="prof-notif-section" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
+                <div id="prof-notif-title" style="font-size:0.58rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#444;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+                    <span>Notifications</span>
+                    <span id="prof-notif-badge" style="background:#1DB954;color:#000;font-size:0.6rem;padding:1px 6px;border-radius:999px;font-weight:700;"></span>
+                </div>
+                <div id="prof-notif-list"></div>
             </div>
 
             <!-- Friends -->
@@ -742,8 +792,17 @@
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:#fff;line-height:1;">Friends</div>
     </div>
 
+    <!-- Your Friend ID -->
+    <div id="friends-my-id-box" style="display:none;">
+        <div>
+            <div id="friends-my-id-label">Your Friend ID</div>
+            <div id="friends-my-id-val"></div>
+        </div>
+        <button onclick="copyFriendCode()" style="background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.2);border-radius:8px;padding:5px 10px;color:#1DB954;font-size:0.72rem;font-family:'Inter',sans-serif;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(29,185,84,0.15)'" onmouseout="this.style.background='rgba(29,185,84,0.08)'">Copy</button>
+    </div>
+
     <!-- Search -->
-    <input id="friends-search-input" type="text" placeholder="Search by username…" autocomplete="off" oninput="onFriendsSearch(this.value)">
+    <input id="friends-search-input" type="text" placeholder="Search by username or #CODE…" autocomplete="off" oninput="onFriendsSearch(this.value)">
     <div id="friends-search-results"></div>
 
     <!-- Incoming requests -->
@@ -1651,6 +1710,9 @@ async function authAction() {
         currentUser = session.user;
         updateAuthUI(session.user);
         checkUsername(session.user);
+        setupPresence(session.user.id);
+        subscribeToNotifications(session.user.id);
+        loadNotifications();
         // Check DB for today's completion to update calendar button
         const { data } = await sb.from('daily_results')
             .select('solved')
@@ -1670,7 +1732,12 @@ async function authAction() {
     sb.auth.onAuthStateChange((_event, session) => {
         currentUser = session?.user || null;
         updateAuthUI(currentUser);
-        if (currentUser) checkUsername(currentUser);
+        if (currentUser) {
+            checkUsername(currentUser);
+            setupPresence(currentUser.id);
+            subscribeToNotifications(currentUser.id);
+            loadNotifications();
+        }
         loadHomeLeaderboard();
         loadHomeProfile();
     });
@@ -1689,7 +1756,7 @@ async function loadHomeProfile() {
     document.getElementById('prof-signed-in').style.display  = 'block';
 
     const [profRes, scoreRes, dailyRes] = await Promise.all([
-        sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
+        sb.from('profiles').select('username, friend_code').eq('id', currentUser.id).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
         sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
     ]);
@@ -1698,6 +1765,16 @@ async function loadHomeProfile() {
     profCurrentUsername = username;
     document.getElementById('prof-username').textContent = username;
     document.getElementById('prof-avatar').textContent   = username.charAt(0).toUpperCase();
+
+    // Friend code
+    let code = profRes.data?.friend_code;
+    if (!code) code = await ensureFriendCode(currentUser.id);
+    myFriendCode = code;
+    document.getElementById('prof-friend-code').textContent = '#' + code;
+    document.getElementById('prof-friend-code-row').style.display = 'flex';
+    // Also update friends modal ID box
+    document.getElementById('friends-my-id-val').textContent  = '#' + code;
+    document.getElementById('friends-my-id-box').style.display = 'flex';
 
     const best  = scoreRes.data?.best_score   ?? null;
     const games = scoreRes.data?.games_played ?? null;
@@ -1889,13 +1966,18 @@ async function loadFriendsList() {
         return;
     }
     friendsList.innerHTML = accepted.map(s => {
-        const fId  = s.requester_id === currentUser.id ? s.addressee_id : s.requester_id;
-        const name = profMap[fId] || 'Unknown';
-        const best = scoreMap[fId] ?? null;
+        const fId     = s.requester_id === currentUser.id ? s.addressee_id : s.requester_id;
+        const name    = profMap[fId] || 'Unknown';
+        const best    = scoreMap[fId] ?? null;
+        const isOnline = onlineUserIds.has(fId);
         return `<div class="fr-row">
-            <div class="fr-avatar">${name.charAt(0).toUpperCase()}</div>
+            <div class="fr-avatar-wrap">
+                <div class="fr-avatar">${name.charAt(0).toUpperCase()}</div>
+                ${isOnline ? '<div class="online-dot"></div>' : ''}
+            </div>
             <span class="fr-name">${dcEsc(name)}</span>
             ${best !== null ? `<span class="fr-score">${best}</span>` : ''}
+            ${isOnline ? `<button class="fr-btn fr-btn-duel" onclick="sendDuelInvite('${fId}')" title="Challenge to Duel">⚔ Duel</button>` : ''}
             <button class="fr-btn fr-btn-remove" onclick="removeFriend('${s.id}')" title="Remove">&#10005;</button>
         </div>`;
     }).join('');
@@ -1927,8 +2009,13 @@ function onFriendsSearch(val) {
 async function runFriendsSearch(q) {
     const el = document.getElementById('friends-search-results');
 
+    const isCodeSearch = q.startsWith('#');
+    const codeVal      = isCodeSearch ? q.slice(1).toUpperCase() : null;
+
     const [usersRes, shipsRes] = await Promise.all([
-        sb.from('profiles').select('id, username').ilike('username', `%${q}%`).neq('id', currentUser.id).limit(6),
+        isCodeSearch
+            ? sb.from('profiles').select('id, username').eq('friend_code', codeVal).neq('id', currentUser.id).limit(1)
+            : sb.from('profiles').select('id, username').ilike('username', `%${q}%`).neq('id', currentUser.id).limit(6),
         sb.from('friendships').select('id, requester_id, addressee_id, status')
             .or(`requester_id.eq.${currentUser.id},addressee_id.eq.${currentUser.id}`),
     ]);
@@ -1983,6 +2070,156 @@ function navigateTo(e, url) {
 window.addEventListener('pageshow', e => {
     if (e.persisted) document.body.classList.remove('page-exit');
 });
+
+// ── FRIEND CODE ───────────────────────────────────────────────────────────────
+let myFriendCode = null;
+
+function genFriendCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+async function ensureFriendCode(userId) {
+    const { data } = await sb.from('profiles').select('friend_code').eq('id', userId).maybeSingle();
+    if (data?.friend_code) { myFriendCode = data.friend_code; return data.friend_code; }
+    let code, exists = true;
+    while (exists) {
+        code = genFriendCode();
+        const { data: chk } = await sb.from('profiles').select('id').eq('friend_code', code).maybeSingle();
+        exists = !!chk;
+    }
+    await sb.from('profiles').update({ friend_code: code }).eq('id', userId);
+    myFriendCode = code;
+    return code;
+}
+
+function copyFriendCode() {
+    if (!myFriendCode) return;
+    navigator.clipboard.writeText('#' + myFriendCode).then(() => {
+        const btn = document.querySelector('.prof-code-copy');
+        if (btn) { btn.style.color = '#1DB954'; setTimeout(() => { btn.style.color = ''; }, 1200); }
+    });
+}
+
+// ── ONLINE PRESENCE ───────────────────────────────────────────────────────────
+let presenceChannel = null;
+const onlineUserIds = new Set();
+
+function setupPresence(userId) {
+    presenceChannel = sb.channel('presence:online', { config: { presence: { key: userId } } });
+    presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+            onlineUserIds.clear();
+            Object.values(presenceChannel.presenceState()).flat().forEach(p => onlineUserIds.add(p.userId));
+            // Refresh friends list if modal is open
+            if (document.getElementById('friends-overlay').classList.contains('open')) loadFriendsList();
+        })
+        .subscribe(async status => {
+            if (status === 'SUBSCRIBED') await presenceChannel.track({ userId });
+        });
+}
+
+// ── NOTIFICATIONS IN PROFILE ─────────────────────────────────────────────────
+async function loadNotifications() {
+    if (!currentUser) return;
+
+    // Pending friend requests (incoming)
+    const { data: ships } = await sb.from('friendships')
+        .select('id, requester_id')
+        .eq('addressee_id', currentUser.id)
+        .eq('status', 'pending');
+
+    // Duel invites sent to me (with room_code, last 10 min)
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: duels } = await sb.from('duel_invites')
+        .select('id, sender_id, room_code, status')
+        .eq('receiver_id', currentUser.id)
+        .eq('status', 'sent')
+        .gte('created_at', since);
+
+    const friendReqs  = ships || [];
+    const duelInvites = (duels || []).filter(d => d.room_code);
+
+    // Fetch names for requesters and senders
+    const allIds = [...new Set([...friendReqs.map(s => s.requester_id), ...duelInvites.map(d => d.sender_id)])];
+    const nameMap = {};
+    if (allIds.length) {
+        const { data: profs } = await sb.from('profiles').select('id, username').in('id', allIds);
+        (profs || []).forEach(p => { nameMap[p.id] = p.username || 'Unknown'; });
+    }
+
+    const total = friendReqs.length + duelInvites.length;
+    const section = document.getElementById('prof-notif-section');
+    const badge   = document.getElementById('prof-notif-badge');
+    const list    = document.getElementById('prof-notif-list');
+
+    if (total === 0) { section.style.display = 'none'; updateFriendsBadge(0); return; }
+
+    section.style.display = 'block';
+    badge.textContent = total;
+
+    let html = '';
+    friendReqs.forEach(s => {
+        const name = nameMap[s.requester_id] || 'Unknown';
+        html += `<div class="notif-item">
+            <div style="flex:1;min-width:0;">
+                <div class="notif-item-name">${dcEsc(name)}</div>
+                <div class="notif-item-type">Friend request</div>
+            </div>
+            <button class="notif-btn notif-btn-accept" onclick="notifAcceptFriend('${s.id}')">Accept</button>
+            <button class="notif-btn notif-btn-decline" onclick="notifDeclineFriend('${s.id}')">&#10005;</button>
+        </div>`;
+    });
+    duelInvites.forEach(d => {
+        const name = nameMap[d.sender_id] || 'Unknown';
+        html += `<div class="notif-item">
+            <div style="flex:1;min-width:0;">
+                <div class="notif-item-name">${dcEsc(name)}</div>
+                <div class="notif-item-type">Duel challenge!</div>
+            </div>
+            <button class="notif-btn notif-btn-join" onclick="notifAcceptDuel('${d.id}','${dcEsc(d.room_code)}')">Join</button>
+            <button class="notif-btn notif-btn-decline" onclick="notifDeclineDuel('${d.id}')">&#10005;</button>
+        </div>`;
+    });
+    list.innerHTML = html;
+    updateFriendsBadge(friendReqs.length);
+}
+
+async function notifAcceptFriend(shipId) {
+    await sb.from('friendships').update({ status: 'accepted' }).eq('id', shipId);
+    loadNotifications();
+    loadFriendsList();
+}
+async function notifDeclineFriend(shipId) {
+    await sb.from('friendships').update({ status: 'declined' }).eq('id', shipId);
+    loadNotifications();
+}
+function notifAcceptDuel(inviteId, roomCode) {
+    sb.from('duel_invites').update({ status: 'accepted' }).eq('id', inviteId).then();
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = `duel.html?acceptInvite=${inviteId}&roomCode=${roomCode}`; }, 280);
+}
+async function notifDeclineDuel(inviteId) {
+    await sb.from('duel_invites').update({ status: 'declined' }).eq('id', inviteId);
+    loadNotifications();
+}
+
+function subscribeToNotifications(userId) {
+    sb.channel('notif:duel:' + userId)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'duel_invites', filter: `receiver_id=eq.${userId}` }, loadNotifications)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'duel_invites', filter: `receiver_id=eq.${userId}` }, loadNotifications)
+        .subscribe();
+    sb.channel('notif:friends:' + userId)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'friendships', filter: `addressee_id=eq.${userId}` }, loadNotifications)
+        .subscribe();
+}
+
+// ── DUEL INVITE ───────────────────────────────────────────────────────────────
+function sendDuelInvite(receiverId) {
+    closeFriends();
+    document.body.classList.add('page-exit');
+    setTimeout(() => { window.location.href = `duel.html?challengeFriend=${receiverId}`; }, 280);
+}
 </script>
 </body>
 </html>
