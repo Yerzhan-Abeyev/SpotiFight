@@ -397,6 +397,11 @@ html.light .prof-friends-btn:hover { border-color: #1DB954 !important; color: #4
 
 /* Signed-out state */
 html.light #prof-signed-out > div { color: #aaa !important; }
+html.light #prof-signed-out button {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.12) !important;
+    color: #444 !important;
+}
 
 /* ── Friends modal ───────────────────────────────────────────────────────────── */
 html.light #friends-overlay  { background: rgba(220,220,220,0.92) !important; }
