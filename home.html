@@ -385,6 +385,93 @@
             color: #aaa; letter-spacing: 0.14em;
         }
 
+        /* ── Global Leaderboard side panel ── */
+        #home-lb-panel {
+            display: none;
+            position: absolute; right: calc(100% + 72px); top: 0;
+            width: 268px;
+            background: linear-gradient(145deg, #181818, #111);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 18px; padding: 18px;
+        }
+        @media (min-width: 1060px) { #home-lb-panel { display: block; } }
+        .lb-panel-title {
+            font-size: 0.58rem; font-weight: 700; letter-spacing: 0.24em;
+            text-transform: uppercase; color: #1DB954;
+            margin-bottom: 12px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .lb-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; margin-bottom: 2px; }
+        .lb-row.lb-me { background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.2); }
+        .lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; color: #333; width: 20px; text-align: center; flex-shrink: 0; }
+        .lb-row.lb-me .lb-rank { color: #1DB954; }
+.lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #777; font-size: 0.76rem; }
+        .lb-row.lb-me .lb-name { color: #fff; font-weight: 600; }
+        .lb-score { font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; color: #444; flex-shrink: 0; }
+        .lb-row.lb-me .lb-score { color: #1DB954; }
+        .lb-separator { height: 1px; background: rgba(255,255,255,0.05); margin: 6px 0; }
+        .lb-empty { color: #333; font-size: 0.73rem; text-align: center; padding: 18px 0; line-height: 1.6; }
+        .lb-loading { color: #333; font-size: 0.73rem; text-align: center; padding: 16px 0; }
+
+        /* ── Profile side panel ── */
+        #home-profile-panel {
+            display: none;
+            position: absolute; left: calc(100% + 72px); top: 0;
+            width: 268px;
+            background: linear-gradient(145deg, #181818, #111);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 18px; padding: 18px;
+        }
+        @media (min-width: 1060px) { #home-profile-panel { display: block; } }
+        .prof-panel-title {
+            font-size: 0.58rem; font-weight: 700; letter-spacing: 0.24em;
+            text-transform: uppercase; color: #1DB954;
+            margin-bottom: 12px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .prof-avatar {
+            width: 42px; height: 42px; border-radius: 50%;
+            background: rgba(29,185,84,0.12); border: 1.5px solid rgba(29,185,84,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; color: #1DB954;
+            flex-shrink: 0;
+        }
+        .prof-edit-btn {
+            background: none; border: none; color: #333; cursor: pointer;
+            padding: 2px; display: flex; align-items: center;
+            transition: color 0.15s;
+        }
+        .prof-edit-btn:hover { color: #1DB954; }
+        .prof-stat-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.76rem;
+        }
+        .prof-stat-row:last-child { border-bottom: none; }
+        .prof-stat-label { color: #555; }
+        .prof-stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; color: #aaa; }
+        #prof-username-input {
+            width: 100%; background: #1a1a1a;
+            border: 1.5px solid rgba(255,255,255,0.08);
+            border-radius: 8px; padding: 7px 10px; font-size: 0.82rem;
+            color: #fff; outline: none; font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+        #prof-username-input:focus { border-color: #1DB954; }
+        .prof-action-btn {
+            flex: 1; background: none; cursor: pointer; padding: 5px;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            transition: color 0.15s;
+        }
+        .prof-friends-btn {
+            width: 100%; margin-top: 14px; padding: 10px 14px;
+            background: #111; border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px; color: #2a2a2a; font-size: 0.76rem;
+            font-family: 'Inter', sans-serif; cursor: not-allowed;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+
         /* ── Mobile ── */
         @media (max-width: 480px) {
             body { padding: 12px !important; }
@@ -458,6 +545,79 @@
 </header>
 
 <div class="w-full max-w-xl flex flex-col gap-4 relative z-10 pb-10" style="margin-top:2rem">
+
+    <!-- Left: Global Leaderboard side panel -->
+    <div id="home-lb-panel">
+        <div class="lb-panel-title">
+            <span>Leaderboard</span>
+            <span style="font-size:0.55rem;color:#2a2a2a;letter-spacing:0.1em;">BEST SCORE</span>
+        </div>
+        <div id="home-lb-list"><div class="lb-loading">Loading…</div></div>
+    </div>
+
+    <!-- Right: Profile side panel -->
+    <div id="home-profile-panel">
+        <div class="prof-panel-title">Profile</div>
+
+        <!-- Signed-out state -->
+        <div id="prof-signed-out">
+            <div style="color:#444;font-size:0.76rem;line-height:1.65;margin-bottom:14px;">Sign in to track your stats and appear on the leaderboard.</div>
+            <button onclick="authAction()" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#aaa;font-size:0.78rem;font-family:'Inter',sans-serif;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#4285F4'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">Sign in with Google</button>
+        </div>
+
+        <!-- Signed-in state -->
+        <div id="prof-signed-in" style="display:none;">
+
+            <!-- Avatar + username -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+                <div class="prof-avatar" id="prof-avatar">?</div>
+                <div style="flex:1;min-width:0;">
+                    <!-- Display mode -->
+                    <div id="prof-name-display" style="display:flex;align-items:center;gap:6px;">
+                        <span id="prof-username" style="font-weight:600;font-size:0.88rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:148px;">—</span>
+                        <button class="prof-edit-btn" onclick="startEditUsername()" title="Change username">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                    </div>
+                    <!-- Edit mode -->
+                    <div id="prof-name-edit" style="display:none;">
+                        <input id="prof-username-input" type="text" maxlength="20" autocomplete="off" oninput="onProfUsernameInput()" onkeydown="onProfUsernameKey(event)">
+                        <div style="display:flex;gap:6px;margin-top:6px;">
+                            <button id="prof-save-btn" class="prof-action-btn" style="color:#1DB954;border:1px solid rgba(29,185,84,0.25);" onclick="saveProfUsername()">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            <button class="prof-action-btn" style="color:#555;border:1px solid rgba(255,255,255,0.07);" onclick="cancelEditUsername()">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div id="prof-username-err" style="font-size:0.68rem;color:#e74c3c;margin-top:5px;min-height:14px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div style="margin-bottom:4px;">
+                <div class="prof-stat-row">
+                    <span class="prof-stat-label">Best Score</span>
+                    <span class="prof-stat-val" id="prof-best-score">—</span>
+                </div>
+                <div class="prof-stat-row">
+                    <span class="prof-stat-label">Games Played</span>
+                    <span class="prof-stat-val" id="prof-games">—</span>
+                </div>
+                <div class="prof-stat-row">
+                    <span class="prof-stat-label">Daily Streak</span>
+                    <span class="prof-stat-val" id="prof-streak">—</span>
+                </div>
+            </div>
+
+            <!-- Friends (coming soon) -->
+            <button class="prof-friends-btn" disabled>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Friends · Coming Soon
+            </button>
+        </div>
+    </div>
 
     <!-- Global Songs -->
     <a href="globalmode.html" class="mode-card" onclick="navigateTo(event,'globalmode.html')">
@@ -1405,13 +1565,158 @@ async function authAction() {
         if (localStorage.getItem(`dc_${todayKey()}`)) markDoneUI();
     }
 
+    loadHomeLeaderboard();
+    loadHomeProfile();
+
     // Also listen for auth changes (e.g. after redirect back from Google)
     sb.auth.onAuthStateChange((_event, session) => {
         currentUser = session?.user || null;
         updateAuthUI(currentUser);
         if (currentUser) checkUsername(currentUser);
+        loadHomeLeaderboard();
+        loadHomeProfile();
     });
 })();
+
+// ── HOME PROFILE PANEL ────────────────────────────────────────────────────────
+let profCurrentUsername = '';
+
+async function loadHomeProfile() {
+    if (!currentUser) {
+        document.getElementById('prof-signed-out').style.display = 'block';
+        document.getElementById('prof-signed-in').style.display  = 'none';
+        return;
+    }
+    document.getElementById('prof-signed-out').style.display = 'none';
+    document.getElementById('prof-signed-in').style.display  = 'block';
+
+    const [profRes, scoreRes, dailyRes] = await Promise.all([
+        sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
+        sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
+        sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
+    ]);
+
+    const username = profRes.data?.username || 'Anonymous';
+    profCurrentUsername = username;
+    document.getElementById('prof-username').textContent = username;
+    document.getElementById('prof-avatar').textContent   = username.charAt(0).toUpperCase();
+
+    const best  = scoreRes.data?.best_score   ?? null;
+    const games = scoreRes.data?.games_played ?? null;
+    document.getElementById('prof-best-score').textContent = best  !== null ? best  : '—';
+    document.getElementById('prof-games').textContent      = games !== null ? games : '—';
+
+    const solvedSet = new Set((dailyRes.data || []).map(r => r.date));
+    let streak = 0;
+    const cur = new Date();
+    for (let i = 0; i < 365; i++) {
+        const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+        if (solvedSet.has(key)) { streak++; cur.setDate(cur.getDate() - 1); }
+        else break;
+    }
+    document.getElementById('prof-streak').textContent = streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—';
+}
+
+function startEditUsername() {
+    document.getElementById('prof-name-display').style.display = 'none';
+    document.getElementById('prof-name-edit').style.display    = 'block';
+    document.getElementById('prof-username-err').textContent   = '';
+    const input = document.getElementById('prof-username-input');
+    input.value = profCurrentUsername;
+    input.focus(); input.select();
+}
+
+function cancelEditUsername() {
+    document.getElementById('prof-name-edit').style.display    = 'none';
+    document.getElementById('prof-name-display').style.display = 'flex';
+}
+
+function onProfUsernameInput() {
+    document.getElementById('prof-username-err').textContent = '';
+}
+
+function onProfUsernameKey(e) {
+    if (e.key === 'Enter')  saveProfUsername();
+    if (e.key === 'Escape') cancelEditUsername();
+}
+
+async function saveProfUsername() {
+    const val = document.getElementById('prof-username-input').value.trim();
+    const err = document.getElementById('prof-username-err');
+    const btn = document.getElementById('prof-save-btn');
+
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(val)) {
+        err.textContent = '3–20 chars: letters, numbers, underscores.';
+        return;
+    }
+    if (val === profCurrentUsername) { cancelEditUsername(); return; }
+
+    btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none';
+    const { error } = await sb.from('profiles').update({ username: val, display_name: val }).eq('id', currentUser.id);
+    btn.style.opacity = ''; btn.style.pointerEvents = '';
+
+    if (error?.code === '23505') { err.textContent = 'Username taken. Try another.'; return; }
+    if (error)                   { err.textContent = 'Something went wrong.'; return; }
+
+    profCurrentUsername = val;
+    document.getElementById('prof-username').textContent = val;
+    document.getElementById('prof-avatar').textContent   = val.charAt(0).toUpperCase();
+    cancelEditUsername();
+    loadHomeLeaderboard();
+}
+
+// ── HOME LEADERBOARD ─────────────────────────────────────────────────────────
+async function loadHomeLeaderboard() {
+    const listEl = document.getElementById('home-lb-list');
+    if (!listEl) return;
+
+    const { data: top10 } = await sb
+        .from('global_scores')
+        .select('best_score, user_id, profiles(username)')
+        .order('best_score', { ascending: false })
+        .limit(10);
+
+    if (!top10?.length) {
+        listEl.innerHTML = '<div class="lb-empty">No scores yet.<br>Be the first to play Global Songs!</div>';
+        return;
+    }
+
+    const inTop  = currentUser && top10.some(r => r.user_id === currentUser.id);
+    let userExtra = null;
+
+    if (currentUser && !inTop) {
+        const { data: mine } = await sb.from('global_scores')
+            .select('best_score').eq('user_id', currentUser.id).maybeSingle();
+        if (mine) {
+            const { count } = await sb.from('global_scores')
+                .select('*', { count: 'exact', head: true })
+                .gt('best_score', mine.best_score);
+            const { data: myProf } = await sb.from('profiles')
+                .select('username').eq('id', currentUser.id).maybeSingle();
+            userExtra = { rank: (count || 0) + 1, score: mine.best_score, username: myProf?.username || 'You' };
+        }
+    }
+
+    let html = '';
+    top10.forEach((row, i) => {
+        const isMe = row.user_id === currentUser?.id;
+        const name = row.profiles?.username || 'Anonymous';
+        html += `<div class="lb-row${isMe ? ' lb-me' : ''}">
+            <span class="lb-rank">${i + 1}</span>
+            <span class="lb-name">${dcEsc(name)}</span>
+            <span class="lb-score">${row.best_score}</span>
+        </div>`;
+    });
+    if (userExtra) {
+        html += '<div class="lb-separator"></div>';
+        html += `<div class="lb-row lb-me">
+            <span class="lb-rank">${userExtra.rank}</span>
+            <span class="lb-name">${dcEsc(userExtra.username)}</span>
+            <span class="lb-score">${userExtra.score}</span>
+        </div>`;
+    }
+    listEl.innerHTML = html;
+}
 
 function navigateTo(e, url) {
     e.preventDefault();
