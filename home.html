@@ -749,7 +749,7 @@
     </a>
 
     <!-- Local / Artist Mode -->
-    <a id="card-local" href="localmode.html" class="mode-card" onclick="navigateTo(event,'localmode.html')">
+    <a id="card-local" href="localmode.html" class="mode-card locked" onclick="navigateTo(event,'localmode.html')">
         <div class="mode-num">02</div>
         <div style="min-width:0;flex:1;">
             <div class="mode-tag">Artist Focus</div>
@@ -757,13 +757,13 @@
             <div class="mode-desc">Pick an artist and find songs from their catalog where the word appears in the lyrics.</div>
         </div>
         <div class="mode-arrow">&#8594;</div>
-        <div class="lock-badge" id="lock-local" style="display:none;">
+        <div class="lock-badge" id="lock-local">
             <span>Sign in to play</span>
         </div>
     </a>
 
     <!-- Online Duel -->
-    <a id="card-duel" href="duel.html" class="mode-card" onclick="navigateTo(event,'duel.html')">
+    <a id="card-duel" href="duel.html" class="mode-card locked" onclick="navigateTo(event,'duel.html')">
         <div class="mode-num">03</div>
         <div style="min-width:0;flex:1;">
             <div class="mode-tag">Head-to-Head</div>
@@ -771,7 +771,7 @@
             <div class="mode-desc">Challenge a friend in real-time. First to 6 rounds wins (deuce rule).</div>
         </div>
         <div class="mode-arrow">&#8594;</div>
-        <div class="lock-badge" id="lock-duel" style="display:none;">
+        <div class="lock-badge" id="lock-duel">
             <span>Sign in to play</span>
         </div>
     </a>
@@ -1704,7 +1704,6 @@ async function authAction() {
 
 // On page load: check if already signed in and update button
 (async function initAuth() {
-    updateAuthUI(null); // start locked; unlock once session confirmed
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
         currentUser = session.user;
@@ -1756,7 +1755,7 @@ async function loadHomeProfile() {
     document.getElementById('prof-signed-in').style.display  = 'block';
 
     const [profRes, scoreRes, dailyRes] = await Promise.all([
-        sb.from('profiles').select('username, friend_code').eq('id', currentUser.id).maybeSingle(),
+        sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
         sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
     ]);
@@ -1766,15 +1765,13 @@ async function loadHomeProfile() {
     document.getElementById('prof-username').textContent = username;
     document.getElementById('prof-avatar').textContent   = username.charAt(0).toUpperCase();
 
-    // Friend code
-    let code = profRes.data?.friend_code;
-    if (!code) code = await ensureFriendCode(currentUser.id);
-    myFriendCode = code;
-    document.getElementById('prof-friend-code').textContent = '#' + code;
-    document.getElementById('prof-friend-code-row').style.display = 'flex';
-    // Also update friends modal ID box
-    document.getElementById('friends-my-id-val').textContent  = '#' + code;
-    document.getElementById('friends-my-id-box').style.display = 'flex';
+    // Friend code — loaded separately so it can't break the main profile display
+    ensureFriendCode(currentUser.id).then(code => {
+        document.getElementById('prof-friend-code').textContent = '#' + code;
+        document.getElementById('prof-friend-code-row').style.display = 'flex';
+        document.getElementById('friends-my-id-val').textContent  = '#' + code;
+        document.getElementById('friends-my-id-box').style.display = 'flex';
+    }).catch(() => {});
 
     const best  = scoreRes.data?.best_score   ?? null;
     const games = scoreRes.data?.games_played ?? null;
