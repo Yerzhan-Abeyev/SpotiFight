@@ -29,7 +29,8 @@ app.use(helmet({
             styleSrc:    ["'self'", 'https://fonts.googleapis.com', "'unsafe-inline'"],
             fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
             imgSrc:      ["'self'", 'data:', 'https:'],
-            mediaSrc:    ["'self'", 'https:'],
+            mediaSrc:       ["'self'", 'https:'],
+            scriptSrcAttr:  ["'unsafe-inline'"],
             connectSrc:  [
                 "'self'",
                 'https://drspcfilywicsmfhpjyr.supabase.co',
