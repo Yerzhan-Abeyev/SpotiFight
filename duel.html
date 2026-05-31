@@ -629,7 +629,7 @@ socket.on('match_end', ({ winnerId, scores, userIds }) => {
     if (userIds) oppUserId = userIds[oppId] || oppUserId;
 
     const addFriendBtn = (oppUserId && currentUser && oppUserId !== currentUser.id)
-        ? `<button id="add-opp-friend-btn" class="btn-secondary" style="max-width:240px;margin:0 auto 10px;" onclick="addFriendAfterDuel('${oppUserId}')">+ Add Friend</button>`
+        ? `<button id="add-opp-friend-btn" class="btn-secondary" style="max-width:240px;margin:0 auto 10px;" data-uid="${esc(oppUserId)}">+ Add Friend</button>`
         : '';
 
     document.getElementById('over-card').innerHTML = `
@@ -644,6 +644,10 @@ socket.on('match_end', ({ winnerId, scores, userIds }) => {
         ${addFriendBtn}
         <button class="btn-secondary" style="max-width:240px;margin:0 auto;" onclick="declineRematch()">Back to Modes</button>
     `;
+    const addFriendBtnEl = document.getElementById('add-opp-friend-btn');
+    if (addFriendBtnEl) {
+        addFriendBtnEl.addEventListener('click', () => addFriendAfterDuel(addFriendBtnEl.dataset.uid));
+    }
     showView('view-over');
 });
 

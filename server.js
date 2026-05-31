@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
+import { randomBytes } from 'crypto';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import * as dotenv from 'dotenv';
@@ -11,13 +12,33 @@ import rateLimit from 'express-rate-limit';
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ── Pre-load words file once at startup (avoids blocking I/O per request) ────
+const wordsCache = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
+
 const app        = express();
 const httpServer = createServer(app);
 const io         = new Server(httpServer);
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet({
-    contentSecurityPolicy: false,   // CDN scripts (Tailwind, Supabase) need inline allowed
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc:  ["'self'"],
+            scriptSrc:   ["'self'", 'https://cdn.tailwindcss.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'"],
+            styleSrc:    ["'self'", 'https://fonts.googleapis.com', "'unsafe-inline'"],
+            fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
+            imgSrc:      ["'self'", 'data:', 'https:'],
+            mediaSrc:    ["'self'", 'https:'],
+            connectSrc:  [
+                "'self'",
+                'https://drspcfilywicsmfhpjyr.supabase.co',
+                'wss://drspcfilywicsmfhpjyr.supabase.co',
+                'https://api.lyrics.ovh',
+                'https://lrclib.net',
+            ],
+        },
+    },
     crossOriginEmbedderPolicy: false,
 }));
 
@@ -56,9 +77,8 @@ function wordForDate(words, dateStr) {
 
 app.get('/api/daily', apiLimiter, (req, res) => {
     try {
-        const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
         const dateStr = safeDate(req.query.date);
-        res.json({ word: wordForDate(words, dateStr), date: dateStr });
+        res.json({ word: wordForDate(wordsCache, dateStr), date: dateStr });
     } catch (err) {
         console.error('Daily word error:', err);
         res.status(500).json({ error: 'Could not load daily word' });
@@ -68,7 +88,6 @@ app.get('/api/daily', apiLimiter, (req, res) => {
 // ── GET /api/daily-history ────────────────────────────────────────────────────
 app.get('/api/daily-history', apiLimiter, (req, res) => {
     try {
-        const words   = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
         const baseStr = safeDate(req.query.date);
         const base    = new Date(baseStr + 'T12:00:00Z');
         const history = [];
@@ -76,7 +95,7 @@ app.get('/api/daily-history', apiLimiter, (req, res) => {
             const d = new Date(base);
             d.setUTCDate(d.getUTCDate() - i);
             const dateStr = d.toISOString().slice(0, 10);
-            history.push({ date: dateStr, word: wordForDate(words, dateStr) });
+            history.push({ date: dateStr, word: wordForDate(wordsCache, dateStr) });
         }
         res.json({ history });
     } catch (err) {
@@ -99,7 +118,7 @@ app.get('/api/deezer/search', apiLimiter, async (req, res) => {
         res.json(data.data || []);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Search failed' });
     }
 });
 
@@ -114,7 +133,7 @@ app.get('/api/deezer/artist/:id/top', apiLimiter, async (req, res) => {
         res.json(data.data || []);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Failed to fetch artist tracks' });
     }
 });
 
@@ -218,9 +237,27 @@ async function fetchLyricsServer(trackName, artist) {
 }
 
 function generateCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 chars → 256 % 32 === 0, no modulo bias
+    return Array.from(randomBytes(6)).map(b => chars[b % chars.length]).join('');
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function safeUserId(raw) {
+    return typeof raw === 'string' && UUID_RE.test(raw) ? raw : null;
+}
+
+// Per-socket rate limiter for socket events
+function socketRateLimit(socket, key, max, windowMs) {
+    const now = Date.now();
+    if (!socket._limits) socket._limits = {};
+    const w = socket._limits[key] || { n: 0, t: now + windowMs };
+    if (now > w.t) { w.n = 0; w.t = now + windowMs; }
+    w.n++;
+    socket._limits[key] = w;
+    return w.n > max;
+}
+
+const MAX_ROOMS = 1000;
 
 function sanitizeName(raw) {
     return String(raw || '').replace(/[<>"'&]/g, '').slice(0, 32).trim() || 'Player';
@@ -260,6 +297,9 @@ function startRound(code) {
 io.on('connection', socket => {
 
     socket.on('create_room', ({ name, userId }) => {
+        if (socketRateLimit(socket, 'create_room', 5, 60_000)) return;
+        if (rooms.size >= MAX_ROOMS) { socket.emit('join_error', { msg: 'Server busy, try again shortly.' }); return; }
+
         let code;
         do { code = generateCode(); } while (rooms.has(code));
 
@@ -268,7 +308,7 @@ io.on('connection', socket => {
             names:       { [socket.id]: sanitizeName(name) },
             scores:      { [socket.id]: 0 },
             wordQueue:   shuffleWords(),
-            userIds:     { [socket.id]: userId || null },
+            userIds:     { [socket.id]: safeUserId(userId) },
             word:        null,
             roundActive: false,
             timer:       null,
@@ -291,9 +331,11 @@ io.on('connection', socket => {
         if (room.players.length >= 2) { socket.emit('join_error', { msg: 'Room is full.' });  return; }
         if (room.disconnectInfo)      { socket.emit('join_error', { msg: 'Room not found.' }); return; }
 
+        const safeId = safeUserId(userId);
+
         // Prevent the same account from playing against itself
         const creatorUserId = Object.values(room.userIds || {})[0];
-        if (userId && creatorUserId && userId === creatorUserId) {
+        if (safeId && creatorUserId && safeId === creatorUserId) {
             socket.emit('join_error', { msg: 'You can\'t play against yourself.' });
             return;
         }
@@ -301,7 +343,7 @@ io.on('connection', socket => {
         room.players.push(socket.id);
         room.names[socket.id]  = sanitizeName(name);
         room.scores[socket.id] = 0;
-        room.userIds[socket.id] = userId || null;
+        room.userIds[socket.id] = safeId;
         socket.join(code);
         socket.roomCode = code;
 
@@ -488,8 +530,11 @@ io.on('connection', socket => {
         const room = rooms.get(code);
         if (!room || !room.disconnectInfo) { socket.emit('rejoin_failed'); return; }
 
-        const info = room.disconnectInfo;
-        if (userId && info.userId && userId !== info.userId) { socket.emit('rejoin_failed'); return; }
+        const info   = room.disconnectInfo;
+        const safeId = safeUserId(userId);
+
+        // If the original player had an account, require the same userId to rejoin
+        if (info.userId && (!safeId || safeId !== info.userId)) { socket.emit('rejoin_failed'); return; }
 
         clearTimeout(room.reconnectTimer);
 
@@ -500,7 +545,7 @@ io.on('connection', socket => {
         room.players[idx]       = socket.id;
         room.names[socket.id]   = info.name;
         room.scores[socket.id]  = room.scores[oldId] || 0;
-        room.userIds[socket.id] = userId || null;
+        room.userIds[socket.id] = safeId;
         delete room.names[oldId];
         delete room.scores[oldId];
         delete room.userIds[oldId];
