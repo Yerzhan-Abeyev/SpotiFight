@@ -123,6 +123,24 @@
         .go-title { font-family: 'Bebas Neue', sans-serif; font-size: 3.8rem; color: #ff4444; letter-spacing: 0.12em; line-height: 1; }
         .go-score { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.08em; color: #fff; }
 
+        /* ── Skip button ── */
+        #skip-btn {
+            background: transparent;
+            border: 1px solid rgba(245,158,11,0.22);
+            color: #666;
+            font-size: 0.67rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+            align-self: flex-end;
+        }
+        #skip-btn:hover { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.5); color: #f59e0b; }
+
         /* ── Mobile ── */
         @media (max-width: 480px) {
             body { padding: 12px !important; }
@@ -253,6 +271,8 @@
         </div>
     </div>
 
+    <button id="skip-btn" onclick="skipRound()" style="display:none;">Skip Word ↩</button>
+
     <div id="checking-box">
         <img id="ck-art" src="" alt="">
         <div class="ck-info">
@@ -275,59 +295,72 @@
 
 <script>
 // WORD BANKS
-// Easy: very common single-form words that appear across all mainstream genres
+// Easy: very common words that appear across all mainstream genres — player should immediately
+// think of a well-known song that has the word in its lyrics (not title)
 const WORDS_EASY = [
     // Body & feeling
     'love','heart','soul','mind','eyes','tears','voice','smile','kiss','hands',
     'arms','lips','body','breath','skin','blood','head','chest','face','touch',
-    'pain','hurt','fear','hope','dream','feel','cry','miss',
+    'pain','hurt','fear','hope','dream','feel','cry','miss','sleep','breathe',
     // Emotions & states
     'happy','sad','lost','broken','alive','alone','free','strong','wild',
     'real','true','wrong','right','cold','warm','young','old','sweet','soft',
     'hard','deep','high','low','slow','fast','good','bad','safe','bright',
+    'sorry','hate','die','shame','pride','wonder','magic','ready','maybe','glad',
     // People
     'girl','boy','baby','friend','angel','mother','father','king','queen',
-    'woman','man','lover','brother','sister','hero','soldier',
+    'woman','man','lover','brother','sister','hero','soldier','devil','child',
     // Nature & place
     'night','day','life','time','home','world','road','sky','sun','moon',
-    'stars','rain','fire','light','dark','storm','ocean','river',
+    'stars','rain','fire','light','dark','storm','ocean','river','star',
     'door','city','street','room','wall','bed','earth','sea','air',
-    'water','wind','town','place','smoke','snow','blood',
-    // Colors
-    'black','white','blue','red','gold','silver','green',
+    'water','wind','town','place','smoke','snow','heaven','hell','floor',
+    // Colors & textures
+    'black','white','blue','red','gold','silver','green','golden','pink','grey',
     // Actions
     'run','fall','fly','rise','dance','fight','hold','break','leave','find',
     'come','walk','lose','move','save','burn','stay','give','take','play',
     'shine','fade','hide','wait','stop','scream','sing','speak','laugh','know',
     'call','keep','think','pray','wish','hear','tell','show','turn','stand',
     'look','open','close','forget','remember','believe','see','say','want','need',
-    // Common song words
+    'shake','drop','ride','reach','chase','pull','push','jump','catch','follow',
+    'climb','kill','hit','wake','build','try','let','throw','rock',
+    // Common song words & phrases
     'song','name','way','back','away','tonight','forever','better','never','always',
     'still','together','again','money','summer','winter','morning','midnight',
     'music','beat','party','memory','chance','truth','lie','war','peace',
     'promise','word','crazy','beautiful','perfect','change','down','long',
+    'more','mine','line','sign','fame','flame','gonna','shot','hot','top',
+    'side','end','number','phone','game','yesterday','tomorrow','used','last',
+    'gone','over','inside','outside','around','between','before','after',
 ];
 
-// Medium (100): appear in lyrics but need a specific song in mind
+// Medium: appear in lyrics regularly but player needs a specific song in mind
 const WORDS_MEDIUM = [
     'ghost',   'hollow',  'echo',    'shadow',  'thunder', 'survive', 'rebel',   'whisper', 'wander',  'collide',
     'drown',   'bleed',   'crawl',   'surrender','reckless','restless','haunt',   'shatter', 'crumble', 'spiral',
-    'ignite',  'stone',   'steel',   'crown',   'kingdom', 'warrior', 'battle',  'storm',   'cage',    'mercy',
+    'ignite',  'stone',   'steel',   'crown',   'kingdom', 'warrior', 'battle',  'cage',    'mercy',   'collide',
     'glory',   'sacrifice','devoted','wasted',  'scattered','stranded','trapped', 'escape',  'vanish',  'stumble',
     'linger',  'suffer',  'ache',    'hunger',  'rage',    'grief',   'guilt',   'doubt',   'faith',   'grace',
     'chaos',   'power',   'shelter', 'burden',  'mirror',  'poison',  'anchor',  'ember',   'spark',   'venom',
-    'sorrow',  'stain',   'blade',   'throne',  'grave',   'dust',    'ash',     'smoke',   'fever',   'faded',
+    'sorrow',  'stain',   'blade',   'throne',  'grave',   'dust',    'ash',     'fever',   'faded',   'hollow',
     'haunted', 'sacred',  'selfish', 'fragile', 'violent', 'endless', 'ruthless','demons',  'shadows', 'storms',
     'battles', 'warriors','kingdoms','chains',  'wings',   'flames',  'scars',   'wounds',  'blades',  'thrones',
     'graves',  'embers',  'sparks',  'sorrows', 'burdens', 'mirrors', 'anchors', 'whispers','echoes',  'ghosts',
+    // Additional medium
+    'paradise','tragedy', 'criminal','innocence','eternity','destiny', 'legacy',  'daylight','nightmare','triumph',
+    'ritual',  'divine',  'phantom', 'revival',  'exile',   'ruin',    'mortal',  'silence', 'infinite','rapture',
+    'illusion','twilight','horizon', 'beneath',  'forsaken','vengeance','undone', 'reckoning','defy',   'glory',
 ];
 
-// Hard (20): uncommon words that still appear in real songs
+// Hard: uncommon words that still appear in real songs
 const WORDS_HARD = [
     'melancholy', 'labyrinth',  'vendetta',   'paradox',    'silhouette',
     'oblivion',   'tempest',    'asylum',     'exodus',     'requiem',
     'redemption', 'purgatory',  'solitude',   'euphoria',   'nostalgia',
     'adrenaline', 'catastrophe','revelation', 'renaissance','apocalypse',
+    'catharsis',  'ephemeral',  'cataclysm',  'metamorphosis','crucible',
+    'desolation', 'transcendence','absolution','serendipity','perdition',
 ];
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -343,6 +376,7 @@ const SCORE_CONFIG = {
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let currentWord    = '';
 let roundActive    = false;
+let skipUsed       = false;
 let currentAudio   = null;
 let currentAudioCtx = null;
 let roundStartedAt = null;
@@ -627,8 +661,9 @@ function showLb() { document.getElementById('lb-global').classList.add('visible'
 function hideLb() { document.getElementById('lb-global').classList.remove('visible'); }
 
 function startGame() {
-    score  = 0;
-    streak = 0;
+    score    = 0;
+    streak   = 0;
+    skipUsed = false;
     initDecks();
     document.getElementById('score-val').innerText  = '0';
     document.getElementById('streak-val').innerText = '0';
@@ -669,6 +704,7 @@ function startRound() {
     bar.style.cssText = 'width:100%;height:100%;border-radius:999px;background:linear-gradient(90deg,#1DB954,#17a349);';
 
     document.getElementById('search-bar').focus();
+    document.getElementById('skip-btn').style.display = skipUsed ? 'none' : 'block';
     runTimer();
 }
 
@@ -816,6 +852,7 @@ function endRound(result, track, pointsEarned) {
     hide('timer-container');
     hide('word-container');
     hide('checking-box');
+    hide('skip-btn');
 
     const fb   = document.getElementById('feedback');
     const name = track ? `&ldquo;${esc(track.name)}&rdquo;` : '';
@@ -875,6 +912,23 @@ function endRound(result, track, pointsEarned) {
     }
 }
 
+
+// ── SKIP ──────────────────────────────────────────────────────────────────────
+function skipRound() {
+    if (!roundActive || skipUsed) return;
+    skipUsed  = true;
+    roundActive = false;
+    cancelAnimationFrame(timerRAF);
+    stopAudio();
+    hide('search-container');
+    hide('timer-container');
+    hide('word-container');
+    hide('skip-btn');
+    const fb = document.getElementById('feedback');
+    fb.innerHTML = `<div class="feedback-box fb-warn">Word skipped — here comes a new one!</div>`;
+    fb.style.display = 'block';
+    setTimeout(() => { hide('feedback'); startRound(); }, 1100);
+}
 
 // ── SUPABASE ──────────────────────────────────────────────────────────────────
 const { createClient } = window.supabase;
