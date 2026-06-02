@@ -444,3 +444,56 @@ html.light #friends-my-id-box {
 }
 html.light #friends-my-id-label { color: #aaa !important; }
 html.light #friends-my-id-val   { color: #1DB954 !important; }
+
+/* ── Profile favorites search picker ─────────────────────────────────────── */
+html.light .prof-fav-sublabel { color: #bbb !important; }
+html.light .prof-fav-chip {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+html.light .prof-fav-chip:hover { border-color: rgba(29,185,84,0.45) !important; }
+html.light .prof-fav-chip-ph  { color: #ccc !important; }
+html.light .prof-fav-chip-val { color: #333 !important; }
+html.light .prof-fav-chip-icon { color: #ccc !important; }
+html.light .prof-fav-drop {
+    border-color: rgba(0,0,0,0.1) !important;
+}
+html.light .prof-fav-drop input {
+    background: #f5f5f5 !important;
+    border-bottom-color: rgba(0,0,0,0.08) !important;
+    color: #111 !important;
+}
+html.light .prof-fav-drop input::placeholder { color: #ccc !important; }
+html.light .prof-fav-list { background: #f5f5f5 !important; }
+html.light .prof-fav-list-item:hover { background: #ebebeb !important; }
+html.light .prof-fav-list-item { border-bottom-color: rgba(0,0,0,0.05) !important; }
+html.light .prof-fav-list-name { color: #333 !important; }
+html.light .prof-fav-list-sub  { color: #aaa !important; }
+html.light .prof-fav-status    { color: #bbb !important; }
+html.light .prof-fav-list-ph   { background: #e0e0e0 !important; }
+
+/* ── Profile section label, action row, duel history ─────────────────────── */
+html.light .prof-section-label { color: #bbb !important; }
+html.light .prof-action-row {
+    background: #f0f0f0 !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #888 !important;
+}
+html.light .prof-action-row:hover { border-color: #1DB954 !important; color: #444 !important; }
+html.light .duel-hist-row  { background: rgba(0,0,0,0.03) !important; }
+html.light .duel-hist-name { color: #aaa !important; }
+html.light .duel-hist-score { color: #bbb !important; }
+
+/* ── Profile button in friends list ──────────────────────────────────────── */
+html.light .fr-btn-profile {
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #aaa !important;
+}
+html.light .fr-btn-profile:hover { border-color: #444 !important; color: #333 !important; }
+
+/* ── User profile popup ───────────────────────────────────────────────────── */
+html.light #user-profile-popup {
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.12) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
+}

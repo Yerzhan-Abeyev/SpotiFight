@@ -1886,7 +1886,7 @@ async function loadHomeProfile() {
     document.getElementById('prof-signed-in').style.display  = 'block';
 
     const [profRes, scoreRes, dailyRes, duelRes] = await Promise.all([
-        sb.from('profiles').select('username, favorite_artist, favorite_song, favorite_artist_img, favorite_song_img').eq('id', currentUser.id).maybeSingle(),
+        sb.from('profiles').select('username, favorite_artist, favorite_song').eq('id', currentUser.id).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
         sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
         sb.from('duel_history').select('opponent_name, my_score, opp_score, won, played_at')
@@ -1921,9 +1921,17 @@ async function loadHomeProfile() {
     }
     document.getElementById('prof-streak').textContent = streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—';
 
-    // Favorites
-    setFavDisplay('artist', profRes.data?.favorite_artist || '', profRes.data?.favorite_artist_img || '');
-    setFavDisplay('song',   profRes.data?.favorite_song   || '', profRes.data?.favorite_song_img   || '');
+    // Favorites — load name (always works), then try img cols separately
+    const favArtist = profRes.data?.favorite_artist || '';
+    const favSong   = profRes.data?.favorite_song   || '';
+    setFavDisplay('artist', favArtist);
+    setFavDisplay('song',   favSong);
+    sb.from('profiles').select('favorite_artist_img, favorite_song_img')
+        .eq('id', currentUser.id).maybeSingle()
+        .then(({ data }) => {
+            if (favArtist && data?.favorite_artist_img) setFavDisplay('artist', favArtist, data.favorite_artist_img);
+            if (favSong   && data?.favorite_song_img)   setFavDisplay('song',   favSong,   data.favorite_song_img);
+        }).catch(() => {});
 
     // Duel history
     const duels = duelRes.data || [];
@@ -2068,7 +2076,8 @@ async function selectFav(type, name, imgUrl = '') {
     if (!currentUser) return;
     const col    = type === 'artist' ? 'favorite_artist'     : 'favorite_song';
     const imgCol = type === 'artist' ? 'favorite_artist_img' : 'favorite_song_img';
-    await sb.from('profiles').update({ [col]: name, [imgCol]: imgUrl || null }).eq('id', currentUser.id);
+    await sb.from('profiles').update({ [col]: name }).eq('id', currentUser.id);
+    if (imgUrl) sb.from('profiles').update({ [imgCol]: imgUrl }).eq('id', currentUser.id).then().catch(() => {});
 }
 
 function setFavDisplay(type, name, imgUrl = '') {
@@ -2227,12 +2236,18 @@ async function showUserProfile(userId, anchorEl) {
     popup.classList.add('visible');
 
     const [profData, scoreData] = await Promise.all([
-        sb.from('profiles').select('username, friend_code, favorite_artist, favorite_song, favorite_artist_img, favorite_song_img').eq('id', userId).maybeSingle(),
+        sb.from('profiles').select('username, friend_code, favorite_artist, favorite_song').eq('id', userId).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', userId).maybeSingle(),
     ]);
     const p = profData.data, s = scoreData.data;
     if (!p) { popup.style.display = 'none'; return; }
     const uname = p.username || 'Anonymous';
+
+    let pImgs = null;
+    try {
+        const { data } = await sb.from('profiles').select('favorite_artist_img, favorite_song_img').eq('id', userId).maybeSingle();
+        pImgs = data;
+    } catch {}
 
     function favRow(label, name, img) {
         if (!name) return '';
@@ -2263,8 +2278,8 @@ async function showUserProfile(userId, anchorEl) {
         </div>
         ${p.favorite_artist || p.favorite_song ? `
         <div style="padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);">
-            ${favRow('Artist', p.favorite_artist, p.favorite_artist_img)}
-            ${favRow('Song',   p.favorite_song,   p.favorite_song_img)}
+            ${favRow('Artist', p.favorite_artist, pImgs?.favorite_artist_img || '')}
+            ${favRow('Song',   p.favorite_song,   pImgs?.favorite_song_img   || '')}
         </div>` : ''}
     `;
 }
