@@ -34,3 +34,33 @@ CREATE POLICY "duel_invites_update"
 
 -- 4. Enable Realtime for duel_invites
 ALTER PUBLICATION supabase_realtime ADD TABLE duel_invites;
+
+-- ══════════════════════════════════════════════════════════════
+-- Update 1.49 — Duel history + profile favorites
+-- ══════════════════════════════════════════════════════════════
+
+-- 5. Duel match history
+CREATE TABLE IF NOT EXISTS duel_history (
+    id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id          UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    opponent_name    TEXT,
+    opponent_user_id UUID        REFERENCES profiles(id) ON DELETE SET NULL,
+    my_score         INT         NOT NULL DEFAULT 0,
+    opp_score        INT         NOT NULL DEFAULT 0,
+    won              BOOLEAN     NOT NULL DEFAULT false,
+    played_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE duel_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "duel_history_select"
+    ON duel_history FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "duel_history_insert"
+    ON duel_history FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- 6. Favorite artist / song on profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_artist TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_song   TEXT;

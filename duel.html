@@ -148,7 +148,7 @@
         #opponent-status.found { color: #ff4444; }
 
         /* Feedback */
-        .feedback-box { width: 100%; padding: 14px 18px; border-radius: 14px; font-size: 0.9rem; font-weight: 600; text-align: center; animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        .feedback-box { width: 100%; padding: 14px 18px; border-radius: 14px; font-size: 0.9rem; font-weight: 600; text-align: center; animation: slideUpFb 0.28s ease-out; }
         @keyframes popIn { from{opacity:0;transform:scale(0.9);} to{opacity:1;transform:scale(1);} }
         .fb-win  { background: #0c2418; border: 1.5px solid #1DB954; color: #1DB954; }
         .fb-lose { background: #2b0d0d; border: 1.5px solid #ff4444; color: #ff5555; }
@@ -247,6 +247,42 @@
         .final-vs {
             font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
             color: #222; flex-shrink: 0; padding-bottom: 24px;
+        }
+
+        /* ── Word entrance ── */
+        @keyframes wordIn {
+            0%   { opacity: 0; transform: scale(0.78) translateY(12px); }
+            65%  { transform: scale(1.05) translateY(-3px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .word-enter { animation: wordIn 0.44s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+        /* ── Timer low shake ── */
+        @keyframes timerShake {
+            0%,100% { transform: translateX(0); }
+            20%     { transform: translateX(-4px); }
+            60%     { transform: translateX(4px); }
+        }
+        .timer-shake { animation: timerShake 0.22s ease-in-out; }
+
+        /* ── Countdown number pop ── */
+        @keyframes countPop {
+            0%   { opacity: 0; transform: scale(1.9); }
+            50%  { opacity: 1; transform: scale(0.9); }
+            75%  { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
+
+        /* ── Song search result stagger ── */
+        @keyframes songItemIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Feedback slide up ── */
+        @keyframes slideUpFb {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
         /* ── Confetti ── */
@@ -416,6 +452,38 @@
 </div>
 
 <script>
+// ── SOUND EFFECTS ─────────────────────────────────────────────────────────────
+const sfx = (() => {
+    let _ctx = null;
+    function ctx() {
+        if (!_ctx || _ctx.state === 'closed') _ctx = new AudioContext();
+        if (_ctx.state === 'suspended') _ctx.resume();
+        return _ctx;
+    }
+    function vol() { return Math.max(0, parseInt(localStorage.getItem('dc_volume') ?? '70')) / 100 * 0.28; }
+    function tone(freq, type, dur, gain, delay = 0) {
+        const c = ctx(), o = c.createOscillator(), g = c.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, c.currentTime + delay);
+        g.gain.linearRampToValueAtTime(gain, c.currentTime + delay + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + dur);
+        o.connect(g); g.connect(c.destination);
+        o.start(c.currentTime + delay);
+        o.stop(c.currentTime + delay + dur + 0.01);
+    }
+    return {
+        correct()   { const v = vol(); tone(523,'sine',0.1,v); tone(784,'sine',0.22,v,0.1); },
+        wrong()     { const v = vol(); tone(220,'sawtooth',0.08,v); tone(165,'sawtooth',0.18,v,0.08); },
+        tick()      { tone(880,'sine',0.06,vol()*0.55); },
+        beep()      { tone(660,'sine',0.1,vol()); },
+        roundWin()  { const v = vol(); tone(523,'sine',0.09,v); tone(659,'sine',0.09,v,0.09); tone(784,'sine',0.22,v,0.18); },
+        roundLose() { const v = vol(); tone(330,'sine',0.1,v); tone(247,'sine',0.22,v,0.1); },
+        matchWin()  { const v = vol(); [523,659,784,1047].forEach((f,i) => tone(f,'sine',i<3?0.1:0.38,v,i*0.13)); },
+        matchLose() { const v = vol(); tone(330,'sine',0.13,v); tone(247,'sine',0.13,v,0.13); tone(196,'sine',0.32,v,0.26); },
+        start()     { const v = vol(); tone(440,'sine',0.07,v); tone(550,'sine',0.13,v,0.07); },
+    };
+})();
+
 // ── SOCKET ────────────────────────────────────────────────────────────────────
 const socket = io();
 
@@ -595,7 +663,11 @@ socket.on('round_start', ({ word, roundNum }) => {
     show('timer-container');
     showFlex('search-container');
 
-    document.getElementById('word-display').innerText      = word.toUpperCase();
+    const _wd = document.getElementById('word-display');
+    _wd.innerText = word.toUpperCase();
+    _wd.classList.remove('word-enter');
+    void _wd.offsetWidth;
+    _wd.classList.add('word-enter');
     document.getElementById('search-bar').value            = '';
     document.getElementById('search-bar').disabled         = false;
     document.getElementById('songs-list').innerHTML        = '';
@@ -604,6 +676,7 @@ socket.on('round_start', ({ word, roundNum }) => {
     document.getElementById('loader-area').style.display   = 'none';
     document.getElementById('opponent-status').innerText   = `${oppName} is searching…`;
     document.getElementById('opponent-status').className   = 'opponent-status';
+    sfx.start();
 
     const bar = document.getElementById('timer-bar');
     bar.style.cssText = 'width:100%;height:100%;border-radius:999px;background:linear-gradient(90deg,#1DB954,#17a349);';
@@ -615,6 +688,7 @@ socket.on('submit_result', ({ result }) => {
     document.getElementById('opponent-status').innerText = '';  // clear stale opponent message
     const fb = document.getElementById('feedback');
     if (result === 'wrong') {
+        sfx.wrong();
         // Permanent lockout for this round
         lockedOut = true;
         document.getElementById('search-bar').disabled        = true;
@@ -659,6 +733,7 @@ socket.on('round_end', ({ winnerId, track, scores, word, submissions }) => {
     updatePips(scores[myId] ?? 0, scores[oppId] ?? 0);
 
     const iWon = winnerId === myId;
+    if (iWon) { sfx.roundWin(); } else { sfx.roundLose(); }
     const scoreBar = document.getElementById('score-bar');
     scoreBar.classList.add(iWon ? 'flash-win' : 'flash-lose');
     setTimeout(() => scoreBar.classList.remove('flash-win', 'flash-lose'), 700);
@@ -755,7 +830,20 @@ socket.on('match_end', ({ winnerId, scores, userIds }) => {
             <button class="btn-secondary" style="max-width:240px;width:100%;" onclick="declineRematch()">Back to Modes</button>
         </div>
     `;
-    if (iWon) spawnConfetti();
+    if (iWon) { sfx.matchWin(); spawnConfetti(); } else { sfx.matchLose(); }
+
+    // Save to duel history
+    if (currentUser) {
+        sb.from('duel_history').insert({
+            user_id: currentUser.id,
+            opponent_name: oppName,
+            opponent_user_id: oppUserId || null,
+            my_score: myFinalScore,
+            opp_score: oppFinalScore,
+            won: iWon,
+        }).then();
+    }
+
     const addFriendBtnEl = document.getElementById('add-opp-friend-btn');
     if (addFriendBtnEl) {
         addFriendBtnEl.addEventListener('click', () => addFriendAfterDuel(addFriendBtnEl.dataset.uid));
@@ -928,11 +1016,12 @@ function renderResults(tracks) {
         document.getElementById('empty-state').style.display = 'block';
         return;
     }
-    tracks.forEach(track => {
+    tracks.forEach((track, i) => {
         const art     = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || '';
         const artists = track.artists.map(a => a.name).join(', ');
         const li      = document.createElement('li');
         li.className  = 'song-item';
+        li.style.animation = `songItemIn 0.2s ${i * 0.035}s ease-out both`;
         li.innerHTML  = `
             ${art ? `<img src="${art}" alt="">` : `<div class="song-placeholder">♪</div>`}
             <div style="min-width:0;flex:1;">
@@ -1092,6 +1181,7 @@ function runTimer() {
     cancelAnimationFrame(timerRAF);
     const bar  = document.getElementById('timer-bar');
     const text = document.getElementById('timer-text');
+    let lastTickSec = -1;
 
     function tick() {
         if (!roundActive) return;
@@ -1100,6 +1190,15 @@ function runTimer() {
         bar.style.width = `${(remaining / ROUND_TIME) * 100}%`;
         text.innerText  = `${Math.ceil(remaining)}s`;
         if (remaining <= 5) bar.style.background = 'linear-gradient(90deg,#ff4444,#cc0000)';
+        const secLeft = Math.ceil(remaining);
+        if (remaining <= 5 && remaining > 0 && secLeft !== lastTickSec) {
+            lastTickSec = secLeft;
+            sfx.tick();
+            const tc = document.getElementById('timer-container');
+            tc.classList.remove('timer-shake');
+            void tc.offsetWidth;
+            tc.classList.add('timer-shake');
+        }
         timerRAF = requestAnimationFrame(tick);
     }
     timerRAF = requestAnimationFrame(tick);
@@ -1111,15 +1210,20 @@ function showCountdown(label, sublabel) {
     document.getElementById('countdown-label').innerText = label + (sublabel ? ` · ${sublabel}` : '');
     let n = 3;
     overlay.style.display = 'flex';
-    document.getElementById('countdown-num').innerText = n;
 
+    function showNum(num) {
+        const el = document.getElementById('countdown-num');
+        el.innerText = num;
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = 'countPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both';
+        sfx.beep();
+    }
+    showNum(n);
     const tick = setInterval(() => {
         n--;
-        if (n <= 0) {
-            clearInterval(tick);
-            return;
-        }
-        document.getElementById('countdown-num').innerText = n;
+        if (n <= 0) { clearInterval(tick); return; }
+        showNum(n);
     }, 1000);
 }
 
