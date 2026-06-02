@@ -811,21 +811,33 @@
             <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04);">
                 <div class="prof-section-label" style="margin-bottom:8px;">Favorites</div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    <div style="position:relative;">
+                    <!-- Artist -->
+                    <div>
                         <div class="prof-fav-sublabel">Artist</div>
-                        <input class="prof-fav-single-input" id="fav-artist-input" type="text"
-                               placeholder="Favorite artist…" autocomplete="off"
-                               oninput="onFavInput('artist',this.value)"
-                               onblur="onFavBlur('artist')">
-                        <div class="prof-fav-list" id="fav-artist-list" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;border-radius:0 0 8px 8px;border:1px solid rgba(255,255,255,0.06);border-top:none;"></div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <img id="fav-artist-thumb" src="" alt="" style="display:none;width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid rgba(29,185,84,0.25);">
+                            <div style="flex:1;position:relative;">
+                                <input class="prof-fav-single-input" id="fav-artist-input" type="text"
+                                       placeholder="Favorite artist…" autocomplete="off"
+                                       oninput="onFavInput('artist',this.value)"
+                                       onblur="onFavBlur('artist')">
+                                <div class="prof-fav-list" id="fav-artist-list" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;border-radius:0 0 8px 8px;border:1px solid rgba(255,255,255,0.06);border-top:none;"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div style="position:relative;">
+                    <!-- Song -->
+                    <div>
                         <div class="prof-fav-sublabel">Song</div>
-                        <input class="prof-fav-single-input" id="fav-song-input" type="text"
-                               placeholder="Favorite song…" autocomplete="off"
-                               oninput="onFavInput('song',this.value)"
-                               onblur="onFavBlur('song')">
-                        <div class="prof-fav-list" id="fav-song-list" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;border-radius:0 0 8px 8px;border:1px solid rgba(255,255,255,0.06);border-top:none;"></div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <img id="fav-song-thumb" src="" alt="" style="display:none;width:34px;height:34px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.08);">
+                            <div style="flex:1;position:relative;">
+                                <input class="prof-fav-single-input" id="fav-song-input" type="text"
+                                       placeholder="Favorite song…" autocomplete="off"
+                                       oninput="onFavInput('song',this.value)"
+                                       onblur="onFavBlur('song')">
+                                <div class="prof-fav-list" id="fav-song-list" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;border-radius:0 0 8px 8px;border:1px solid rgba(255,255,255,0.06);border-top:none;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2005,9 +2017,16 @@ function onFavBlur(type) {
     setTimeout(async () => {
         document.getElementById(`fav-${type}-list`).style.display = 'none';
         const name = (document.getElementById(`fav-${type}-input`).value || '').trim();
+        if (!name) {
+            // Clear thumbnail and stored image
+            const thumb = document.getElementById(`fav-${type}-thumb`);
+            if (thumb) { thumb.style.display = 'none'; thumb.src = ''; }
+        }
         if (!currentUser) return;
-        const col = type === 'artist' ? 'favorite_artist' : 'favorite_song';
+        const col    = type === 'artist' ? 'favorite_artist'     : 'favorite_song';
+        const imgCol = type === 'artist' ? 'favorite_artist_img' : 'favorite_song_img';
         try { await sb.from('profiles').update({ [col]: name || null }).eq('id', currentUser.id); } catch {}
+        if (!name) { try { await sb.from('profiles').update({ [imgCol]: null }).eq('id', currentUser.id); } catch {} }
     }, 200);
 }
 
@@ -2057,7 +2076,7 @@ async function runFavSearch(type, q) {
 }
 
 async function selectFav(type, name, imgUrl = '') {
-    setFavDisplay(type, name);
+    setFavDisplay(type, name, imgUrl);
     document.getElementById(`fav-${type}-list`).style.display = 'none';
     if (!currentUser) return;
     const col    = type === 'artist' ? 'favorite_artist'     : 'favorite_song';
@@ -2066,9 +2085,19 @@ async function selectFav(type, name, imgUrl = '') {
     if (imgUrl) { try { await sb.from('profiles').update({ [imgCol]: imgUrl }).eq('id', currentUser.id); } catch {} }
 }
 
-function setFavDisplay(type, name) {
+function setFavDisplay(type, name, imgUrl = '') {
     const input = document.getElementById(`fav-${type}-input`);
+    const thumb = document.getElementById(`fav-${type}-thumb`);
     if (input) input.value = name || '';
+    if (thumb) {
+        if (name && imgUrl) {
+            thumb.src = imgUrl;
+            thumb.style.display = 'block';
+        } else {
+            thumb.style.display = 'none';
+            thumb.src = '';
+        }
+    }
 }
 
 // ── SHARE PROFILE ─────────────────────────────────────────────────────────────
@@ -2233,10 +2262,15 @@ async function showUserProfile(userId, anchorEl) {
 
     function favRow(label, name, img) {
         if (!name) return '';
-        const thumb = img ? `<img src="${img}" style="width:18px;height:18px;border-radius:3px;object-fit:cover;vertical-align:middle;margin-right:5px;flex-shrink:0;" alt="">` : '';
-        return `<div style="display:flex;align-items:center;font-size:0.7rem;color:#555;margin-bottom:3px;">
-            <span style="color:#2a2a2a;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.08em;margin-right:6px;flex-shrink:0;">${label}</span>
-            ${thumb}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dcEsc(name)}</span>
+        const isArtist = label === 'Artist';
+        const radius   = isArtist ? '50%' : '4px';
+        const thumb    = img ? `<img src="${img}" style="width:28px;height:28px;border-radius:${radius};object-fit:cover;flex-shrink:0;" alt="">` : '';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;">
+            ${thumb}
+            <div style="min-width:0;">
+                <div style="font-size:0.55rem;color:#333;text-transform:uppercase;letter-spacing:0.1em;">${label}</div>
+                <div style="font-size:0.74rem;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dcEsc(name)}</div>
+            </div>
         </div>`;
     }
 
