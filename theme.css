@@ -447,24 +447,14 @@ html.light #friends-my-id-val   { color: #1DB954 !important; }
 
 /* ── Profile favorites search picker ─────────────────────────────────────── */
 html.light .prof-fav-sublabel { color: #bbb !important; }
-html.light .prof-fav-chip {
+html.light .prof-fav-single-input {
     background: #f0f0f0 !important;
     border-color: rgba(0,0,0,0.1) !important;
-}
-html.light .prof-fav-chip:hover { border-color: rgba(29,185,84,0.45) !important; }
-html.light .prof-fav-chip-ph  { color: #ccc !important; }
-html.light .prof-fav-chip-val { color: #333 !important; }
-html.light .prof-fav-chip-icon { color: #ccc !important; }
-html.light .prof-fav-drop {
-    border-color: rgba(0,0,0,0.1) !important;
-}
-html.light .prof-fav-drop input {
-    background: #f5f5f5 !important;
-    border-bottom-color: rgba(0,0,0,0.08) !important;
     color: #111 !important;
 }
-html.light .prof-fav-drop input::placeholder { color: #ccc !important; }
-html.light .prof-fav-list { background: #f5f5f5 !important; }
+html.light .prof-fav-single-input::placeholder { color: #ccc !important; }
+html.light .prof-fav-single-input:focus { border-color: rgba(29,185,84,0.45) !important; }
+html.light .prof-fav-list { background: #f5f5f5 !important; border-color: rgba(0,0,0,0.1) !important; }
 html.light .prof-fav-list-item:hover { background: #ebebeb !important; }
 html.light .prof-fav-list-item { border-bottom-color: rgba(0,0,0,0.05) !important; }
 html.light .prof-fav-list-name { color: #333 !important; }

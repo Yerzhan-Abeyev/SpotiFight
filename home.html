@@ -505,23 +505,13 @@
 
         /* ── Fav search picker ── */
         .prof-fav-sublabel { font-size: 0.57rem; color: #333; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; }
-        .prof-fav-chip {
-            display: flex; align-items: center; justify-content: space-between; gap: 6px;
-            padding: 7px 10px; border-radius: 8px; min-height: 34px;
-            background: #111; border: 1px solid rgba(255,255,255,0.06);
-            cursor: pointer; transition: border-color 0.15s;
+        .prof-fav-single-input {
+            width: 100%; background: #111; border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px; padding: 8px 10px; font-size: 0.74rem; color: #ccc;
+            font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.15s;
         }
-        .prof-fav-chip:hover { border-color: rgba(29,185,84,0.35); }
-        .prof-fav-chip-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.74rem; }
-        .prof-fav-chip-ph   { color: #272727; }
-        .prof-fav-chip-val  { color: #bbb; }
-        .prof-fav-chip-icon { color: #2a2a2a; font-size: 0.65rem; flex-shrink: 0; }
-        .prof-fav-drop { margin-top: 3px; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; display: none; }
-        .prof-fav-drop input {
-            width: 100%; background: #0d0d0d; border: none; border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding: 8px 10px; font-size: 0.74rem; color: #ccc;
-            font-family: 'Inter', sans-serif; outline: none;
-        }
+        .prof-fav-single-input:focus { border-color: rgba(29,185,84,0.35); }
+        .prof-fav-single-input::placeholder { color: #272727; }
         .prof-fav-list { max-height: 148px; overflow-y: auto; background: #0d0d0d; }
         .prof-fav-list::-webkit-scrollbar { width: 3px; }
         .prof-fav-list::-webkit-scrollbar-thumb { background: #2a2a2a; }
@@ -821,29 +811,21 @@
             <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04);">
                 <div class="prof-section-label" style="margin-bottom:8px;">Favorites</div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    <!-- Artist picker -->
-                    <div>
+                    <div style="position:relative;">
                         <div class="prof-fav-sublabel">Artist</div>
-                        <div class="prof-fav-chip" id="fav-artist-chip" onclick="toggleFavDrop('artist')">
-                            <span class="prof-fav-chip-text prof-fav-chip-ph" id="fav-artist-val">Set favorite artist…</span>
-                            <span class="prof-fav-chip-icon">✎</span>
-                        </div>
-                        <div class="prof-fav-drop" id="fav-artist-drop">
-                            <input type="text" id="fav-artist-input" placeholder="Search artist…" autocomplete="off" oninput="onFavInput('artist',this.value)">
-                            <div class="prof-fav-list" id="fav-artist-list"></div>
-                        </div>
+                        <input class="prof-fav-single-input" id="fav-artist-input" type="text"
+                               placeholder="Favorite artist…" autocomplete="off"
+                               oninput="onFavInput('artist',this.value)"
+                               onblur="onFavBlur('artist')">
+                        <div class="prof-fav-list" id="fav-artist-list" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;border-radius:0 0 8px 8px;border:1px solid rgba(255,255,255,0.06);border-top:none;"></div>
                     </div>
-                    <!-- Song picker -->
-                    <div>
+                    <div style="position:relative;">
                         <div class="prof-fav-sublabel">Song</div>
-                        <div class="prof-fav-chip" id="fav-song-chip" onclick="toggleFavDrop('song')">
-                            <span class="prof-fav-chip-text prof-fav-chip-ph" id="fav-song-val">Set favorite song…</span>
-                            <span class="prof-fav-chip-icon">✎</span>
-                        </div>
-                        <div class="prof-fav-drop" id="fav-song-drop">
-                            <input type="text" id="fav-song-input" placeholder="Search song…" autocomplete="off" oninput="onFavInput('song',this.value)">
-                            <div class="prof-fav-list" id="fav-song-list"></div>
-                        </div>
+                        <input class="prof-fav-single-input" id="fav-song-input" type="text"
+                               placeholder="Favorite song…" autocomplete="off"
+                               oninput="onFavInput('song',this.value)"
+                               onblur="onFavBlur('song')">
+                        <div class="prof-fav-list" id="fav-song-list" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;border-radius:0 0 8px 8px;border:1px solid rgba(255,255,255,0.06);border-top:none;"></div>
                     </div>
                 </div>
             </div>
@@ -1885,12 +1867,11 @@ async function loadHomeProfile() {
     document.getElementById('prof-signed-out').style.display = 'none';
     document.getElementById('prof-signed-in').style.display  = 'block';
 
-    const [profRes, scoreRes, dailyRes, duelRes] = await Promise.all([
-        sb.from('profiles').select('username, favorite_artist, favorite_song').eq('id', currentUser.id).maybeSingle(),
+    // Core query — only guaranteed columns, never fails
+    const [profRes, scoreRes, dailyRes] = await Promise.all([
+        sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
         sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
-        sb.from('duel_history').select('opponent_name, my_score, opp_score, won, played_at')
-            .eq('user_id', currentUser.id).order('played_at', { ascending: false }).limit(5),
     ]);
 
     const username = profRes.data?.username || 'Anonymous';
@@ -1898,7 +1879,6 @@ async function loadHomeProfile() {
     document.getElementById('prof-username').textContent = username;
     document.getElementById('prof-avatar').textContent   = username.charAt(0).toUpperCase();
 
-    // Friend code — loaded separately so it can't break the main profile display
     ensureFriendCode(currentUser.id).then(code => {
         document.getElementById('prof-friend-code').textContent = '#' + code;
         document.getElementById('prof-friend-code-row').style.display = 'flex';
@@ -1921,32 +1901,41 @@ async function loadHomeProfile() {
     }
     document.getElementById('prof-streak').textContent = streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—';
 
-    // Favorites — load name (always works), then try img cols separately
-    const favArtist = profRes.data?.favorite_artist || '';
-    const favSong   = profRes.data?.favorite_song   || '';
-    setFavDisplay('artist', favArtist);
-    setFavDisplay('song',   favSong);
-    sb.from('profiles').select('favorite_artist_img, favorite_song_img')
-        .eq('id', currentUser.id).maybeSingle()
-        .then(({ data }) => {
-            if (favArtist && data?.favorite_artist_img) setFavDisplay('artist', favArtist, data.favorite_artist_img);
-            if (favSong   && data?.favorite_song_img)   setFavDisplay('song',   favSong,   data.favorite_song_img);
-        }).catch(() => {});
+    // Favorites — optional columns, isolated so failures don't break the above
+    try {
+        const { data } = await sb.from('profiles')
+            .select('favorite_artist, favorite_song').eq('id', currentUser.id).maybeSingle();
+        setFavDisplay('artist', data?.favorite_artist || '');
+        setFavDisplay('song',   data?.favorite_song   || '');
+        // Image URLs (even more optional)
+        sb.from('profiles').select('favorite_artist_img, favorite_song_img')
+            .eq('id', currentUser.id).maybeSingle()
+            .then(({ data: d }) => {
+                if (d?.favorite_artist_img) setFavDisplay('artist', data?.favorite_artist || '', d.favorite_artist_img);
+                if (d?.favorite_song_img)   setFavDisplay('song',   data?.favorite_song   || '', d.favorite_song_img);
+            }).catch(() => {});
+    } catch {}
 
-    // Duel history
-    const duels = duelRes.data || [];
-    const duelsEl = document.getElementById('prof-duels');
-    const duelList = document.getElementById('prof-duel-list');
-    if (duels.length > 0) {
-        duelsEl.style.display = 'block';
-        duelList.innerHTML = duels.map(r => `
-            <div class="duel-hist-row">
-                <span class="${r.won ? 'duel-hist-w' : 'duel-hist-l'}">${r.won ? 'W' : 'L'}</span>
-                <span class="duel-hist-name">${profEsc(r.opponent_name || 'Unknown')}</span>
-                <span class="duel-hist-score">${r.my_score}–${r.opp_score}</span>
-            </div>`).join('');
-    } else {
-        duelsEl.style.display = 'none';
+    // Duel history — optional table, isolated
+    try {
+        const { data } = await sb.from('duel_history')
+            .select('opponent_name, my_score, opp_score, won, played_at')
+            .eq('user_id', currentUser.id).order('played_at', { ascending: false }).limit(5);
+        const duelsEl  = document.getElementById('prof-duels');
+        const duelList = document.getElementById('prof-duel-list');
+        if (data?.length) {
+            duelsEl.style.display = 'block';
+            duelList.innerHTML = data.map(r => `
+                <div class="duel-hist-row">
+                    <span class="${r.won ? 'duel-hist-w' : 'duel-hist-l'}">${r.won ? 'W' : 'L'}</span>
+                    <span class="duel-hist-name">${profEsc(r.opponent_name || 'Unknown')}</span>
+                    <span class="duel-hist-score">${r.my_score}–${r.opp_score}</span>
+                </div>`).join('');
+        } else {
+            duelsEl.style.display = 'none';
+        }
+    } catch {
+        document.getElementById('prof-duels').style.display = 'none';
     }
 }
 
@@ -2003,26 +1992,23 @@ function profEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'
 // ── FAVORITES SEARCH PICKER ───────────────────────────────────────────────────
 let _favTimer = null, _favItems = [];
 
-function toggleFavDrop(type) {
-    const other = type === 'artist' ? 'song' : 'artist';
-    document.getElementById(`fav-${other}-drop`).style.display = 'none';
-    const drop = document.getElementById(`fav-${type}-drop`);
-    const open = drop.style.display === 'block';
-    drop.style.display = open ? 'none' : 'block';
-    if (!open) {
-        const inp = document.getElementById(`fav-${type}-input`);
-        inp.value = '';
-        document.getElementById(`fav-${type}-list`).innerHTML = '';
-        setTimeout(() => inp.focus(), 10);
-    }
-}
-
 function onFavInput(type, val) {
     clearTimeout(_favTimer);
     const list = document.getElementById(`fav-${type}-list`);
-    if (!val.trim()) { list.innerHTML = ''; return; }
+    if (!val.trim()) { list.style.display = 'none'; return; }
+    list.style.display = 'block';
     list.innerHTML = '<div class="prof-fav-status">Searching…</div>';
     _favTimer = setTimeout(() => runFavSearch(type, val.trim()), 320);
+}
+
+function onFavBlur(type) {
+    setTimeout(async () => {
+        document.getElementById(`fav-${type}-list`).style.display = 'none';
+        const name = (document.getElementById(`fav-${type}-input`).value || '').trim();
+        if (!currentUser) return;
+        const col = type === 'artist' ? 'favorite_artist' : 'favorite_song';
+        try { await sb.from('profiles').update({ [col]: name || null }).eq('id', currentUser.id); } catch {}
+    }, 200);
 }
 
 async function runFavSearch(type, q) {
@@ -2071,26 +2057,18 @@ async function runFavSearch(type, q) {
 }
 
 async function selectFav(type, name, imgUrl = '') {
-    setFavDisplay(type, name, imgUrl);
-    document.getElementById(`fav-${type}-drop`).style.display = 'none';
+    setFavDisplay(type, name);
+    document.getElementById(`fav-${type}-list`).style.display = 'none';
     if (!currentUser) return;
     const col    = type === 'artist' ? 'favorite_artist'     : 'favorite_song';
     const imgCol = type === 'artist' ? 'favorite_artist_img' : 'favorite_song_img';
-    await sb.from('profiles').update({ [col]: name }).eq('id', currentUser.id);
-    if (imgUrl) sb.from('profiles').update({ [imgCol]: imgUrl }).eq('id', currentUser.id).then().catch(() => {});
+    try { await sb.from('profiles').update({ [col]: name }).eq('id', currentUser.id); } catch {}
+    if (imgUrl) { try { await sb.from('profiles').update({ [imgCol]: imgUrl }).eq('id', currentUser.id); } catch {} }
 }
 
-function setFavDisplay(type, name, imgUrl = '') {
-    const el = document.getElementById(`fav-${type}-val`);
-    if (!name) {
-        el.className = 'prof-fav-chip-text prof-fav-chip-ph';
-        el.textContent = type === 'artist' ? 'Set favorite artist…' : 'Set favorite song…';
-    } else {
-        el.className = 'prof-fav-chip-text prof-fav-chip-val';
-        el.innerHTML = imgUrl
-            ? `<img src="${imgUrl}" style="width:20px;height:20px;border-radius:3px;object-fit:cover;vertical-align:middle;margin-right:5px;" alt="">${dcEsc(name)}`
-            : dcEsc(name);
-    }
+function setFavDisplay(type, name) {
+    const input = document.getElementById(`fav-${type}-input`);
+    if (input) input.value = name || '';
 }
 
 // ── SHARE PROFILE ─────────────────────────────────────────────────────────────
@@ -2109,10 +2087,8 @@ async function shareProfile() {
     const games    = document.getElementById('prof-games').textContent;
     const streak   = document.getElementById('prof-streak').textContent;
     const code     = document.getElementById('prof-friend-code').textContent;
-    const favArtistEl = document.getElementById('fav-artist-val');
-    const favSongEl   = document.getElementById('fav-song-val');
-    const artist = favArtistEl?.classList.contains('prof-fav-chip-ph') ? '' : (favArtistEl?.textContent || '');
-    const song   = favSongEl?.classList.contains('prof-fav-chip-ph')   ? '' : (favSongEl?.textContent   || '');
+    const artist = (document.getElementById('fav-artist-input')?.value || '').trim();
+    const song   = (document.getElementById('fav-song-input')?.value   || '').trim();
 
     const W = 600, H = 320;
     const canvas = document.createElement('canvas');
@@ -2235,15 +2211,21 @@ async function showUserProfile(userId, anchorEl) {
     void popup.offsetWidth;
     popup.classList.add('visible');
 
+    // Core — only guaranteed columns
     const [profData, scoreData] = await Promise.all([
-        sb.from('profiles').select('username, friend_code, favorite_artist, favorite_song').eq('id', userId).maybeSingle(),
+        sb.from('profiles').select('username, friend_code').eq('id', userId).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', userId).maybeSingle(),
     ]);
     const p = profData.data, s = scoreData.data;
     if (!p) { popup.style.display = 'none'; return; }
     const uname = p.username || 'Anonymous';
 
-    let pImgs = null;
+    // Optional: favorites
+    let favData = null, pImgs = null;
+    try {
+        const { data } = await sb.from('profiles').select('favorite_artist, favorite_song').eq('id', userId).maybeSingle();
+        favData = data;
+    } catch {}
     try {
         const { data } = await sb.from('profiles').select('favorite_artist_img, favorite_song_img').eq('id', userId).maybeSingle();
         pImgs = data;
@@ -2276,10 +2258,10 @@ async function showUserProfile(userId, anchorEl) {
                 <div style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:#aaa;">${s?.games_played ?? '—'}</div>
             </div>
         </div>
-        ${p.favorite_artist || p.favorite_song ? `
+        ${favData?.favorite_artist || favData?.favorite_song ? `
         <div style="padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);">
-            ${favRow('Artist', p.favorite_artist, pImgs?.favorite_artist_img || '')}
-            ${favRow('Song',   p.favorite_song,   pImgs?.favorite_song_img   || '')}
+            ${favRow('Artist', favData?.favorite_artist, pImgs?.favorite_artist_img || '')}
+            ${favRow('Song',   favData?.favorite_song,   pImgs?.favorite_song_img   || '')}
         </div>` : ''}
     `;
 }
@@ -2294,10 +2276,10 @@ document.addEventListener('click', e => {
         popup.style.display = 'none';
     }
     ['artist','song'].forEach(type => {
-        const chip = document.getElementById(`fav-${type}-chip`);
-        const drop = document.getElementById(`fav-${type}-drop`);
-        if (drop && drop.style.display === 'block' && chip && !chip.parentElement.contains(e.target)) {
-            drop.style.display = 'none';
+        const input = document.getElementById(`fav-${type}-input`);
+        const list  = document.getElementById(`fav-${type}-list`);
+        if (list && list.style.display !== 'none' && input && !input.parentElement.contains(e.target)) {
+            list.style.display = 'none';
         }
     });
 });
