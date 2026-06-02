@@ -473,6 +473,35 @@
             transition: border-color 0.15s, color 0.15s;
         }
         .prof-friends-btn:hover { border-color: #1DB954; color: #aaa; }
+        .prof-section-label {
+            font-size: 0.57rem; font-weight: 700; letter-spacing: 0.22em;
+            text-transform: uppercase; color: #333;
+        }
+        .prof-fav-input {
+            width: 100%; background: #111; border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px; padding: 7px 10px; font-size: 0.74rem; color: #bbb;
+            font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.15s;
+        }
+        .prof-fav-input:focus { border-color: rgba(29,185,84,0.35); }
+        .prof-fav-input::placeholder { color: #2a2a2a; }
+        .prof-action-row {
+            width: 100%; margin-top: 8px; padding: 9px 14px;
+            background: #111; border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 10px; color: #777; font-size: 0.76rem;
+            font-family: 'Inter', sans-serif; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .prof-action-row:hover { border-color: #1DB954; color: #aaa; }
+        .duel-hist-row {
+            display: flex; align-items: center; gap: 7px;
+            padding: 5px 6px; border-radius: 7px; font-size: 0.73rem;
+            background: rgba(255,255,255,0.02);
+        }
+        .duel-hist-w  { color: #1DB954; font-weight: 700; font-size: 0.63rem; letter-spacing: 0.06em; flex-shrink: 0; }
+        .duel-hist-l  { color: #ff4444; font-weight: 700; font-size: 0.63rem; letter-spacing: 0.06em; flex-shrink: 0; }
+        .duel-hist-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #555; }
+        .duel-hist-score { font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; color: #444; flex-shrink: 0; }
 
         /* ── Friends modal ── */
         #friends-overlay {
@@ -734,6 +763,28 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 Friends
             </button>
+
+            <!-- Favorites -->
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04);">
+                <div class="prof-section-label" style="margin-bottom:8px;">Favorites</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <input id="prof-fav-artist" class="prof-fav-input" type="text" maxlength="50" placeholder="Favorite artist…" autocomplete="off">
+                    <input id="prof-fav-song"   class="prof-fav-input" type="text" maxlength="60" placeholder="Favorite song…"   autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Share Profile -->
+            <button class="prof-action-row" onclick="shareProfile()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Share Profile
+            </button>
+
+            <!-- Recent Duels -->
+            <div id="prof-duels" style="display:none;margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
+                <div class="prof-section-label" style="margin-bottom:8px;">Recent Duels</div>
+                <div id="prof-duel-list" style="display:flex;flex-direction:column;gap:3px;"></div>
+            </div>
+
         </div>
     </div>
 
@@ -1759,10 +1810,12 @@ async function loadHomeProfile() {
     document.getElementById('prof-signed-out').style.display = 'none';
     document.getElementById('prof-signed-in').style.display  = 'block';
 
-    const [profRes, scoreRes, dailyRes] = await Promise.all([
-        sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
+    const [profRes, scoreRes, dailyRes, duelRes] = await Promise.all([
+        sb.from('profiles').select('username, favorite_artist, favorite_song').eq('id', currentUser.id).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
         sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
+        sb.from('duel_history').select('opponent_name, my_score, opp_score, won, played_at')
+            .eq('user_id', currentUser.id).order('played_at', { ascending: false }).limit(5),
     ]);
 
     const username = profRes.data?.username || 'Anonymous';
@@ -1792,6 +1845,28 @@ async function loadHomeProfile() {
         else break;
     }
     document.getElementById('prof-streak').textContent = streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—';
+
+    // Favorites
+    const favArtistInput = document.getElementById('prof-fav-artist');
+    const favSongInput   = document.getElementById('prof-fav-song');
+    favArtistInput.value = profRes.data?.favorite_artist || '';
+    favSongInput.value   = profRes.data?.favorite_song   || '';
+
+    // Duel history
+    const duels = duelRes.data || [];
+    const duelsEl = document.getElementById('prof-duels');
+    const duelList = document.getElementById('prof-duel-list');
+    if (duels.length > 0) {
+        duelsEl.style.display = 'block';
+        duelList.innerHTML = duels.map(r => `
+            <div class="duel-hist-row">
+                <span class="${r.won ? 'duel-hist-w' : 'duel-hist-l'}">${r.won ? 'W' : 'L'}</span>
+                <span class="duel-hist-name">${profEsc(r.opponent_name || 'Unknown')}</span>
+                <span class="duel-hist-score">${r.my_score}–${r.opp_score}</span>
+            </div>`).join('');
+    } else {
+        duelsEl.style.display = 'none';
+    }
 }
 
 function startEditUsername() {
@@ -1840,6 +1915,144 @@ async function saveProfUsername() {
     document.getElementById('prof-avatar').textContent   = val.charAt(0).toUpperCase();
     cancelEditUsername();
     loadHomeLeaderboard();
+}
+
+function profEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── FAVORITES AUTO-SAVE ───────────────────────────────────────────────────────
+async function saveFavoriteArtist() {
+    if (!currentUser) return;
+    const val = document.getElementById('prof-fav-artist').value.trim();
+    await sb.from('profiles').update({ favorite_artist: val || null }).eq('id', currentUser.id);
+}
+async function saveFavoriteSong() {
+    if (!currentUser) return;
+    const val = document.getElementById('prof-fav-song').value.trim();
+    await sb.from('profiles').update({ favorite_song: val || null }).eq('id', currentUser.id);
+}
+document.getElementById('prof-fav-artist').addEventListener('blur', saveFavoriteArtist);
+document.getElementById('prof-fav-song').addEventListener('blur', saveFavoriteSong);
+
+// ── SHARE PROFILE ─────────────────────────────────────────────────────────────
+function rrect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+async function shareProfile() {
+    const username = document.getElementById('prof-username').textContent || '?';
+    const best     = document.getElementById('prof-best-score').textContent;
+    const games    = document.getElementById('prof-games').textContent;
+    const streak   = document.getElementById('prof-streak').textContent;
+    const code     = document.getElementById('prof-friend-code').textContent;
+    const artist   = document.getElementById('prof-fav-artist')?.value || '';
+    const song     = document.getElementById('prof-fav-song')?.value || '';
+
+    const W = 600, H = 320;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const c = canvas.getContext('2d');
+
+    // Background
+    c.fillStyle = '#0a0a0a';
+    c.fillRect(0, 0, W, H);
+
+    // Subtle grid
+    c.strokeStyle = 'rgba(29,185,84,0.04)';
+    c.lineWidth = 1;
+    for (let x = 0; x < W; x += 40) { c.beginPath(); c.moveTo(x,0); c.lineTo(x,H); c.stroke(); }
+    for (let y = 0; y < H; y += 40) { c.beginPath(); c.moveTo(0,y); c.lineTo(W,y); c.stroke(); }
+
+    // Card
+    c.fillStyle = 'rgba(22,22,22,0.97)';
+    rrect(c, 20, 20, W-40, H-40, 18); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.07)';
+    c.lineWidth = 1;
+    rrect(c, 20, 20, W-40, H-40, 18); c.stroke();
+
+    // Green accent bar left
+    c.fillStyle = '#1DB954';
+    rrect(c, 20, 20, 4, H-40, 2); c.fill();
+
+    // Avatar circle
+    c.fillStyle = 'rgba(29,185,84,0.15)';
+    c.strokeStyle = 'rgba(29,185,84,0.3)';
+    c.lineWidth = 1.5;
+    c.beginPath(); c.arc(76, 90, 26, 0, Math.PI*2); c.fill(); c.stroke();
+    c.fillStyle = '#1DB954';
+    c.font = 'bold 22px sans-serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(username.charAt(0).toUpperCase(), 76, 91);
+
+    // Username
+    c.fillStyle = '#fff';
+    c.font = 'bold 20px sans-serif';
+    c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    c.fillText(username, 116, 84);
+
+    // Friend code
+    c.fillStyle = '#3a3a3a';
+    c.font = '12px sans-serif';
+    c.fillText(code, 116, 104);
+
+    // Divider
+    c.strokeStyle = 'rgba(255,255,255,0.05)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(40, 130); c.lineTo(W-40, 130); c.stroke();
+
+    // Stats
+    function stat(label, val, cx) {
+        c.fillStyle = '#333';
+        c.font = '9px sans-serif';
+        c.textAlign = 'center';
+        c.fillText(label.toUpperCase(), cx, 158);
+        c.fillStyle = '#ddd';
+        c.font = 'bold 17px sans-serif';
+        c.fillText(val, cx, 178);
+    }
+    stat('Best Score', best,   130);
+    stat('Games',      games,  260);
+    stat('Streak',     streak, 390);
+
+    // Favorites
+    if (artist || song) {
+        c.strokeStyle = 'rgba(255,255,255,0.05)';
+        c.lineWidth = 1;
+        c.beginPath(); c.moveTo(40, 200); c.lineTo(W-40, 200); c.stroke();
+        c.fillStyle = '#1DB954';
+        c.font = '9px sans-serif';
+        c.textAlign = 'left';
+        c.fillText('FAVORITES', 40, 220);
+        c.fillStyle = '#666';
+        c.font = '13px sans-serif';
+        const favLine = [artist && `Artist: ${artist}`, song && `Song: ${song}`].filter(Boolean).join('   ·   ');
+        c.fillText(favLine.length > 60 ? favLine.slice(0,58)+'…' : favLine, 40, 238);
+    }
+
+    // Branding
+    c.fillStyle = '#1DB954';
+    c.font = 'bold 13px sans-serif';
+    c.textAlign = 'right';
+    c.fillText('SpotiFight', W-40, H-32);
+    c.fillStyle = '#222';
+    c.font = '10px sans-serif';
+    c.fillText('spotifight-2.onrender.com', W-40, H-18);
+
+    canvas.toBlob(blob => {
+        const file = new File([blob], `${username}-spotifight.png`, { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+            navigator.share({ title: `${username}'s SpotiFight Profile`, files: [file] }).catch(()=>{});
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a = Object.assign(document.createElement('a'), { href: url, download: file.name });
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+    }, 'image/png');
 }
 
 // ── HOME LEADERBOARD ─────────────────────────────────────────────────────────

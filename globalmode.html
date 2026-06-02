@@ -858,6 +858,7 @@ function endRound(result, track, pointsEarned) {
     const name = track ? `&ldquo;${esc(track.name)}&rdquo;` : '';
 
     if (result === 'win') {
+        sfx.correct();
         fb.innerHTML = `<div class="feedback-box fb-win">
             ${name} has <strong>${currentWord}</strong> in its lyrics!
             <div style="font-size:0.78rem;font-weight:400;opacity:0.7;margin-top:4px;">+${pointsEarned} pts</div>
@@ -894,6 +895,7 @@ function endRound(result, track, pointsEarned) {
 
     } else {
         // GAME OVER: wrong or timeout
+        sfx.wrong();
         let reasonHtml = '';
         if (result === 'wrong') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
@@ -912,6 +914,31 @@ function endRound(result, track, pointsEarned) {
     }
 }
 
+
+// ── SOUND EFFECTS ─────────────────────────────────────────────────────────────
+const sfx = (() => {
+    let _ctx = null;
+    function ctx() {
+        if (!_ctx || _ctx.state === 'closed') _ctx = new AudioContext();
+        if (_ctx.state === 'suspended') _ctx.resume();
+        return _ctx;
+    }
+    function vol() { return Math.max(0, parseInt(localStorage.getItem('dc_volume') ?? '70')) / 100 * 0.28; }
+    function tone(freq, type, dur, gain, delay = 0) {
+        const c = ctx(), o = c.createOscillator(), g = c.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, c.currentTime + delay);
+        g.gain.linearRampToValueAtTime(gain, c.currentTime + delay + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + dur);
+        o.connect(g); g.connect(c.destination);
+        o.start(c.currentTime + delay);
+        o.stop(c.currentTime + delay + dur + 0.01);
+    }
+    return {
+        correct() { const v = vol(); tone(523,'sine',0.1,v); tone(784,'sine',0.22,v,0.1); },
+        wrong()   { const v = vol(); tone(220,'sawtooth',0.08,v); tone(165,'sawtooth',0.18,v,0.08); },
+    };
+})();
 
 // ── SKIP ──────────────────────────────────────────────────────────────────────
 function skipRound() {
