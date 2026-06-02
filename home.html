@@ -1886,7 +1886,7 @@ async function loadHomeProfile() {
     document.getElementById('prof-signed-in').style.display  = 'block';
 
     const [profRes, scoreRes, dailyRes, duelRes] = await Promise.all([
-        sb.from('profiles').select('username, favorite_artist, favorite_song').eq('id', currentUser.id).maybeSingle(),
+        sb.from('profiles').select('username, favorite_artist, favorite_song, favorite_artist_img, favorite_song_img').eq('id', currentUser.id).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', currentUser.id).maybeSingle(),
         sb.from('daily_results').select('date').eq('user_id', currentUser.id).eq('solved', true),
         sb.from('duel_history').select('opponent_name, my_score, opp_score, won, played_at')
@@ -1922,8 +1922,8 @@ async function loadHomeProfile() {
     document.getElementById('prof-streak').textContent = streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—';
 
     // Favorites
-    setFavDisplay('artist', profRes.data?.favorite_artist || '');
-    setFavDisplay('song',   profRes.data?.favorite_song   || '');
+    setFavDisplay('artist', profRes.data?.favorite_artist || '', profRes.data?.favorite_artist_img || '');
+    setFavDisplay('song',   profRes.data?.favorite_song   || '', profRes.data?.favorite_song_img   || '');
 
     // Duel history
     const duels = duelRes.data || [];
@@ -2050,7 +2050,11 @@ async function runFavSearch(type, q) {
         list.querySelectorAll('.prof-fav-list-item').forEach(el => {
             el.addEventListener('click', () => {
                 const item = _favItems[+el.dataset.fi];
-                selectFav(type, type === 'artist' ? item.name : item.title);
+                const name = type === 'artist' ? item.name  : item.title;
+                const img  = type === 'artist'
+                    ? (item.picture_small || item.picture_medium || '')
+                    : (item.album?.cover_small || item.album?.cover_medium || '');
+                selectFav(type, name, img);
             });
         });
     } catch {
@@ -2058,22 +2062,25 @@ async function runFavSearch(type, q) {
     }
 }
 
-async function selectFav(type, name) {
-    setFavDisplay(type, name);
+async function selectFav(type, name, imgUrl = '') {
+    setFavDisplay(type, name, imgUrl);
     document.getElementById(`fav-${type}-drop`).style.display = 'none';
     if (!currentUser) return;
-    const col = type === 'artist' ? 'favorite_artist' : 'favorite_song';
-    await sb.from('profiles').update({ [col]: name }).eq('id', currentUser.id);
+    const col    = type === 'artist' ? 'favorite_artist'     : 'favorite_song';
+    const imgCol = type === 'artist' ? 'favorite_artist_img' : 'favorite_song_img';
+    await sb.from('profiles').update({ [col]: name, [imgCol]: imgUrl || null }).eq('id', currentUser.id);
 }
 
-function setFavDisplay(type, name) {
+function setFavDisplay(type, name, imgUrl = '') {
     const el = document.getElementById(`fav-${type}-val`);
     if (!name) {
         el.className = 'prof-fav-chip-text prof-fav-chip-ph';
         el.textContent = type === 'artist' ? 'Set favorite artist…' : 'Set favorite song…';
     } else {
         el.className = 'prof-fav-chip-text prof-fav-chip-val';
-        el.textContent = name;
+        el.innerHTML = imgUrl
+            ? `<img src="${imgUrl}" style="width:20px;height:20px;border-radius:3px;object-fit:cover;vertical-align:middle;margin-right:5px;" alt="">${dcEsc(name)}`
+            : dcEsc(name);
     }
 }
 
@@ -2093,8 +2100,10 @@ async function shareProfile() {
     const games    = document.getElementById('prof-games').textContent;
     const streak   = document.getElementById('prof-streak').textContent;
     const code     = document.getElementById('prof-friend-code').textContent;
-    const artist   = document.getElementById('prof-fav-artist')?.value || '';
-    const song     = document.getElementById('prof-fav-song')?.value || '';
+    const favArtistEl = document.getElementById('fav-artist-val');
+    const favSongEl   = document.getElementById('fav-song-val');
+    const artist = favArtistEl?.classList.contains('prof-fav-chip-ph') ? '' : (favArtistEl?.textContent || '');
+    const song   = favSongEl?.classList.contains('prof-fav-chip-ph')   ? '' : (favSongEl?.textContent   || '');
 
     const W = 600, H = 320;
     const canvas = document.createElement('canvas');
@@ -2202,6 +2211,7 @@ async function shareProfile() {
 // ── USER PROFILE POPUP ────────────────────────────────────────────────────────
 async function showUserProfile(userId, anchorEl) {
     if (!userId) return;
+    _popupJustOpened = true;
     const popup   = document.getElementById('user-profile-popup');
     const content = document.getElementById('user-profile-popup-content');
     content.innerHTML = '<div style="text-align:center;color:#444;font-size:0.78rem;padding:10px 0;">Loading…</div>';
@@ -2217,12 +2227,22 @@ async function showUserProfile(userId, anchorEl) {
     popup.classList.add('visible');
 
     const [profData, scoreData] = await Promise.all([
-        sb.from('profiles').select('username, friend_code, favorite_artist, favorite_song').eq('id', userId).maybeSingle(),
+        sb.from('profiles').select('username, friend_code, favorite_artist, favorite_song, favorite_artist_img, favorite_song_img').eq('id', userId).maybeSingle(),
         sb.from('global_scores').select('best_score, games_played').eq('user_id', userId).maybeSingle(),
     ]);
     const p = profData.data, s = scoreData.data;
     if (!p) { popup.style.display = 'none'; return; }
     const uname = p.username || 'Anonymous';
+
+    function favRow(label, name, img) {
+        if (!name) return '';
+        const thumb = img ? `<img src="${img}" style="width:18px;height:18px;border-radius:3px;object-fit:cover;vertical-align:middle;margin-right:5px;flex-shrink:0;" alt="">` : '';
+        return `<div style="display:flex;align-items:center;font-size:0.7rem;color:#555;margin-bottom:3px;">
+            <span style="color:#2a2a2a;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.08em;margin-right:6px;flex-shrink:0;">${label}</span>
+            ${thumb}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dcEsc(name)}</span>
+        </div>`;
+    }
+
     content.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
             <div class="prof-avatar" style="width:36px;height:36px;font-size:1.1rem;flex-shrink:0;">${dcEsc(uname.charAt(0).toUpperCase())}</div>
@@ -2243,14 +2263,17 @@ async function showUserProfile(userId, anchorEl) {
         </div>
         ${p.favorite_artist || p.favorite_song ? `
         <div style="padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);">
-            ${p.favorite_artist ? `<div style="font-size:0.7rem;color:#555;margin-bottom:3px;"><span style="color:#2a2a2a;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.08em;">Artist  </span>${dcEsc(p.favorite_artist)}</div>` : ''}
-            ${p.favorite_song   ? `<div style="font-size:0.7rem;color:#555;"><span style="color:#2a2a2a;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.08em;">Song  </span>${dcEsc(p.favorite_song)}</div>` : ''}
+            ${favRow('Artist', p.favorite_artist, p.favorite_artist_img)}
+            ${favRow('Song',   p.favorite_song,   p.favorite_song_img)}
         </div>` : ''}
     `;
 }
 
 // Close popup and fav dropdowns on outside click
+// _popupJustOpened skips the document click that triggered the open
+let _popupJustOpened = false;
 document.addEventListener('click', e => {
+    if (_popupJustOpened) { _popupJustOpened = false; return; }
     const popup = document.getElementById('user-profile-popup');
     if (popup && popup.style.display !== 'none' && !popup.contains(e.target)) {
         popup.style.display = 'none';

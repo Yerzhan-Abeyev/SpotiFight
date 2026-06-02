@@ -62,5 +62,7 @@ CREATE POLICY "duel_history_insert"
     WITH CHECK (auth.uid() = user_id);
 
 -- 6. Favorite artist / song on profiles
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_artist TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_song   TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_artist     TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_song       TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_artist_img TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_song_img   TEXT;
