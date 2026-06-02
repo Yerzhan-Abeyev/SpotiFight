@@ -503,6 +503,59 @@
         .duel-hist-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #555; }
         .duel-hist-score { font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; color: #444; flex-shrink: 0; }
 
+        /* ── Fav search picker ── */
+        .prof-fav-sublabel { font-size: 0.57rem; color: #333; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; }
+        .prof-fav-chip {
+            display: flex; align-items: center; justify-content: space-between; gap: 6px;
+            padding: 7px 10px; border-radius: 8px; min-height: 34px;
+            background: #111; border: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer; transition: border-color 0.15s;
+        }
+        .prof-fav-chip:hover { border-color: rgba(29,185,84,0.35); }
+        .prof-fav-chip-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.74rem; }
+        .prof-fav-chip-ph   { color: #272727; }
+        .prof-fav-chip-val  { color: #bbb; }
+        .prof-fav-chip-icon { color: #2a2a2a; font-size: 0.65rem; flex-shrink: 0; }
+        .prof-fav-drop { margin-top: 3px; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; display: none; }
+        .prof-fav-drop input {
+            width: 100%; background: #0d0d0d; border: none; border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 8px 10px; font-size: 0.74rem; color: #ccc;
+            font-family: 'Inter', sans-serif; outline: none;
+        }
+        .prof-fav-list { max-height: 148px; overflow-y: auto; background: #0d0d0d; }
+        .prof-fav-list::-webkit-scrollbar { width: 3px; }
+        .prof-fav-list::-webkit-scrollbar-thumb { background: #2a2a2a; }
+        .prof-fav-list-item {
+            display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+            cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.1s;
+        }
+        .prof-fav-list-item:last-child { border-bottom: none; }
+        .prof-fav-list-item:hover { background: rgba(255,255,255,0.04); }
+        .prof-fav-list-img { width: 26px; height: 26px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+        .prof-fav-list-ph  { width: 26px; height: 26px; border-radius: 4px; background: #1a1a1a; flex-shrink: 0; }
+        .prof-fav-list-name { font-size: 0.73rem; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .prof-fav-list-sub  { font-size: 0.63rem; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .prof-fav-status { padding: 8px 10px; font-size: 0.72rem; color: #444; }
+
+        /* ── User profile popup ── */
+        #user-profile-popup {
+            position: fixed; z-index: 600;
+            background: #141414; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 16px; width: 236px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.65);
+        }
+        @keyframes popupIn {
+            from { opacity: 0; transform: scale(0.92) translateY(4px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        #user-profile-popup.visible { animation: popupIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both; }
+        .fr-btn-profile {
+            background: transparent; border: 1px solid rgba(255,255,255,0.07);
+            color: #555; font-size: 0.68rem; padding: 3px 8px; border-radius: 6px;
+            cursor: pointer; transition: border-color 0.15s, color 0.15s; flex-shrink: 0;
+        }
+        .fr-btn-profile:hover { border-color: #444; color: #aaa; }
+
         /* ── Friends modal ── */
         #friends-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.88);
@@ -767,9 +820,31 @@
             <!-- Favorites -->
             <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04);">
                 <div class="prof-section-label" style="margin-bottom:8px;">Favorites</div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                    <input id="prof-fav-artist" class="prof-fav-input" type="text" maxlength="50" placeholder="Favorite artist…" autocomplete="off">
-                    <input id="prof-fav-song"   class="prof-fav-input" type="text" maxlength="60" placeholder="Favorite song…"   autocomplete="off">
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <!-- Artist picker -->
+                    <div>
+                        <div class="prof-fav-sublabel">Artist</div>
+                        <div class="prof-fav-chip" id="fav-artist-chip" onclick="toggleFavDrop('artist')">
+                            <span class="prof-fav-chip-text prof-fav-chip-ph" id="fav-artist-val">Set favorite artist…</span>
+                            <span class="prof-fav-chip-icon">✎</span>
+                        </div>
+                        <div class="prof-fav-drop" id="fav-artist-drop">
+                            <input type="text" id="fav-artist-input" placeholder="Search artist…" autocomplete="off" oninput="onFavInput('artist',this.value)">
+                            <div class="prof-fav-list" id="fav-artist-list"></div>
+                        </div>
+                    </div>
+                    <!-- Song picker -->
+                    <div>
+                        <div class="prof-fav-sublabel">Song</div>
+                        <div class="prof-fav-chip" id="fav-song-chip" onclick="toggleFavDrop('song')">
+                            <span class="prof-fav-chip-text prof-fav-chip-ph" id="fav-song-val">Set favorite song…</span>
+                            <span class="prof-fav-chip-icon">✎</span>
+                        </div>
+                        <div class="prof-fav-drop" id="fav-song-drop">
+                            <input type="text" id="fav-song-input" placeholder="Search song…" autocomplete="off" oninput="onFavInput('song',this.value)">
+                            <div class="prof-fav-list" id="fav-song-list"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1847,10 +1922,8 @@ async function loadHomeProfile() {
     document.getElementById('prof-streak').textContent = streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—';
 
     // Favorites
-    const favArtistInput = document.getElementById('prof-fav-artist');
-    const favSongInput   = document.getElementById('prof-fav-song');
-    favArtistInput.value = profRes.data?.favorite_artist || '';
-    favSongInput.value   = profRes.data?.favorite_song   || '';
+    setFavDisplay('artist', profRes.data?.favorite_artist || '');
+    setFavDisplay('song',   profRes.data?.favorite_song   || '');
 
     // Duel history
     const duels = duelRes.data || [];
@@ -1919,19 +1992,90 @@ async function saveProfUsername() {
 
 function profEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// ── FAVORITES AUTO-SAVE ───────────────────────────────────────────────────────
-async function saveFavoriteArtist() {
-    if (!currentUser) return;
-    const val = document.getElementById('prof-fav-artist').value.trim();
-    await sb.from('profiles').update({ favorite_artist: val || null }).eq('id', currentUser.id);
+// ── FAVORITES SEARCH PICKER ───────────────────────────────────────────────────
+let _favTimer = null, _favItems = [];
+
+function toggleFavDrop(type) {
+    const other = type === 'artist' ? 'song' : 'artist';
+    document.getElementById(`fav-${other}-drop`).style.display = 'none';
+    const drop = document.getElementById(`fav-${type}-drop`);
+    const open = drop.style.display === 'block';
+    drop.style.display = open ? 'none' : 'block';
+    if (!open) {
+        const inp = document.getElementById(`fav-${type}-input`);
+        inp.value = '';
+        document.getElementById(`fav-${type}-list`).innerHTML = '';
+        setTimeout(() => inp.focus(), 10);
+    }
 }
-async function saveFavoriteSong() {
-    if (!currentUser) return;
-    const val = document.getElementById('prof-fav-song').value.trim();
-    await sb.from('profiles').update({ favorite_song: val || null }).eq('id', currentUser.id);
+
+function onFavInput(type, val) {
+    clearTimeout(_favTimer);
+    const list = document.getElementById(`fav-${type}-list`);
+    if (!val.trim()) { list.innerHTML = ''; return; }
+    list.innerHTML = '<div class="prof-fav-status">Searching…</div>';
+    _favTimer = setTimeout(() => runFavSearch(type, val.trim()), 320);
 }
-document.getElementById('prof-fav-artist').addEventListener('blur', saveFavoriteArtist);
-document.getElementById('prof-fav-song').addEventListener('blur', saveFavoriteSong);
+
+async function runFavSearch(type, q) {
+    const list = document.getElementById(`fav-${type}-list`);
+    try {
+        const res   = await fetch(`/api/deezer/search?q=${encodeURIComponent(q)}&limit=10`);
+        const tracks = await res.json();
+        if (!tracks.length) { list.innerHTML = '<div class="prof-fav-status">No results</div>'; return; }
+
+        if (type === 'artist') {
+            const seen = new Set();
+            _favItems = [];
+            for (const t of tracks) {
+                if (!seen.has(t.artist.id)) { seen.add(t.artist.id); _favItems.push(t.artist); }
+            }
+            _favItems = _favItems.slice(0, 5);
+            list.innerHTML = _favItems.map((a, i) => `
+                <div class="prof-fav-list-item" data-fi="${i}">
+                    ${a.picture_small ? `<img class="prof-fav-list-img" src="${a.picture_small}" alt="">` : `<div class="prof-fav-list-ph"></div>`}
+                    <span class="prof-fav-list-name">${dcEsc(a.name)}</span>
+                </div>`).join('');
+        } else {
+            _favItems = tracks.slice(0, 6);
+            list.innerHTML = _favItems.map((t, i) => `
+                <div class="prof-fav-list-item" data-fi="${i}">
+                    ${t.album?.cover_small ? `<img class="prof-fav-list-img" src="${t.album.cover_small}" alt="">` : `<div class="prof-fav-list-ph"></div>`}
+                    <div style="min-width:0;">
+                        <div class="prof-fav-list-name">${dcEsc(t.title)}</div>
+                        <div class="prof-fav-list-sub">${dcEsc(t.artist?.name || '')}</div>
+                    </div>
+                </div>`).join('');
+        }
+        list.querySelectorAll('.prof-fav-list-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const item = _favItems[+el.dataset.fi];
+                selectFav(type, type === 'artist' ? item.name : item.title);
+            });
+        });
+    } catch {
+        list.innerHTML = '<div class="prof-fav-status">Search failed</div>';
+    }
+}
+
+async function selectFav(type, name) {
+    setFavDisplay(type, name);
+    document.getElementById(`fav-${type}-drop`).style.display = 'none';
+    if (!currentUser) return;
+    const col = type === 'artist' ? 'favorite_artist' : 'favorite_song';
+    await sb.from('profiles').update({ [col]: name }).eq('id', currentUser.id);
+}
+
+function setFavDisplay(type, name) {
+    const el = document.getElementById(`fav-${type}-val`);
+    if (!name) {
+        el.className = 'prof-fav-chip-text prof-fav-chip-ph';
+        el.textContent = type === 'artist' ? 'Set favorite artist…' : 'Set favorite song…';
+    } else {
+        el.className = 'prof-fav-chip-text prof-fav-chip-val';
+        el.textContent = name;
+    }
+}
 
 // ── SHARE PROFILE ─────────────────────────────────────────────────────────────
 function rrect(ctx, x, y, w, h, r) {
@@ -2055,6 +2199,71 @@ async function shareProfile() {
     }, 'image/png');
 }
 
+// ── USER PROFILE POPUP ────────────────────────────────────────────────────────
+async function showUserProfile(userId, anchorEl) {
+    if (!userId) return;
+    const popup   = document.getElementById('user-profile-popup');
+    const content = document.getElementById('user-profile-popup-content');
+    content.innerHTML = '<div style="text-align:center;color:#444;font-size:0.78rem;padding:10px 0;">Loading…</div>';
+
+    const rect = anchorEl.getBoundingClientRect();
+    const left = Math.min(rect.right + 8, window.innerWidth - 252);
+    const top  = Math.min(rect.top,       window.innerHeight - 290);
+    popup.style.left = `${Math.max(8, left)}px`;
+    popup.style.top  = `${Math.max(8, top)}px`;
+    popup.style.display = 'block';
+    popup.classList.remove('visible');
+    void popup.offsetWidth;
+    popup.classList.add('visible');
+
+    const [profData, scoreData] = await Promise.all([
+        sb.from('profiles').select('username, friend_code, favorite_artist, favorite_song').eq('id', userId).maybeSingle(),
+        sb.from('global_scores').select('best_score, games_played').eq('user_id', userId).maybeSingle(),
+    ]);
+    const p = profData.data, s = scoreData.data;
+    if (!p) { popup.style.display = 'none'; return; }
+    const uname = p.username || 'Anonymous';
+    content.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div class="prof-avatar" style="width:36px;height:36px;font-size:1.1rem;flex-shrink:0;">${dcEsc(uname.charAt(0).toUpperCase())}</div>
+            <div style="min-width:0;">
+                <div style="font-weight:600;font-size:0.86rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dcEsc(uname)}</div>
+                ${p.friend_code ? `<div style="font-size:0.65rem;color:#333;letter-spacing:0.1em;">#${dcEsc(p.friend_code)}</div>` : ''}
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;${p.favorite_artist||p.favorite_song?'margin-bottom:10px;':''}">
+            <div style="background:#0f0f0f;border-radius:8px;padding:7px;text-align:center;">
+                <div style="font-size:0.54rem;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Best</div>
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:#aaa;">${s?.best_score ?? '—'}</div>
+            </div>
+            <div style="background:#0f0f0f;border-radius:8px;padding:7px;text-align:center;">
+                <div style="font-size:0.54rem;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Games</div>
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:#aaa;">${s?.games_played ?? '—'}</div>
+            </div>
+        </div>
+        ${p.favorite_artist || p.favorite_song ? `
+        <div style="padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);">
+            ${p.favorite_artist ? `<div style="font-size:0.7rem;color:#555;margin-bottom:3px;"><span style="color:#2a2a2a;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.08em;">Artist  </span>${dcEsc(p.favorite_artist)}</div>` : ''}
+            ${p.favorite_song   ? `<div style="font-size:0.7rem;color:#555;"><span style="color:#2a2a2a;font-size:0.56rem;text-transform:uppercase;letter-spacing:0.08em;">Song  </span>${dcEsc(p.favorite_song)}</div>` : ''}
+        </div>` : ''}
+    `;
+}
+
+// Close popup and fav dropdowns on outside click
+document.addEventListener('click', e => {
+    const popup = document.getElementById('user-profile-popup');
+    if (popup && popup.style.display !== 'none' && !popup.contains(e.target)) {
+        popup.style.display = 'none';
+    }
+    ['artist','song'].forEach(type => {
+        const chip = document.getElementById(`fav-${type}-chip`);
+        const drop = document.getElementById(`fav-${type}-drop`);
+        if (drop && drop.style.display === 'block' && chip && !chip.parentElement.contains(e.target)) {
+            drop.style.display = 'none';
+        }
+    });
+});
+
 // ── HOME LEADERBOARD ─────────────────────────────────────────────────────────
 async function loadHomeLeaderboard() {
     const listEl = document.getElementById('home-lb-list');
@@ -2091,7 +2300,8 @@ async function loadHomeLeaderboard() {
     top10.forEach((row, i) => {
         const isMe = row.user_id === currentUser?.id;
         const name = row.profiles?.username || 'Anonymous';
-        html += `<div class="lb-row${isMe ? ' lb-me' : ''}">
+        const clickable = !isMe ? `onclick="showUserProfile('${row.user_id}',this)" style="cursor:pointer;"` : '';
+        html += `<div class="lb-row${isMe ? ' lb-me' : ''}" ${clickable}>
             <span class="lb-rank">${i + 1}</span>
             <span class="lb-name">${dcEsc(name)}</span>
             <span class="lb-score">${row.best_score}</span>
@@ -2192,6 +2402,7 @@ async function loadFriendsList() {
             </div>
             <span class="fr-name">${dcEsc(name)}</span>
             ${best !== null ? `<span class="fr-score">${best}</span>` : ''}
+            <button class="fr-btn-profile" onclick="showUserProfile('${fId}',this)" title="View Profile">Profile</button>
             ${isOnline ? `<button class="fr-btn fr-btn-duel" onclick="sendDuelInvite('${fId}')" title="Challenge to Duel">⚔ Duel</button>` : ''}
             <button class="fr-btn fr-btn-remove" onclick="removeFriend('${s.id}')" title="Remove">&#10005;</button>
         </div>`;
@@ -2255,6 +2466,7 @@ async function runFriendsSearch(q) {
         return `<div class="fr-row">
             <div class="fr-avatar">${u.username.charAt(0).toUpperCase()}</div>
             <span class="fr-name">${dcEsc(u.username)}</span>
+            <button class="fr-btn-profile" onclick="showUserProfile('${u.id}',this)" title="View Profile">Profile</button>
             ${btn}
         </div>`;
     }).join('');
@@ -2439,5 +2651,11 @@ function sendDuelInvite(receiverId) {
     setTimeout(() => { window.location.href = `duel.html?challengeFriend=${receiverId}`; }, 280);
 }
 </script>
+
+<!-- ── User profile popup ── -->
+<div id="user-profile-popup" style="display:none;">
+    <div id="user-profile-popup-content"></div>
+</div>
+
 </body>
 </html>
