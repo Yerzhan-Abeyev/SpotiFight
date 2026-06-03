@@ -454,38 +454,41 @@ async function searchDeezer(query) {
 
 // ── LYRICS ────────────────────────────────────────────────────────────────────
 async function fetchLyrics(trackName, artist) {
-    const cleanTitle  = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
-    const cleanArtist = artist.split(',')[0].trim();
+    const title  = trackName
+        .replace(/\s*[\(\[].*?[\)\]]/g, '')
+        .replace(/\s*-\s*(feat\.|ft\.)\s*.*/gi, '')
+        .replace(/[!?.]/g, '')
+        .trim();
+    const art    = artist.split(',')[0].trim();
+    const artAlt = art.replace(/^the\s+/i, '').trim();
 
-    // 1. lyrics.ovh
-    try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 1500);
-        const res = await fetch(
-            `https://api.lyrics.ovh/v1/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
-            { signal: ctrl.signal }
-        );
-        clearTimeout(t);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.lyrics) return data.lyrics;
-        }
-    } catch { /* fall through */ }
+    async function tryGet(url) {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 4000);
+            const res = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(t);
+            return res.ok ? await res.json() : null;
+        } catch { return null; }
+    }
 
-    // 2. lrclib.net
-    try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 1500);
-        const res = await fetch(
-            `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
-            { signal: ctrl.signal }
-        );
-        clearTimeout(t);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.plainLyrics) return data.plainLyrics;
-        }
-    } catch { /* fall through */ }
+    // 1. lyrics.ovh — primary
+    let d = await tryGet(`https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`);
+    if (d?.lyrics) return d.lyrics;
+
+    // 2. lyrics.ovh — without "The " prefix
+    if (artAlt !== art) {
+        d = await tryGet(`https://api.lyrics.ovh/v1/${encodeURIComponent(artAlt)}/${encodeURIComponent(title)}`);
+        if (d?.lyrics) return d.lyrics;
+    }
+
+    // 3. lrclib search — fuzzy, handles slight mismatches
+    d = await tryGet(`https://lrclib.net/api/search?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`);
+    if (Array.isArray(d)) { const hit = d.find(r => r.plainLyrics); if (hit) return hit.plainLyrics; }
+
+    // 4. lrclib GET — exact lookup
+    d = await tryGet(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`);
+    if (d?.plainLyrics) return d.plainLyrics;
 
     return null;
 }

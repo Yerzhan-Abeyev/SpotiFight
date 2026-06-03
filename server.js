@@ -200,41 +200,70 @@ function wordInText(word, text) {
     return re.test(text);
 }
 
+// ── LYRICS CACHE (in-memory, max 500 entries) ─────────────────────────────────
+const lyricsCache = new Map();
+
+function cleanTitle(raw) {
+    return raw
+        .replace(/\s*[\(\[].*?[\)\]]/g, '')          // strip (feat. X) / [Remix]
+        .replace(/\s*-\s*(feat\.|ft\.)\s*.*/gi, '')   // "Song - feat. X"
+        .replace(/[!?.]/g, '')                         // trailing punctuation
+        .trim();
+}
+
+async function tryGet(url, ms = 4000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(t);
+        return res.ok ? res.json() : null;
+    } catch { clearTimeout(t); return null; }
+}
+
 async function fetchLyricsServer(trackName, artist) {
-    const title = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
-    const art   = artist.split(',')[0].trim();
+    const title  = cleanTitle(trackName);
+    const art    = artist.split(',')[0].trim();
+    // "The Weeknd" → also try "Weeknd"; handles artists whose ovh entry omits "The"
+    const artAlt = art.replace(/^the\s+/i, '').trim();
 
-    // 1. lyrics.ovh
-    try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 1500);
-        const res = await fetch(
-            `https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`,
-            { signal: ctrl.signal }
-        );
-        clearTimeout(t);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.lyrics) return data.lyrics;
+    const cacheKey = `${art.toLowerCase()}||${title.toLowerCase()}`;
+    if (lyricsCache.has(cacheKey)) return lyricsCache.get(cacheKey);
+
+    let lyrics = null;
+
+    // 1. lyrics.ovh — primary artist name
+    if (!lyrics) {
+        const d = await tryGet(`https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`);
+        if (d?.lyrics) lyrics = d.lyrics;
+    }
+
+    // 2. lyrics.ovh — artist without "The " prefix
+    if (!lyrics && artAlt !== art) {
+        const d = await tryGet(`https://api.lyrics.ovh/v1/${encodeURIComponent(artAlt)}/${encodeURIComponent(title)}`);
+        if (d?.lyrics) lyrics = d.lyrics;
+    }
+
+    // 3. lrclib search — fuzzy, survives slight name/title mismatches
+    if (!lyrics) {
+        const d = await tryGet(`https://lrclib.net/api/search?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`);
+        if (Array.isArray(d)) {
+            const hit = d.find(r => r.plainLyrics);
+            if (hit) lyrics = hit.plainLyrics;
         }
-    } catch { /* fall through */ }
+    }
 
-    // 2. lrclib.net
-    try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 1500);
-        const res = await fetch(
-            `https://lrclib.net/api/get?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`,
-            { signal: ctrl.signal }
-        );
-        clearTimeout(t);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.plainLyrics) return data.plainLyrics;
-        }
-    } catch { /* fall through */ }
+    // 4. lrclib GET — exact lookup
+    if (!lyrics) {
+        const d = await tryGet(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`);
+        if (d?.plainLyrics) lyrics = d.plainLyrics;
+    }
 
-    return null;
+    // Cache result (including null to avoid re-hammering dead APIs)
+    lyricsCache.set(cacheKey, lyrics);
+    if (lyricsCache.size > 500) lyricsCache.delete(lyricsCache.keys().next().value);
+
+    return lyrics;
 }
 
 function generateCode() {

@@ -1149,20 +1149,39 @@ async function dcSearchDeezer(q) {
 
 // ── LYRICS ────────────────────────────────────────────────────────────────────
 async function dcFetchLyrics(trackName, artist) {
-    const title = trackName.replace(/\s*[\(\[].*?[\)\]]/g, '').trim();
-    const art   = artist.split(',')[0].trim();
-    try {
-        const controller = new AbortController();
-        const timeout    = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(
-            `https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`,
-            { signal: controller.signal }
-        );
-        clearTimeout(timeout);
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.lyrics || null;
-    } catch { return null; }
+    const title  = trackName
+        .replace(/\s*[\(\[].*?[\)\]]/g, '')
+        .replace(/\s*-\s*(feat\.|ft\.)\s*.*/gi, '')
+        .replace(/[!?.]/g, '')
+        .trim();
+    const art    = artist.split(',')[0].trim();
+    const artAlt = art.replace(/^the\s+/i, '').trim();
+
+    async function tryGet(url) {
+        try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 4000);
+            const res = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(t);
+            return res.ok ? await res.json() : null;
+        } catch { return null; }
+    }
+
+    let d = await tryGet(`https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(title)}`);
+    if (d?.lyrics) return d.lyrics;
+
+    if (artAlt !== art) {
+        d = await tryGet(`https://api.lyrics.ovh/v1/${encodeURIComponent(artAlt)}/${encodeURIComponent(title)}`);
+        if (d?.lyrics) return d.lyrics;
+    }
+
+    d = await tryGet(`https://lrclib.net/api/search?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`);
+    if (Array.isArray(d)) { const hit = d.find(r => r.plainLyrics); if (hit) return hit.plainLyrics; }
+
+    d = await tryGet(`https://lrclib.net/api/get?artist_name=${encodeURIComponent(art)}&track_name=${encodeURIComponent(title)}`);
+    if (d?.plainLyrics) return d.plainLyrics;
+
+    return null;
 }
 
 // ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
