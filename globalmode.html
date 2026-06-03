@@ -97,11 +97,11 @@
         .diff-medium { background: #1e1208; color: #f59e0b; border: 1px solid #f59e0b; }
         .diff-hard   { background: #2b0d0d; color: #ff5555; border: 1px solid #ff5555; }
 
-        /* ── Page exit transition ── */
+        /*  Page exit transition  */
         body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
         body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
 
-        /* ── Page entrance animation ── */
+        /*  Page entrance animation  */
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(24px); }
             to   { opacity: 1; transform: translateY(0);    }
@@ -123,7 +123,7 @@
         .go-title { font-family: 'Bebas Neue', sans-serif; font-size: 3.8rem; color: #ff4444; letter-spacing: 0.12em; line-height: 1; }
         .go-score { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.08em; color: #fff; }
 
-        /* ── Skip button ── */
+        /*  Skip button  */
         #skip-btn {
             background: transparent;
             border: 1px solid rgba(245,158,11,0.22);
@@ -141,7 +141,7 @@
         }
         #skip-btn:hover { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.5); color: #f59e0b; }
 
-        /* ── Mobile ── */
+        /*  Mobile  */
         @media (max-width: 480px) {
             body { padding: 12px !important; }
             .card { padding: 20px !important; }
@@ -153,7 +153,7 @@
             .btn-icon { display: none; }
         }
 
-        /* ── Leaderboard layout ── */
+        /*  Leaderboard layout  */
         .lb-layout { position: relative; width: 100%; max-width: 576px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .lb-game-col { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .lb-panel { display: none; position: absolute; right: calc(100% + 64px); top: 0; width: 300px; }
@@ -220,7 +220,7 @@
     </div>
 </div>
 
-<!-- ── Leaderboard + game column wrapper ── -->
+<!--  Leaderboard + game column wrapper  -->
 <div class="lb-layout">
 
 <!-- LEFT: leaderboard panel (desktop only) -->
@@ -237,7 +237,7 @@
 <div class="card w-full rounded-2xl p-7 shadow-2xl relative z-10">
 <div class="flex flex-col items-center gap-5">
 
-    <!-- ── Pre-game intro (hidden once game starts) ── -->
+    <!--  Pre-game intro (hidden once game starts)  -->
     <div id="pre-game" class="w-full flex flex-col gap-5">
 
         <!-- One-liner -->
@@ -247,7 +247,7 @@
         </div>
 
     </div>
-    <!-- ── End pre-game ── -->
+    <!--  End pre-game  -->
 
     <div id="word-container" class="text-center" style="display:none;">
         <div id="word-display"></div>
@@ -363,7 +363,7 @@ const WORDS_HARD = [
     'desolation', 'transcendence','absolution','serendipity','perdition',
 ];
 
-// ── CONFIG ────────────────────────────────────────────────────────────────────
+// CONFIG
 const TIME_LIMIT    = 30;
 const STREAK_MEDIUM = 7;
 const STREAK_HARD   = 12;
@@ -373,7 +373,7 @@ const SCORE_CONFIG = {
     hard:   { base: 500, timeBonus: 10 },   // max 800 pts
 };
 
-// ── STATE ─────────────────────────────────────────────────────────────────────
+// STATE
 let currentWord    = '';
 let roundActive    = false;
 let skipUsed       = false;
@@ -390,7 +390,7 @@ let streak         = 0;
 let decks   = { easy: [], medium: [], hard: [] };
 let deckPtr = { easy: 0,  medium: 0,  hard: 0  };
 
-// ── DIFFICULTY ────────────────────────────────────────────────────────────────
+// DIFFICULTY
 function shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -432,7 +432,7 @@ function updateDiffBadge() {
     wd.className = diff;   // easy / medium / hard — drives CSS gradient
 }
 
-// ── DEEZER SEARCH ─────────────────────────────────────────────────────────────
+// DEEZER SEARCH
 function normalizeDeezerTrack(t) {
     return {
         name:       t.title,
@@ -452,7 +452,7 @@ async function searchDeezer(query) {
     return (await res.json()).map(normalizeDeezerTrack);
 }
 
-// ── LYRICS ────────────────────────────────────────────────────────────────────
+// LYRICS
 async function fetchLyrics(trackName, artist) {
     const title  = trackName
         .replace(/\s*[\(\[].*?[\)\]]/g, '')
@@ -493,7 +493,7 @@ async function fetchLyrics(trackName, artist) {
     return null;
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+// HELPERS
 function wordInText(word, text) {
     const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
     return re.test(text);
@@ -504,7 +504,7 @@ function showFlex(id) { const el = document.getElementById(id); el.style.display
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// ── PERSONAL BEST (Global mode) ───────────────────────────────────────────────
+// PERSONAL BEST (Global mode)
 function getGlobalBest() {
     try { return JSON.parse(localStorage.getItem('sf_global_best')) || null; } catch { return null; }
 }
@@ -536,7 +536,7 @@ function updatePreGameStats(gamesPlayed) {
 }
 (function initPreGameStats() { updatePreGameStats(null); })();
 
-// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+// AUDIO PREVIEW
 function stopAudio() {
     if (currentAudio)    { currentAudio.pause(); currentAudio = null; }
     if (currentAudioCtx) { currentAudioCtx.close().catch(()=>{}); currentAudioCtx = null; }
@@ -605,8 +605,8 @@ async function playPreview(track) {
     }, dur - fadeOut);
 }
 
-// ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
-// ── LEADERBOARD ───────────────────────────────────────────────────────────────
+// GAME LIFECYCLE
+// LEADERBOARD
 async function loadGlobalLeaderboard() {
     const listEl = document.getElementById('lb-global-list');
     if (!listEl) return;
@@ -729,7 +729,7 @@ function runTimer() {
     timerRAF = requestAnimationFrame(tick);
 }
 
-// ── SEARCH ────────────────────────────────────────────────────────────────────
+// SEARCH
 function onSearchInput(val) {
     clearTimeout(searchDebounce);
     const q = val.trim();
@@ -781,7 +781,7 @@ function renderResults(tracks) {
     });
 }
 
-// ── PICK SONG ─────────────────────────────────────────────────────────────────
+// PICK SONG
 async function pickSong(track) {
     if (!roundActive) return;
 
@@ -849,7 +849,7 @@ async function pickSong(track) {
     }
 }
 
-// ── END ROUND ─────────────────────────────────────────────────────────────────
+// END ROUND
 function endRound(result, track, pointsEarned) {
     hide('search-container');
     hide('timer-container');
@@ -918,7 +918,7 @@ function endRound(result, track, pointsEarned) {
 }
 
 
-// ── SOUND EFFECTS ─────────────────────────────────────────────────────────────
+// SOUND EFFECTS
 const sfx = (() => {
     let _ctx = null;
     function ctx() {
@@ -943,7 +943,7 @@ const sfx = (() => {
     };
 })();
 
-// ── SKIP ──────────────────────────────────────────────────────────────────────
+// SKIP
 function skipRound() {
     if (!roundActive || skipUsed) return;
     skipUsed  = true;
@@ -960,7 +960,7 @@ function skipRound() {
     setTimeout(() => { hide('feedback'); startRound(); }, 1100);
 }
 
-// ── SUPABASE ──────────────────────────────────────────────────────────────────
+// SUPABASE
 const { createClient } = window.supabase;
 const sb = createClient(
     'https://drspcfilywicsmfhpjyr.supabase.co',

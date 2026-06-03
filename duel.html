@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/theme.css">
     <script>if(localStorage.getItem('dc_theme')==='light')document.documentElement.classList.add('light');</script>
 <script>
-// ── AUTH GUARD ────────────────────────────────────────────────────────────────
+// AUTH GUARD
 // Redirect to home if not signed in
 (async () => {
     const { createClient } = window.supabase;
@@ -172,7 +172,7 @@
         body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
         body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
 
-        /* ── Pip score dots ── */
+        /*  Pip score dots  */
         .score-pips { display: flex; gap: 5px; justify-content: center; margin-top: 6px; }
         .pip {
             width: 9px; height: 9px; border-radius: 50%;
@@ -193,7 +193,7 @@
             box-shadow: 0 0 7px rgba(255,68,68,0.55);
         }
 
-        /* ── Round flash on score bar ── */
+        /*  Round flash on score bar  */
         @keyframes flashWin {
             0%   { box-shadow: 0 0 0 0 rgba(29,185,84,0.55); }
             60%  { box-shadow: 0 0 0 18px rgba(29,185,84,0); }
@@ -207,7 +207,7 @@
         .flash-win  { animation: flashWin  0.65s ease-out; }
         .flash-lose { animation: flashLose 0.65s ease-out; }
 
-        /* ── Player section pop when they score ── */
+        /*  Player section pop when they score  */
         @keyframes scorePop {
             0%   { transform: scale(1); }
             45%  { transform: scale(1.07); }
@@ -215,7 +215,7 @@
         }
         .score-pop { animation: scorePop 0.45s cubic-bezier(0.34,1.56,0.64,1); }
 
-        /* ── Match over ── */
+        /*  Match over  */
         .result-title {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 3.8rem; letter-spacing: 0.12em; line-height: 1; margin-bottom: 4px;
@@ -249,7 +249,7 @@
             color: #222; flex-shrink: 0; padding-bottom: 24px;
         }
 
-        /* ── Word entrance ── */
+        /*  Word entrance  */
         @keyframes wordIn {
             0%   { opacity: 0; transform: scale(0.78) translateY(12px); }
             65%  { transform: scale(1.05) translateY(-3px); }
@@ -257,7 +257,7 @@
         }
         .word-enter { animation: wordIn 0.44s cubic-bezier(0.34,1.56,0.64,1) both; }
 
-        /* ── Timer low shake ── */
+        /*  Timer low shake  */
         @keyframes timerShake {
             0%,100% { transform: translateX(0); }
             20%     { transform: translateX(-4px); }
@@ -265,7 +265,7 @@
         }
         .timer-shake { animation: timerShake 0.22s ease-in-out; }
 
-        /* ── Countdown number pop ── */
+        /*  Countdown number pop  */
         @keyframes countPop {
             0%   { opacity: 0; transform: scale(1.9); }
             50%  { opacity: 1; transform: scale(0.9); }
@@ -273,19 +273,19 @@
             100% { transform: scale(1); }
         }
 
-        /* ── Song search result stagger ── */
+        /*  Song search result stagger  */
         @keyframes songItemIn {
             from { opacity: 0; transform: translateY(5px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Feedback slide up ── */
+        /*  Feedback slide up  */
         @keyframes slideUpFb {
             from { opacity: 0; transform: translateY(10px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Confetti ── */
+        /*  Confetti  */
         @keyframes confettiFall {
             0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
             100% { transform: translateY(108vh) rotate(540deg); opacity: 0; }
@@ -452,7 +452,7 @@
 </div>
 
 <script>
-// ── SOUND EFFECTS ─────────────────────────────────────────────────────────────
+// SOUND EFFECTS
 const sfx = (() => {
     let _ctx = null;
     function ctx() {
@@ -484,7 +484,7 @@ const sfx = (() => {
     };
 })();
 
-// ── SOCKET ────────────────────────────────────────────────────────────────────
+// SOCKET
 const socket = io();
 
 let myId             = null;
@@ -506,7 +506,7 @@ let currentAudio    = null;
 let currentAudioCtx = null;
 const ROUND_TIME = 20;
 
-// ── DEEZER SEARCH ─────────────────────────────────────────────────────────────
+// DEEZER SEARCH
 function normalizeDeezerTrack(t) {
     return {
         name:       t.title,
@@ -526,7 +526,7 @@ async function searchDeezer(q) {
     return (await res.json()).map(normalizeDeezerTrack);
 }
 
-// ── LOBBY ACTIONS ─────────────────────────────────────────────────────────────
+// LOBBY ACTIONS
 function getName() {
     return document.getElementById('name-input').value.trim() || 'Anonymous';
 }
@@ -564,7 +564,7 @@ function copyCode() {
     });
 }
 
-// ── ROUND SUMMARY ─────────────────────────────────────────────────────────────
+// ROUND SUMMARY
 function renderSubmissions(submissions) {
     if (!submissions || !Object.keys(submissions).length) return '';
     const myPick  = submissions[myId];
@@ -588,7 +588,7 @@ function renderSubmissions(submissions) {
     return html;
 }
 
-// ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
+// SOCKET EVENTS
 socket.on('room_created', ({ code }) => {
     roomCode = code;
     document.getElementById('waiting-code').innerText = code;
@@ -938,7 +938,7 @@ socket.on('opponent_disconnected', () => {
     showView('view-over');
 });
 
-// ── PIP SCORE DISPLAY ─────────────────────────────────────────────────────────
+// PIP SCORE DISPLAY
 function updatePips(my, opp) {
     myRoundScore  = my;
     oppRoundScore = opp;
@@ -950,7 +950,7 @@ function updatePips(my, opp) {
     });
 }
 
-// ── CONFETTI ──────────────────────────────────────────────────────────────────
+// CONFETTI
 function spawnConfetti() {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden;';
@@ -975,7 +975,7 @@ function spawnConfetti() {
     setTimeout(() => wrap.remove(), 5000);
 }
 
-// ── SEARCH ────────────────────────────────────────────────────────────────────
+// SEARCH
 let searchDebounce = null;
 
 function onSearchInput(val) {
@@ -1080,7 +1080,7 @@ function pickSong(track) {
     document.getElementById('loader-area').style.display = 'none';
 }
 
-// ── SEARCH RESULT PREVIEW ─────────────────────────────────────────────────────
+// SEARCH RESULT PREVIEW
 function toggleSearchPreview(track, btn) {
     if (previewingBtn === btn) {
         stopAudio();
@@ -1107,7 +1107,7 @@ function stopSearchPreview() {
     }
 }
 
-// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+// AUDIO PREVIEW
 function stopAudio() {
     if (currentAudio)    { currentAudio.pause(); currentAudio = null; }
     if (currentAudioCtx) { currentAudioCtx.close().catch(()=>{}); currentAudioCtx = null; }
@@ -1176,7 +1176,7 @@ async function playPreview(track) {
     }, dur - fadeOut);
 }
 
-// ── TIMER ─────────────────────────────────────────────────────────────────────
+// TIMER
 function runTimer() {
     cancelAnimationFrame(timerRAF);
     const bar  = document.getElementById('timer-bar');
@@ -1204,7 +1204,7 @@ function runTimer() {
     timerRAF = requestAnimationFrame(tick);
 }
 
-// ── COUNTDOWN OVERLAY ─────────────────────────────────────────────────────────
+// COUNTDOWN OVERLAY
 function showCountdown(label, sublabel) {
     const overlay = document.getElementById('countdown-overlay');
     document.getElementById('countdown-label').innerText = label + (sublabel ? ` · ${sublabel}` : '');
@@ -1231,7 +1231,7 @@ function hideCountdown() {
     document.getElementById('countdown-overlay').style.display = 'none';
 }
 
-// ── MISC ──────────────────────────────────────────────────────────────────────
+// MISC
 function requestRematch() {
     socket.emit('rematch_request');
     const btn = document.getElementById('rematch-btn');
@@ -1267,7 +1267,7 @@ function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 
-// ── SUPABASE ──────────────────────────────────────────────────────────────────
+// SUPABASE
 const { createClient } = window.supabase;
 const sb = createClient(
     'https://drspcfilywicsmfhpjyr.supabase.co',
@@ -1325,7 +1325,7 @@ async function addFriendAfterDuel(userId) {
     }
 }
 
-// ── Code char boxes: auto-advance, backspace, paste, Enter ───────────────────
+// Code char boxes: auto-advance, backspace, paste, Enter
 (function initCodeChars() {
     const els = [...document.querySelectorAll('.code-char')];
     els.forEach((el, i) => {

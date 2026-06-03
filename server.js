@@ -13,14 +13,14 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ── Pre-load words file once at startup (avoids blocking I/O per request) ────
+// Pre-load words file once at startup (avoids blocking I/O per request)
 const wordsCache = JSON.parse(readFileSync(path.join(__dirname, 'daily-words.json'), 'utf-8'));
 
 const app        = express();
 const httpServer = createServer(app);
 const io         = new Server(httpServer);
 
-// ── Security headers ──────────────────────────────────────────────────────────
+// Security headers
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -43,7 +43,7 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
 }));
 
-// ── Rate limiting ─────────────────────────────────────────────────────────────
+// Rate limiting
 const apiLimiter = rateLimit({
     windowMs: 60_000,
     max: 60,
@@ -52,7 +52,7 @@ const apiLimiter = rateLimit({
     message: { error: 'Too many requests, please slow down.' },
 });
 
-// ── Static files ──────────────────────────────────────────────────────────────
+// Static files
 const HTML_FILES = ['home.html', 'globalmode.html', 'localmode.html', 'duel.html', 'test.html'];
 HTML_FILES.forEach(f => {
     app.get(`/${f}`, (_req, res) => res.sendFile(path.join(__dirname, f)));
@@ -61,12 +61,12 @@ app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'home.html')));
 app.get('/Paradise_Found.mp3', (_req, res) => res.sendFile(path.join(__dirname, 'Paradise_Found.mp3')));
 app.get('/theme.css', (_req, res) => res.sendFile(path.join(__dirname, 'theme.css')));
 
-// ── Date validation helper ────────────────────────────────────────────────────
+// Date validation helper
 function safeDate(raw) {
     return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : new Date().toISOString().slice(0, 10);
 }
 
-// ── GET /api/daily ────────────────────────────────────────────────────────────
+// GET /api/daily
 function wordForDate(words, dateStr) {
     const d = new Date(dateStr + 'T12:00:00Z');
     const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
@@ -86,7 +86,7 @@ app.get('/api/daily', apiLimiter, (req, res) => {
     }
 });
 
-// ── GET /api/daily-history ────────────────────────────────────────────────────
+// GET /api/daily-history
 app.get('/api/daily-history', apiLimiter, (req, res) => {
     try {
         const baseStr = safeDate(req.query.date);
@@ -105,7 +105,7 @@ app.get('/api/daily-history', apiLimiter, (req, res) => {
     }
 });
 
-// ── GET /api/deezer/search ────────────────────────────────────────────────────
+// GET /api/deezer/search
 app.get('/api/deezer/search', apiLimiter, async (req, res) => {
     try {
         const q     = String(req.query.q || '').slice(0, 200);
@@ -123,7 +123,7 @@ app.get('/api/deezer/search', apiLimiter, async (req, res) => {
     }
 });
 
-// ── GET /api/deezer/artist/:id/top ───────────────────────────────────────────
+// GET /api/deezer/artist/:id/top
 app.get('/api/deezer/artist/:id/top', apiLimiter, async (req, res) => {
     try {
         const id = String(req.params.id).replace(/[^0-9]/g, '');
@@ -138,7 +138,7 @@ app.get('/api/deezer/artist/:id/top', apiLimiter, async (req, res) => {
     }
 });
 
-// ── GET /api/deezer/preview ───────────────────────────────────────────────────
+// GET /api/deezer/preview
 app.get('/api/deezer/preview', apiLimiter, async (req, res) => {
     try {
         const q = String(req.query.q || '').slice(0, 200);
@@ -153,7 +153,7 @@ app.get('/api/deezer/preview', apiLimiter, async (req, res) => {
     }
 });
 
-// ── DUEL: helpers ─────────────────────────────────────────────────────────────
+// DUEL: helpers
 const DUEL_WORDS = [
     // Body & emotion
     'love','heart','soul','mind','eyes','tears','voice','smile','kiss','hands',
@@ -200,7 +200,7 @@ function wordInText(word, text) {
     return re.test(text);
 }
 
-// ── LYRICS CACHE (in-memory, max 500 entries) ─────────────────────────────────
+// LYRICS CACHE (in-memory, max 500 entries)
 const lyricsCache = new Map();
 
 function cleanTitle(raw) {
@@ -293,7 +293,7 @@ function sanitizeName(raw) {
     return String(raw || '').replace(/[<>"'&]/g, '').slice(0, 32).trim() || 'Player';
 }
 
-// ── DUEL: room state ──────────────────────────────────────────────────────────
+// DUEL: room state
 // rooms: Map<code, { players: [socketId, socketId?], names: {}, scores: {}, word, roundActive, timer, roundNum }>
 const rooms = new Map();
 
@@ -323,7 +323,7 @@ function startRound(code) {
     }, ROUND_TIME_MS);
 }
 
-// ── DUEL: socket events ───────────────────────────────────────────────────────
+// DUEL: socket events
 io.on('connection', socket => {
 
     socket.on('create_room', ({ name, userId }) => {
@@ -435,7 +435,7 @@ io.on('connection', socket => {
         }
 
         if (wordInText(word, lyrics)) {
-            // ── WIN ──
+            // WIN
             room.roundActive = false;
             clearTimeout(room.timer);
             room.scores[socket.id]++;
@@ -461,7 +461,7 @@ io.on('connection', socket => {
                 setTimeout(() => startRound(code), 3500);
             }
         } else {
-            // ── WRONG — lock this player out for the round ──
+            // WRONG — lock this player out for the round
             room.wrongPlayers.add(socket.id);
             socket.emit('submit_result', { result: 'wrong' });
             // Signal the opponent with the song that was tried
@@ -612,9 +612,9 @@ io.on('connection', socket => {
     });
 });
 
-// ── Keep-alive (prevents free-tier sleep) ────────────────────────────────────
+// Keep-alive (prevents free-tier sleep)
 app.get('/ping', (_req, res) => res.send('ok'));
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+// Start
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => console.log(`✅  SpotiFight running at http://localhost:${PORT}`));

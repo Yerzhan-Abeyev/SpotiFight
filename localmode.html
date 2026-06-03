@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/theme.css">
     <script>if(localStorage.getItem('dc_theme')==='light')document.documentElement.classList.add('light');</script>
 <script>
-// ── AUTH GUARD ────────────────────────────────────────────────────────────────
+// AUTH GUARD
 // Redirect to home if not signed in
 (async () => {
     const { createClient } = window.supabase;
@@ -35,7 +35,7 @@
         }
         .card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); }
 
-        /* ── Search inputs ── */
+        /*  Search inputs  */
         .search-input {
             background: #1a1a1a; border: 1.5px solid rgba(255,255,255,0.08); color: #fff;
             border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 0.95rem;
@@ -44,12 +44,12 @@
         .search-input:focus { border-color: #1DB954; }
         .search-input::placeholder { color: #444; }
 
-        /* ── Results windows ── */
+        /*  Results windows  */
         .results-window { max-height: 320px; overflow-y: auto; background: #111; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
         .results-window::-webkit-scrollbar { width: 5px; }
         .results-window::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 10px; }
 
-        /* ── Preset artist cards ── */
+        /*  Preset artist cards  */
         .artist-card {
             display: flex; align-items: center; gap: 14px;
             padding: 16px 18px; border-radius: 14px;
@@ -70,7 +70,7 @@
             color: #1DB954; font-size: 0.9rem;
         }
 
-        /* ── Song result items (same as globalmode.html) ── */
+        /*  Song result items (same as globalmode.html)  */
         .song-item { display: flex; align-items: center; gap: 14px; padding: 11px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
         .song-item:last-child { border-bottom: none; }
         .song-item:hover { background: #1c1c1c; }
@@ -79,7 +79,7 @@
         .song-title { font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .song-artist { font-size: 0.75rem; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* ── Empty/loader states ── */
+        /*  Empty/loader states  */
         .empty-state { padding: 24px; text-align: center; color: #444; font-size: 0.82rem; }
         .dot-loader { display: flex; gap: 6px; justify-content: center; padding: 22px; }
         .dot-loader span { width: 7px; height: 7px; background: #1DB954; border-radius: 50%; animation: bounce 1s infinite ease-in-out; }
@@ -87,7 +87,7 @@
         .dot-loader span:nth-child(3) { animation-delay: .3s; }
         @keyframes bounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 
-        /* ── Loading view ── */
+        /*  Loading view  */
         .load-artist-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(29,185,84,0.3); }
         .load-artist-name { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.1em; color: #fff; margin-top: 10px; }
         .track-status-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.82rem; color: #555; }
@@ -95,7 +95,7 @@
         .ts-icon { width: 18px; text-align: center; font-size: 0.85rem; flex-shrink: 0; }
         .ts-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* ── Artist context bar (in game view) ── */
+        /*  Artist context bar (in game view)  */
         #artist-ctx {
             display: flex; align-items: center; gap: 10px;
             background: #111; border: 1px solid rgba(255,255,255,0.05);
@@ -112,7 +112,7 @@
         }
         #change-btn:hover { border-color: #444; color: #aaa; }
 
-        /* ── Game elements (mirrors globalmode.html) ── */
+        /*  Game elements (mirrors globalmode.html)  */
         #word-display {
             font-family: 'Bebas Neue', sans-serif; font-size: 4.5rem;
             letter-spacing: 0.12em; line-height: 1;
@@ -163,7 +163,7 @@
         .back-link:hover { color: #666; }
         .note { font-size: 0.72rem; color: #2a2a2a; text-align: center; }
 
-        /* ── Page transitions ── */
+        /*  Page transitions  */
         body { transition: opacity 0.28s ease, transform 0.28s ease; transform-origin: center top; }
         body.page-exit { opacity: 0; transform: scale(0.97) translateY(-8px); }
         @keyframes fadeUp {
@@ -173,7 +173,7 @@
         #page-header { animation: fadeUp 0.35s cubic-bezier(0.22,1,0.36,1) both; }
         .card        { animation: fadeUp 0.45s 0.06s cubic-bezier(0.22,1,0.36,1) both; }
 
-        /* ── Mobile ── */
+        /*  Mobile  */
         @media (max-width: 480px) {
             body { padding: 12px !important; }
             .card { padding: 20px !important; }
@@ -188,7 +188,7 @@
             .btn-icon { display: none; }
         }
 
-        /* ── Leaderboard layout ── */
+        /*  Leaderboard layout  */
         .lb-layout { position: relative; width: 100%; max-width: 576px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .lb-game-col { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .lb-panel { display: none; position: absolute; right: calc(100% + 64px); top: 0; width: 300px; }
@@ -305,7 +305,7 @@
         <button id="change-btn" onclick="changeArtist()">Change artist</button>
     </div>
 
-<!-- ── Leaderboard + game column wrapper ── -->
+<!--  Leaderboard + game column wrapper  -->
 <div class="lb-layout">
 
 <!-- LEFT: leaderboard panel (desktop only) -->
@@ -387,10 +387,8 @@
 </div><!-- end view-game -->
 
 <script>
-// ── CREDENTIALS ───────────────────────────────────────────────────────────────
-
-
-// ── STOP WORDS ────────────────────────────────────────────────────────────────
+// CREDENTIALS
+// STOP WORDS
 // Keep this list minimal so pronouns ('you','her','him','they'),
 // fillers ('yeah','hey','whoa') and meaningful conjunctions ('if','when','why')
 // can surface naturally in the artist's word pool.
@@ -422,7 +420,7 @@ const STOP_WORDS = new Set([
 // and adverbs (not/just/only/even/still/again/never/always) are intentionally
 // NOT filtered — they reflect an artist's signature voice and make valid game words.
 
-// ── TOP SONGS VIA DEEZER ──────────────────────────────────────────────────────
+// TOP SONGS VIA DEEZER
 function normalizeDeezerTrack(t) {
     return {
         name:        t.title,
@@ -457,7 +455,7 @@ async function getTopSongs(artistId) {
     return tracks.slice(0, count).map(normalizeDeezerTrack);
 }
 
-// ── PERSONAL BEST (per artist) ────────────────────────────────────────────────
+// PERSONAL BEST (per artist)
 function getArtistBest(artistId) {
     try { return JSON.parse(localStorage.getItem(`sf_artist_${artistId}`)) || null; } catch { return null; }
 }
@@ -476,17 +474,16 @@ function saveArtistBest(artistId, s, st) {
     }
 }
 
-// ── CONFIG ────────────────────────────────────────────────────────────────────
+// CONFIG
 const TIME_LIMIT    = 30;
 const STREAK_MEDIUM = 5;
 const STREAK_HARD   = 10;
-// Local mode: no time bonus (lyrics search takes time, penalising speed is unfair)
 const SCORE_CONFIG  = {
-    easy:   { base: 100, timeBonus: 0 },
-    medium: { base: 250, timeBonus: 0 },
-    hard:   { base: 500, timeBonus: 0 },
+    easy:   { base: 100, timeBonus: 2  },
+    medium: { base: 250, timeBonus: 5  },
+    hard:   { base: 500, timeBonus: 10 },
 };
-// ── STATE ─────────────────────────────────────────────────────────────────────
+// STATE
 let selectedArtist    = null;   // { id, name, image }
 let artistWordPool    = null;   // { easy:[], medium:[], hard:[] }
 let currentArtistSongs = [];    // names of analyzed songs (for in-game local search)
@@ -505,7 +502,7 @@ let streak            = 0;
 let decks   = { easy: [], medium: [], hard: [] };
 let deckPtr = { easy: 0,  medium: 0,  hard: 0  };
 
-// ── LYRICS TOKENIZER ─────────────────────────────────────────────────────────
+// LYRICS TOKENIZER
 function tokenize(text) {
     return text
         .toLowerCase()
@@ -515,7 +512,7 @@ function tokenize(text) {
         .filter(w => w.length >= 3 && !STOP_WORDS.has(w));
 }
 
-// ── WORD POOL BUILDER ─────────────────────────────────────────────────────────
+// WORD POOL BUILDER
 // Score = (how many songs it appears in) × 10  +  (total occurrences)
 // → words that are signature across multiple songs rank highest (easy)
 function buildWordPool(freq, songCount) {
@@ -542,7 +539,7 @@ function buildWordPool(freq, songCount) {
     };
 }
 
-// ── DEEZER ────────────────────────────────────────────────────────────────────
+// DEEZER
 async function searchArtists(query) {
     const res = await fetch(`/api/deezer/search?q=${encodeURIComponent(query)}&type=artist&limit=5`);
     if (!res.ok) throw new Error(`Artist search error: ${res.status}`);
@@ -561,7 +558,7 @@ function searchLocalSongs(query) {
         }));
 }
 
-// ── LYRICS ────────────────────────────────────────────────────────────────────
+// LYRICS
 async function fetchLyrics(trackName, artist) {
     const title  = trackName
         .replace(/\s*[\(\[].*?[\)\]]/g, '')
@@ -598,7 +595,7 @@ async function fetchLyrics(trackName, artist) {
     return null;
 }
 
-// ── ARTIST SEARCH BAR ─────────────────────────────────────────────────────────
+// ARTIST SEARCH BAR
 let artistSearchTimer = null;
 
 function onArtistInput(val) {
@@ -663,7 +660,7 @@ function renderArtists(artists) {
     });
 }
 
-// ── CATALOG ANALYSIS ──────────────────────────────────────────────────────────
+// CATALOG ANALYSIS
 async function pickArtist(artist) {
     const img = artist.images?.[1]?.url || artist.images?.[0]?.url || '';
     selectedArtist = { id: artist.id, name: artist.name, image: img };
@@ -786,14 +783,14 @@ function changeArtist() {
     showView('view-select');
 }
 
-// ── VIEW SWITCHER ─────────────────────────────────────────────────────────────
+// VIEW SWITCHER
 function showView(id) {
     ['view-select','view-loading','view-game'].forEach(v => {
         document.getElementById(v).style.display = v === id ? 'flex' : 'none';
     });
 }
 
-// ── DIFFICULTY ────────────────────────────────────────────────────────────────
+// DIFFICULTY
 function shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -818,24 +815,36 @@ function getDifficulty() {
     return 'easy';
 }
 
+function wordInAnyTitle(word) {
+    const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    return currentArtistSongs.some(t => re.test(t));
+}
+
 function pickWord() {
     const diff  = getDifficulty();
-    // Try the target tier first; fall back to adjacent tiers if empty
     const order = diff === 'hard'   ? ['hard','medium','easy']
                 : diff === 'medium' ? ['medium','easy','hard']
                 :                     ['easy','medium','hard'];
 
     for (const tier of order) {
-        if (decks[tier].length === 0) continue;
+        const pool = artistWordPool[tier] || [];
+        if (!pool.length) continue;
         if (deckPtr[tier] >= decks[tier].length) {
-            decks[tier]  = shuffle(artistWordPool[tier] || []);
+            decks[tier]  = shuffle(pool);
             deckPtr[tier] = 0;
         }
-        return decks[tier][deckPtr[tier]++];
+        // Scan for a word that doesn't appear in any artist song title
+        for (let i = deckPtr[tier]; i < decks[tier].length; i++) {
+            if (!wordInAnyTitle(decks[tier][i])) {
+                deckPtr[tier] = i + 1;
+                return decks[tier][i];
+            }
+        }
+        // All remaining words in this tier are in titles — continue to next tier
     }
-    // Absolute fallback
+    // Fallback: anything not in titles, or first available word
     const all = [...(artistWordPool.easy||[]), ...(artistWordPool.medium||[]), ...(artistWordPool.hard||[])];
-    return all[Math.floor(Math.random() * all.length)] || 'music';
+    return all.find(w => !wordInAnyTitle(w)) || all[0] || 'music';
 }
 
 function updateDiffBadge() {
@@ -847,7 +856,7 @@ function updateDiffBadge() {
     wd.className = diff;
 }
 
-// ── AUDIO PREVIEW ─────────────────────────────────────────────────────────────
+// AUDIO PREVIEW
 function stopAudio() {
     if (currentAudio)    { currentAudio.pause(); currentAudio = null; }
     if (currentAudioCtx) { currentAudioCtx.close().catch(()=>{}); currentAudioCtx = null; }
@@ -915,8 +924,8 @@ async function playPreview(track) {
     }, dur - fadeOut);
 }
 
-// ── GAME LIFECYCLE ────────────────────────────────────────────────────────────
-// ── LEADERBOARD ───────────────────────────────────────────────────────────────
+// GAME LIFECYCLE
+// LEADERBOARD
 async function loadLocalLeaderboard(artistId) {
     const listEl = document.getElementById('lb-local-list');
     if (!listEl) return;
@@ -1039,7 +1048,7 @@ function runTimer() {
     timerRAF = requestAnimationFrame(tick);
 }
 
-// ── SEARCH (local catalog) ────────────────────────────────────────────────────
+// SEARCH (local catalog)
 let searchDebounce = null;
 
 function onSearchInput(val) {
@@ -1102,7 +1111,7 @@ function renderResults(tracks) {
     });
 }
 
-// ── PICK SONG ─────────────────────────────────────────────────────────────────
+// PICK SONG
 async function pickSong(track) {
     if (!roundActive) return;
     cancelAnimationFrame(timerRAF);
@@ -1164,7 +1173,7 @@ async function pickSong(track) {
     }
 }
 
-// ── END ROUND ─────────────────────────────────────────────────────────────────
+// END ROUND
 function endRound(result, track, pointsEarned) {
     hide('search-container');
     hide('timer-container');
@@ -1260,11 +1269,27 @@ function showGameOver() {
     btn.style.display = 'block';
     show('change-btn');   // re-enable artist change after game over
 
+    // Increment games_played counter for this artist
+    if (currentUser) {
+        (async () => {
+            try {
+                const { data } = await sb.from('local_scores')
+                    .select('games_played').eq('user_id', currentUser.id).eq('artist_id', selectedArtist.id).maybeSingle();
+                await sb.from('local_scores').upsert({
+                    user_id:      currentUser.id,
+                    artist_id:    selectedArtist.id,
+                    artist_name:  selectedArtist.name,
+                    games_played: (data?.games_played || 0) + 1,
+                }, { onConflict: 'user_id,artist_id' });
+            } catch {}
+        })();
+    }
+
     showLb();
     loadLocalLeaderboard(selectedArtist.id);
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+// HELPERS
 function wordInText(word, text) {
     const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
     return re.test(text);
@@ -1275,7 +1300,7 @@ function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 
-// ── SUPABASE ──────────────────────────────────────────────────────────────────
+// SUPABASE
 const { createClient } = window.supabase;
 const sb = createClient(
     'https://drspcfilywicsmfhpjyr.supabase.co',
@@ -1317,7 +1342,7 @@ window.addEventListener('pageshow', e => {
     if (e.persisted) document.body.classList.remove('page-exit');
 });
 
-// ── REMEMBER LAST ARTIST ──────────────────────────────────────────────────────
+// REMEMBER LAST ARTIST
 (function initLastArtist() {
     try {
         const stored = JSON.parse(localStorage.getItem('sf_last_artist'));

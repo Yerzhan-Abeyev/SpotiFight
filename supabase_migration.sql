@@ -66,3 +66,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_artist     TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_song       TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_artist_img TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS favorite_song_img   TEXT;
+
+-- 7. Local scores: artist name + games played counter
+ALTER TABLE local_scores ADD COLUMN IF NOT EXISTS artist_name  TEXT;
+ALTER TABLE local_scores ADD COLUMN IF NOT EXISTS games_played INT DEFAULT 0;
