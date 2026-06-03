@@ -487,3 +487,12 @@ html.light #user-profile-popup {
     border-color: rgba(0,0,0,0.12) !important;
     box-shadow: 0 12px 40px rgba(0,0,0,0.15) !important;
 }
+html.light #user-profile-popup-content div[style*="1e1e1e"] {
+    background: #f0f0f0 !important;
+}
+html.light #user-profile-popup-content div[style*="font-weight:700"] {
+    color: #222 !important;
+}
+html.light #user-profile-popup-content div[style*="color:#555"] {
+    color: #bbb !important;
+}

@@ -2282,14 +2282,14 @@ async function showUserProfile(userId, anchorEl) {
                 ${p.friend_code ? `<div style="font-size:0.65rem;color:#333;letter-spacing:0.1em;">#${dcEsc(p.friend_code)}</div>` : ''}
             </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;${p.favorite_artist||p.favorite_song?'margin-bottom:10px;':''}">
-            <div style="background:#0f0f0f;border-radius:8px;padding:7px;text-align:center;">
-                <div style="font-size:0.54rem;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Best</div>
-                <div style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:#aaa;">${s?.best_score ?? '—'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;${favData?.favorite_artist||favData?.favorite_song?'margin-bottom:10px;':''}">
+            <div style="background:#1e1e1e;border-radius:8px;padding:8px 6px;text-align:center;">
+                <div style="font-size:0.55rem;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Best Score</div>
+                <div style="font-size:1.15rem;font-weight:700;color:#ccc;line-height:1;">${s?.best_score ?? '—'}</div>
             </div>
-            <div style="background:#0f0f0f;border-radius:8px;padding:7px;text-align:center;">
-                <div style="font-size:0.54rem;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Games</div>
-                <div style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:#aaa;">${s?.games_played ?? '—'}</div>
+            <div style="background:#1e1e1e;border-radius:8px;padding:8px 6px;text-align:center;">
+                <div style="font-size:0.55rem;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Games</div>
+                <div style="font-size:1.15rem;font-weight:700;color:#ccc;line-height:1;">${s?.games_played ?? '0'}</div>
             </div>
         </div>
         ${favData?.favorite_artist || favData?.favorite_song ? `
