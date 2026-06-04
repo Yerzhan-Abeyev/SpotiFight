@@ -280,6 +280,9 @@ html.light .empty-state { color: #bbb !important; }
 html.light .diff-easy   { background: rgba(29,185,84,0.12) !important; }
 html.light .diff-medium { background: rgba(245,158,11,0.12) !important; }
 html.light .diff-hard   { background: rgba(255,85,85,0.1)  !important; }
+html.light .word-chip.easy   { background: rgba(29,185,84,0.08)  !important; border-color: rgba(29,185,84,0.3)  !important; }
+html.light .word-chip.medium { background: rgba(245,158,11,0.08) !important; border-color: rgba(245,158,11,0.3) !important; }
+html.light .word-chip.hard   { background: rgba(255,85,85,0.07)  !important; border-color: rgba(255,85,85,0.3)  !important; }
 
 /* ── Timer track ─────────────────────────────────────────────────────────────── */
 html.light .timer-track { background: #e0e0e0 !important; }

@@ -21,12 +21,16 @@
         }
         .card { background: linear-gradient(145deg,#181818,#111); border: 1px solid rgba(255,255,255,0.06); }
 
-        #word-display {
-            font-family: 'Bebas Neue', sans-serif; font-size: 4.5rem;
-            letter-spacing: 0.12em; line-height: 1;
-            background: linear-gradient(135deg,#1DB954,#17a349);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        .word-chip {
+            font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem;
+            letter-spacing: 0.1em; line-height: 1;
+            padding: 6px 16px; border-radius: 10px; display: inline-block;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+        .word-chip.easy   { color:#1DB954; background:rgba(29,185,84,0.08);  border:1px solid rgba(29,185,84,0.25); }
+        .word-chip.medium { color:#f59e0b; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); }
+        .word-chip.hard   { color:#ff5555; background:rgba(255,85,85,0.08);  border:1px solid rgba(255,85,85,0.25); }
+        .word-chip.matched { transform:scale(1.08); box-shadow:0 0 18px rgba(29,185,84,0.35); }
         #timer-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#1DB954,#17a349); }
 
         .search-input {
@@ -214,8 +218,8 @@
         </div>
         <div class="stat-divider"></div>
         <div style="text-align:center;">
-            <div class="stat-label">Level</div>
-            <div style="margin-top:3px;"><span id="diff-badge" class="diff-badge diff-easy">EASY</span></div>
+            <div class="stat-label">Round</div>
+            <div class="stat-val" id="round-val">1</div>
         </div>
     </div>
 </div>
@@ -249,8 +253,13 @@
     </div>
     <!--  End pre-game  -->
 
-    <div id="word-container" class="text-center" style="display:none;">
-        <div id="word-display"></div>
+    <div id="word-container" style="display:none;text-align:center;">
+        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+            <span class="word-chip easy" id="word-chip-0"></span>
+            <span class="word-chip easy" id="word-chip-1"></span>
+            <span class="word-chip easy" id="word-chip-2"></span>
+        </div>
+        <div style="font-size:0.7rem;color:#444;margin-top:8px;">Find a song where any of these appear in the lyrics</div>
     </div>
 
     <div id="timer-container" class="w-full" style="display:none;">
@@ -271,7 +280,7 @@
         </div>
     </div>
 
-    <button id="skip-btn" onclick="skipRound()" style="display:none;">Skip Word ↩</button>
+    <button id="skip-btn" onclick="skipRound()" style="display:none;">Skip ↩</button>
 
     <div id="checking-box">
         <img id="ck-art" src="" alt="">
@@ -298,41 +307,40 @@
 // Easy: very common words that appear across all mainstream genres — player should immediately
 // think of a well-known song that has the word in its lyrics (not title)
 const WORDS_EASY = [
-    // Body & feeling
+    // Body & feeling — in thousands of mainstream songs
     'love','heart','soul','mind','eyes','tears','voice','smile','kiss','hands',
     'arms','lips','body','breath','skin','blood','head','chest','face','touch',
-    'pain','hurt','fear','hope','dream','feel','cry','miss','sleep','breathe',
-    // Emotions & states
+    'pain','hurt','fear','hope','dream','feel','cry','miss','sleep',
+    // Emotions — instantly relatable, appear everywhere
     'happy','sad','lost','broken','alive','alone','free','strong','wild',
     'real','true','wrong','right','cold','warm','young','old','sweet','soft',
     'hard','deep','high','low','slow','fast','good','bad','safe','bright',
-    'sorry','hate','die','shame','pride','wonder','magic','ready','maybe','glad',
+    'sorry','hate','die','wonder','magic','ready','maybe','drunk','scared',
     // People
     'girl','boy','baby','friend','angel','mother','father','king','queen',
-    'woman','man','lover','brother','sister','hero','soldier','devil','child',
-    // Nature & place
+    'woman','man','lover','brother','sister','hero','devil','child',
+    // Nature & place — every genre references these
     'night','day','life','time','home','world','road','sky','sun','moon',
     'stars','rain','fire','light','dark','storm','ocean','river','star',
     'door','city','street','room','wall','bed','earth','sea','air',
-    'water','wind','town','place','smoke','snow','heaven','hell','floor',
-    // Colors & textures
-    'black','white','blue','red','gold','silver','green','golden','pink','grey',
-    // Actions
+    'water','wind','town','smoke','snow','heaven','hell','floor',
+    // Colors
+    'black','white','blue','red','gold','green','golden',
+    // Actions — the backbone of every chorus and verse
     'run','fall','fly','rise','dance','fight','hold','break','leave','find',
     'come','walk','lose','move','save','burn','stay','give','take','play',
     'shine','fade','hide','wait','stop','scream','sing','speak','laugh','know',
     'call','keep','think','pray','wish','hear','tell','show','turn','stand',
     'look','open','close','forget','remember','believe','see','say','want','need',
     'shake','drop','ride','reach','chase','pull','push','jump','catch','follow',
-    'climb','kill','hit','wake','build','try','let','throw','rock',
-    // Common song words & phrases
+    'kill','hit','wake','let','try','rock',
+    // Common song words — appear in lyrics across all genres
     'song','name','way','back','away','tonight','forever','better','never','always',
     'still','together','again','money','summer','winter','morning','midnight',
     'music','beat','party','memory','chance','truth','lie','war','peace',
     'promise','word','crazy','beautiful','perfect','change','down','long',
-    'more','mine','line','sign','fame','flame','gonna','shot','hot','top',
-    'side','end','number','phone','game','yesterday','tomorrow','used','last',
-    'gone','over','inside','outside','around','between','before','after',
+    'more','mine','line','sign','flame','gonna','shot','hot','top',
+    'side','end','phone','game','yesterday','last','gone','over','fame',
 ];
 
 // Medium: appear in lyrics regularly but player needs a specific song in mind
@@ -351,6 +359,7 @@ const WORDS_MEDIUM = [
     'paradise','tragedy', 'criminal','innocence','eternity','destiny', 'legacy',  'daylight','nightmare','triumph',
     'ritual',  'divine',  'phantom', 'revival',  'exile',   'ruin',    'mortal',  'silence', 'infinite','rapture',
     'illusion','twilight','horizon', 'beneath',  'forsaken','vengeance','undone', 'reckoning','defy',   'glory',
+    'shame',   'pride',
 ];
 
 // Hard: uncommon words that still appear in real songs
@@ -364,33 +373,31 @@ const WORDS_HARD = [
 ];
 
 // CONFIG
-const TIME_LIMIT    = 30;
-const STREAK_MEDIUM = 7;
-const STREAK_HARD   = 12;
+const TIME_LIMIT   = 30;
 const SCORE_CONFIG = {
-    easy:   { base: 100, timeBonus: 2  },   // max 160 pts
-    medium: { base: 250, timeBonus: 5  },   // max 400 pts
-    hard:   { base: 500, timeBonus: 10 },   // max 800 pts
+    easy:   { base: 100, timeBonus: 2  },
+    medium: { base: 250, timeBonus: 5  },
+    hard:   { base: 500, timeBonus: 10 },
 };
 
 // STATE
-let currentWord    = '';
-let roundActive    = false;
-let skipUsed       = false;
-let currentAudio   = null;
+let currentWords    = [];   // [word0, word1, word2]
+let currentWordDiffs = [];  // ['easy','easy','easy'] etc.
+let roundNum        = 0;
+let roundActive     = false;
+let skipUsed        = false;
+let currentAudio    = null;
 let currentAudioCtx = null;
-let roundStartedAt = null;
-let pauseStart     = null;   // tracks when timer was paused (for no-lyrics retry)
-let timerRAF       = null;
-let searchDebounce = null;
-let score          = 0;
-let streak         = 0;
+let roundStartedAt  = null;
+let pauseStart      = null;
+let timerRAF        = null;
+let searchDebounce  = null;
+let score           = 0;
+let streak          = 0;
 
-// Shuffled decks — one per tier, refilled when exhausted
 let decks   = { easy: [], medium: [], hard: [] };
 let deckPtr = { easy: 0,  medium: 0,  hard: 0  };
 
-// DIFFICULTY
 function shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -405,31 +412,25 @@ function initDecks() {
     deckPtr = { easy: 0, medium: 0, hard: 0 };
 }
 
-function getDifficulty() {
-    if (streak >= STREAK_HARD)   return 'hard';
-    if (streak >= STREAK_MEDIUM) return 'medium';
-    return 'easy';
+// Returns the difficulty config for each of the 3 word slots based on round number.
+// Every 2 rounds one word slot escalates: easy→medium→hard, one slot at a time.
+function getWordConfig(n) {
+    if (n <= 2)  return ['easy',   'easy',   'easy'  ];
+    if (n <= 4)  return ['medium', 'easy',   'easy'  ];
+    if (n <= 6)  return ['medium', 'medium', 'easy'  ];
+    if (n <= 8)  return ['medium', 'medium', 'medium'];
+    if (n <= 10) return ['hard',   'medium', 'medium'];
+    if (n <= 12) return ['hard',   'hard',   'medium'];
+    return             ['hard',   'hard',   'hard'  ];
 }
 
-function pickWord() {
-    const diff = getDifficulty();
-    // Refill and reshuffle when the deck for this tier runs out
+function pickFromTier(diff) {
     if (deckPtr[diff] >= decks[diff].length) {
         const src = diff === 'hard' ? WORDS_HARD : diff === 'medium' ? WORDS_MEDIUM : WORDS_EASY;
         decks[diff]  = shuffle(src);
         deckPtr[diff] = 0;
     }
     return decks[diff][deckPtr[diff]++];
-}
-
-function updateDiffBadge() {
-    const diff  = getDifficulty();
-    const badge = document.getElementById('diff-badge');
-    badge.className = `diff-badge diff-${diff}`;
-    badge.innerText = diff.toUpperCase();
-
-    const wd = document.getElementById('word-display');
-    wd.className = diff;   // easy / medium / hard — drives CSS gradient
 }
 
 // DEEZER SEARCH
@@ -465,7 +466,7 @@ async function fetchLyrics(trackName, artist) {
     async function tryGet(url) {
         try {
             const ctrl = new AbortController();
-            const t = setTimeout(() => ctrl.abort(), 4000);
+            const t = setTimeout(() => ctrl.abort(), 1500);
             const res = await fetch(url, { signal: ctrl.signal });
             clearTimeout(t);
             return res.ok ? await res.json() : null;
@@ -666,13 +667,14 @@ function hideLb() { document.getElementById('lb-global').classList.remove('visib
 function startGame() {
     score    = 0;
     streak   = 0;
+    roundNum = 0;
     skipUsed = false;
     initDecks();
     document.getElementById('score-val').innerText  = '0';
     document.getElementById('streak-val').innerText = '0';
+    document.getElementById('round-val').innerText  = '1';
     document.getElementById('score-area').style.display = 'flex';
     document.getElementById('pre-game-stats').style.display = 'none';
-    updateDiffBadge();
     hide('game-over-box');
     hide('pre-game');
     startRound();
@@ -680,10 +682,12 @@ function startGame() {
 
 function startRound() {
     stopAudio();
-    currentWord    = pickWord();
-    roundActive    = true;
-    roundStartedAt = Date.now();
-    pauseStart     = null;
+    roundNum++;
+    currentWordDiffs = getWordConfig(roundNum);
+    currentWords     = currentWordDiffs.map(d => pickFromTier(d));
+    roundActive      = true;
+    roundStartedAt   = Date.now();
+    pauseStart       = null;
 
     hide('feedback');
     hide('start-btn');
@@ -693,9 +697,12 @@ function startRound() {
     show('timer-container');
     showFlex('search-container');
 
-    const wd = document.getElementById('word-display');
-    wd.innerText = currentWord.toUpperCase();
-    wd.className = getDifficulty();
+    currentWords.forEach((w, i) => {
+        const chip = document.getElementById(`word-chip-${i}`);
+        chip.textContent = w.toUpperCase();
+        chip.className   = `word-chip ${currentWordDiffs[i]}`;
+    });
+    document.getElementById('round-val').innerText = roundNum;
 
     document.getElementById('search-bar').value          = '';
     document.getElementById('songs-list').innerHTML      = '';
@@ -785,9 +792,8 @@ function renderResults(tracks) {
 async function pickSong(track) {
     if (!roundActive) return;
 
-    // Pause the timer while we check
     cancelAnimationFrame(timerRAF);
-    timerRAF   = null;
+    timerRAF    = null;
     roundActive = false;
     pauseStart  = Date.now();
 
@@ -801,13 +807,6 @@ async function pickSong(track) {
     document.getElementById('ck-status').innerHTML = 'Checking lyrics<span>.</span><span>.</span><span>.</span>';
     document.getElementById('checking-box').style.display = 'flex';
 
-    // Rule 1: word must NOT appear in the title
-    if (wordInText(currentWord, track.name)) {
-        hide('checking-box');
-        endRound('word-in-title', track);
-        return;
-    }
-
     const trackName = track.name;
     const artist    = track.artists.map(a => a.name).join(', ');
 
@@ -816,28 +815,43 @@ async function pickSong(track) {
         hide('checking-box');
 
         if (lyrics === null) {
-            // No lyrics found — let player retry, resume timer where it left off
             endRound('no-lyrics', track);
             return;
         }
 
-        // Compute remaining time (exclude time spent on the API call)
         const pausedDuration = Date.now() - pauseStart;
-        roundStartedAt += pausedDuration;   // shift start so elapsed doesn't count paused time
-        const elapsedSec   = (Date.now() - roundStartedAt) / 1000;
-        const remainingSec = Math.max(0, TIME_LIMIT - elapsedSec);
+        roundStartedAt += pausedDuration;
+        const remainingSec = Math.max(0, TIME_LIMIT - (Date.now() - roundStartedAt) / 1000);
 
-        if (wordInText(currentWord, lyrics)) {
-            // WIN
-            const diff   = getDifficulty();
-            const cfg    = SCORE_CONFIG[diff];
+        // Words found in lyrics but NOT in the song title
+        const validIdxs = currentWords
+            .map((w, i) => ({ w, i, diff: currentWordDiffs[i] }))
+            .filter(({ w }) => wordInText(w, lyrics) && !wordInText(w, trackName));
+
+        // Words found in lyrics but also in the title (would be invalid)
+        const titleOnlyIdxs = currentWords
+            .map((w, i) => ({ w, i }))
+            .filter(({ w }) => wordInText(w, lyrics) && wordInText(w, trackName));
+
+        if (validIdxs.length > 0) {
+            // WIN — score on the highest-difficulty word that matched
+            const bestDiff = validIdxs.reduce((best, { diff }) => {
+                return diff === 'hard' ? 'hard'
+                     : (diff === 'medium' && best !== 'hard') ? 'medium'
+                     : best;
+            }, 'easy');
+            const cfg    = SCORE_CONFIG[bestDiff];
             const points = cfg.base + Math.floor(remainingSec * cfg.timeBonus);
             score  += points;
             streak += 1;
             document.getElementById('score-val').innerText  = score;
             document.getElementById('streak-val').innerText = streak;
-            updateDiffBadge();
-            endRound('win', track, points);
+            // Highlight matched chip(s)
+            validIdxs.forEach(({ i }) => document.getElementById(`word-chip-${i}`).classList.add('matched'));
+            endRound('win', track, points, validIdxs[0].w);
+        } else if (titleOnlyIdxs.length > 0) {
+            // All matching words are also in the title
+            endRound('word-in-title', track, 0, titleOnlyIdxs[0].w);
         } else {
             endRound('wrong', track);
         }
@@ -850,7 +864,7 @@ async function pickSong(track) {
 }
 
 // END ROUND
-function endRound(result, track, pointsEarned) {
+function endRound(result, track, pointsEarned, matchedWord) {
     hide('search-container');
     hide('timer-container');
     hide('word-container');
@@ -859,11 +873,14 @@ function endRound(result, track, pointsEarned) {
 
     const fb   = document.getElementById('feedback');
     const name = track ? `&ldquo;${esc(track.name)}&rdquo;` : '';
+    const wordsHtml = currentWords.map((w, i) =>
+        `<strong style="color:${currentWordDiffs[i]==='hard'?'#ff5555':currentWordDiffs[i]==='medium'?'#f59e0b':'#1DB954'}">${w}</strong>`
+    ).join(' · ');
 
     if (result === 'win') {
         sfx.correct();
         fb.innerHTML = `<div class="feedback-box fb-win">
-            ${name} has <strong>${currentWord}</strong> in its lyrics!
+            ${name} has <strong>${matchedWord}</strong> in its lyrics!
             <div style="font-size:0.78rem;font-weight:400;opacity:0.7;margin-top:4px;">+${pointsEarned} pts</div>
         </div>`;
         fb.style.display = 'block';
@@ -876,17 +893,15 @@ function endRound(result, track, pointsEarned) {
 
     } else if (result === 'word-in-title' || result === 'no-lyrics' || result === 'error') {
         const msg = result === 'word-in-title'
-            ? `&ldquo;${currentWord}&rdquo; is in the song title. Pick a different song!`
+            ? `&ldquo;${esc(matchedWord)}&rdquo; is in the song title. Pick a different song!`
             : result === 'no-lyrics'
             ? `Couldn&rsquo;t find lyrics for ${name}. Pick another song!`
             : `Lyrics lookup failed. Pick another song!`;
         fb.innerHTML = `<div class="feedback-box fb-warn">${msg}</div>`;
         fb.style.display = 'block';
 
-        // Resume round with timer continuing from where it was
         setTimeout(() => {
             hide('feedback');
-            // Adjust roundStartedAt to account for the display delay
             roundStartedAt += 1800;
             show('word-container');
             show('timer-container');
@@ -902,11 +917,11 @@ function endRound(result, track, pointsEarned) {
         let reasonHtml = '';
         if (result === 'wrong') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                ${name} doesn&rsquo;t have <strong>${currentWord}</strong> in its lyrics.
+                ${name} doesn&rsquo;t contain any of: ${wordsHtml}
             </div>`;
         } else if (result === 'timeout') {
             reasonHtml = `<div class="feedback-box fb-lose" style="margin-bottom:16px;">
-                Time&rsquo;s up! The word was <strong>${currentWord}</strong>.
+                Time&rsquo;s up! You couldn&rsquo;t find a song in time.
             </div>`;
         }
 
@@ -955,9 +970,9 @@ function skipRound() {
     hide('word-container');
     hide('skip-btn');
     const fb = document.getElementById('feedback');
-    fb.innerHTML = `<div class="feedback-box fb-warn">Word skipped — here comes a new one!</div>`;
+    fb.innerHTML = `<div class="feedback-box fb-warn">Words skipped. Here comes a new set!</div>`;
     fb.style.display = 'block';
-    setTimeout(() => { hide('feedback'); startRound(); }, 1100);
+    setTimeout(() => { hide('feedback'); roundNum--; startRound(); }, 1100);
 }
 
 // SUPABASE
@@ -1001,9 +1016,6 @@ window.addEventListener('pageshow', e => {
 });
 
 function showGameOver() {
-    const diff      = getDifficulty();
-    const diffLabel = diff.toUpperCase();
-
     const prev        = getGlobalBest();
     const isNewRecord = score > 0 && (!prev || score > prev.score);
     if (isNewRecord) saveGlobalBest(score, streak);
@@ -1023,7 +1035,7 @@ function showGameOver() {
         <div class="go-score" style="margin:6px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
         <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:20px;">
             <span>Streak &nbsp;<strong style="color:#ccc;">${streak}</strong></span>
-            <span>Level reached &nbsp;<span class="diff-badge diff-${diff}">${diffLabel}</span></span>
+            <span>Rounds &nbsp;<strong style="color:#ccc;">${roundNum}</strong></span>
         </div>
     `;
     box.style.display = 'block';
