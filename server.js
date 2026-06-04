@@ -52,6 +52,102 @@ const apiLimiter = rateLimit({
     message: { error: 'Too many requests, please slow down.' },
 });
 
+// Supabase server-side helpers
+const SUPABASE_URL     = process.env.SUPABASE_URL     || 'https://drspcfilywicsmfhpjyr.supabase.co';
+const SUPABASE_ANON    = process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE = process.env.SUPABASE_SERVICE_KEY || '';
+
+async function verifyJWT(token) {
+    if (!token || !SUPABASE_ANON) return null;
+    try {
+        const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON },
+        });
+        if (!r.ok) return null;
+        const u = await r.json();
+        return u?.id ? u : null;
+    } catch { return null; }
+}
+
+async function sbUpsert(table, body, onConflict) {
+    if (!SUPABASE_SERVICE) return false;
+    try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_SERVICE,
+                'Authorization': `Bearer ${SUPABASE_SERVICE}`,
+                'Content-Type': 'application/json',
+                'Prefer': `resolution=merge-duplicates,return=minimal`,
+            },
+            body: JSON.stringify(body),
+        });
+        return r.ok;
+    } catch { return false; }
+}
+
+// Score submission endpoints (server-authoritative)
+app.use(express.json({ limit: '4kb' }));
+
+app.post('/api/score/global', apiLimiter, async (req, res) => {
+    const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+    const user  = await verifyJWT(token);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { best_score, best_streak, games_played } = req.body;
+    const payload = { user_id: user.id, updated_at: new Date().toISOString() };
+    if (typeof best_score   === 'number') payload.best_score   = Math.max(0, Math.floor(best_score));
+    if (typeof best_streak  === 'number') payload.best_streak  = Math.max(0, Math.floor(best_streak));
+    if (typeof games_played === 'number') payload.games_played = Math.max(0, Math.floor(games_played));
+
+    const ok = await sbUpsert('global_scores', payload, 'user_id');
+    res.status(ok ? 200 : 500).json(ok ? { ok: true } : { error: 'DB write failed' });
+});
+
+app.post('/api/score/local', apiLimiter, async (req, res) => {
+    const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+    const user  = await verifyJWT(token);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { artist_id, artist_name, best_score, best_streak, games_played } = req.body;
+    if (!artist_id) return res.status(400).json({ error: 'Missing artist_id' });
+
+    const payload = {
+        user_id: user.id,
+        artist_id: String(artist_id).slice(0, 64),
+        artist_name: artist_name ? String(artist_name).slice(0, 120) : undefined,
+        updated_at: new Date().toISOString(),
+    };
+    if (typeof best_score   === 'number') payload.best_score   = Math.max(0, Math.floor(best_score));
+    if (typeof best_streak  === 'number') payload.best_streak  = Math.max(0, Math.floor(best_streak));
+    if (typeof games_played === 'number') payload.games_played = Math.max(0, Math.floor(games_played));
+
+    const ok = await sbUpsert('local_scores', payload, 'user_id,artist_id');
+    res.status(ok ? 200 : 500).json(ok ? { ok: true } : { error: 'DB write failed' });
+});
+
+app.post('/api/score/daily', apiLimiter, async (req, res) => {
+    const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+    const user  = await verifyJWT(token);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { date, lives_used, solved, song, artist } = req.body;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date' });
+
+    const payload = {
+        user_id: user.id,
+        date,
+        lives_used: typeof lives_used === 'number' ? Math.min(3, Math.max(0, Math.floor(lives_used))) : undefined,
+        solved: typeof solved === 'boolean' ? solved : undefined,
+        song:   song   ? String(song).slice(0, 200)   : undefined,
+        artist: artist ? String(artist).slice(0, 200) : undefined,
+    };
+    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+    const ok = await sbUpsert('daily_results', payload, 'user_id,date');
+    res.status(ok ? 200 : 500).json(ok ? { ok: true } : { error: 'DB write failed' });
+});
+
 // Static files
 const HTML_FILES = ['home.html', 'globalmode.html', 'localmode.html', 'duel.html', 'test.html'];
 HTML_FILES.forEach(f => {

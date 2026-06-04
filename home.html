@@ -1277,10 +1277,7 @@ function dcSetLives(n, save = false) {
     if (dcIsPastMode) return;   // past challenges: no saves
     localStorage.setItem(`dc_lives_${todayKey()}`, n);
     if (save && currentUser) {
-        (async () => { try { await sb.from('daily_results').upsert({
-            user_id: currentUser.id, date: todayKey(),
-            lives_used: 3 - n, solved: false
-        }, { onConflict: 'user_id,date' }); } catch {} })();
+        postScore('/api/score/daily', { date: todayKey(), lives_used: 3 - n, solved: false });
     }
 }
 
@@ -1292,10 +1289,7 @@ function dcGameOver(word) {
         (dcIsPastMode ? '' : ' Better luck tomorrow!');
     document.getElementById('dc-gameover-banner').style.display = 'block';
     if (!dcIsPastMode && currentUser) {
-        (async () => { try { await sb.from('daily_results').upsert({
-            user_id: currentUser.id, date: todayKey(),
-            lives_used: 3, solved: false
-        }, { onConflict: 'user_id,date' }); } catch {} })();
+        postScore('/api/score/daily', { date: todayKey(), lives_used: 3, solved: false });
     }
     setTimeout(() => {
         closeDailyChallenge();
@@ -1654,10 +1648,9 @@ async function dcPickSong(track) {
                 const key = todayKey();
                 localStorage.setItem(`dc_${key}`, JSON.stringify({ song: track.name, artist }));
                 if (currentUser) {
-                    (async () => { try { await sb.from('daily_results').upsert({
-                        user_id: currentUser.id, date: key,
-                        song: track.name, artist, lives_used: 3 - dcLives, solved: true
-                    }, { onConflict: 'user_id,date' }); } catch {} })();
+                    postScore('/api/score/daily', {
+                        date: key, song: track.name, artist, lives_used: 3 - dcLives, solved: true,
+                    });
                 }
                 markDoneUI();
             }
@@ -1688,7 +1681,18 @@ async function dcPickSong(track) {
 }
 
 // INIT
-function dcEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function dcEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+async function postScore(path, body) {
+    try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) return;
+        await fetch(path, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    } catch {}
+}
 
 // THEME TOGGLE
 function applyTheme(isLight) {
@@ -2063,7 +2067,7 @@ async function saveProfUsername() {
     loadHomeLeaderboard();
 }
 
-function profEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function profEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // FAVORITES SEARCH PICKER
 let _favTimer = null, _favItems = [];

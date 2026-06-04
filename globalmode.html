@@ -503,31 +503,35 @@ function wordInText(word, text) {
 function show(id)     { document.getElementById(id).style.display = 'block'; }
 function showFlex(id) { const el = document.getElementById(id); el.style.display = 'flex'; el.style.flexDirection = 'column'; el.style.gap = '10px'; }
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
-function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // PERSONAL BEST (Global mode)
 function getGlobalBest() {
     try { return JSON.parse(localStorage.getItem('sf_global_best')) || null; } catch { return null; }
 }
+async function postScore(path, body) {
+    try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) return;
+        await fetch(path, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    } catch {}
+}
 function saveGlobalBest(s, st) {
     const d = new Date();
     const date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     localStorage.setItem('sf_global_best', JSON.stringify({ score: s, streak: st, date }));
-    if (currentUser) {
-        (async () => { try { await sb.from('global_scores').upsert({
-            user_id: currentUser.id, best_score: s, best_streak: st,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' }); } catch {} })();
-    }
+    if (currentUser) postScore('/api/score/global', { best_score: s, best_streak: st });
 }
 async function incrementGamesPlayed() {
     if (!currentUser) return;
     const { data } = await sb.from('global_scores')
         .select('games_played').eq('user_id', currentUser.id).maybeSingle();
     const next = (data?.games_played || 0) + 1;
-    await sb.from('global_scores').upsert({
-        user_id: currentUser.id, games_played: next, updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
+    await postScore('/api/score/global', { games_played: next });
     document.getElementById('pg-games-val').innerText = next;
 }
 function updatePreGameStats(gamesPlayed) {
