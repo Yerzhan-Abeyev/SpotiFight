@@ -542,8 +542,10 @@ async function incrementGamesPlayed() {
 }
 function updatePreGameStats(gamesPlayed) {
     const best = getGlobalBest();
-    document.getElementById('pg-best-val').innerText  = best ? `${best.score} pts` : '—';
-    document.getElementById('pg-games-val').innerText = gamesPlayed ?? '—';
+    document.getElementById('pg-best-val').innerText = best ? `${best.score} pts` : '—';
+    if (gamesPlayed !== undefined) {
+        document.getElementById('pg-games-val').innerText = gamesPlayed ?? '—';
+    }
 }
 (function initPreGameStats() { updatePreGameStats(null); })();
 
@@ -641,11 +643,10 @@ async function loadGlobalLeaderboard() {
         const { data: mine } = await sb.from('global_scores')
             .select('best_score').eq('user_id', currentUser.id).maybeSingle();
         if (mine) {
-            const { count } = await sb.from('global_scores')
-                .select('*', { count: 'exact', head: true })
-                .gt('best_score', mine.best_score);
-            const { data: myProf } = await sb.from('profiles')
-                .select('username').eq('id', currentUser.id).maybeSingle();
+            const [{ count }, { data: myProf }] = await Promise.all([
+                sb.from('global_scores').select('*', { count: 'exact', head: true }).gt('best_score', mine.best_score),
+                sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
+            ]);
             userExtra = { rank: (count || 0) + 1, score: mine.best_score, username: myProf?.username || 'You' };
         }
     }
@@ -656,7 +657,7 @@ async function loadGlobalLeaderboard() {
         const name = row.profiles?.username || 'Anonymous';
         html += `<div class="lb-row${isMe ? ' lb-me' : ''}">
             <span class="lb-rank">${i + 1}</span>
-            <span class="lb-name">${name}</span>
+            <span class="lb-name">${esc(name)}</span>
             <span class="lb-score-val">${row.best_score}</span>
         </div>`;
     });
@@ -664,7 +665,7 @@ async function loadGlobalLeaderboard() {
         html += '<div class="lb-separator"></div>';
         html += `<div class="lb-row lb-me">
             <span class="lb-rank">${userExtra.rank}</span>
-            <span class="lb-name">${userExtra.username}</span>
+            <span class="lb-name">${esc(userExtra.username)}</span>
             <span class="lb-score-val">${userExtra.score}</span>
         </div>`;
     }

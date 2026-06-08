@@ -962,12 +962,10 @@ async function loadLocalLeaderboard(artistId) {
         const { data: mine } = await sb.from('local_scores')
             .select('best_score').eq('user_id', currentUser.id).eq('artist_id', artistId).maybeSingle();
         if (mine) {
-            const { count } = await sb.from('local_scores')
-                .select('*', { count: 'exact', head: true })
-                .eq('artist_id', artistId)
-                .gt('best_score', mine.best_score);
-            const { data: myProf } = await sb.from('profiles')
-                .select('username').eq('id', currentUser.id).maybeSingle();
+            const [{ count }, { data: myProf }] = await Promise.all([
+                sb.from('local_scores').select('*', { count: 'exact', head: true }).eq('artist_id', artistId).gt('best_score', mine.best_score),
+                sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle(),
+            ]);
             userExtra = { rank: (count || 0) + 1, score: mine.best_score, username: myProf?.username || 'You' };
         }
     }
@@ -978,7 +976,7 @@ async function loadLocalLeaderboard(artistId) {
         const name = row.profiles?.username || 'Anonymous';
         html += `<div class="lb-row${isMe ? ' lb-me' : ''}">
             <span class="lb-rank">${i + 1}</span>
-            <span class="lb-name">${name}</span>
+            <span class="lb-name">${esc(name)}</span>
             <span class="lb-score-val">${row.best_score}</span>
         </div>`;
     });
@@ -986,7 +984,7 @@ async function loadLocalLeaderboard(artistId) {
         html += '<div class="lb-separator"></div>';
         html += `<div class="lb-row lb-me">
             <span class="lb-rank">${userExtra.rank}</span>
-            <span class="lb-name">${userExtra.username}</span>
+            <span class="lb-name">${esc(userExtra.username)}</span>
             <span class="lb-score-val">${userExtra.score}</span>
         </div>`;
     }
