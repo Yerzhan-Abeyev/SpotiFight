@@ -299,6 +299,28 @@
             .room-code-display { font-size: 2.4rem; }
             .btn-icon { display: none; }
         }
+
+        /* Chat */
+        #duel-chat { overflow: hidden; }
+        #chat-log  { min-height: 32px; max-height: 100px; overflow-y: auto; padding: 8px 14px; display: flex; flex-direction: column; gap: 4px; }
+        #chat-log::-webkit-scrollbar { width: 3px; }
+        #chat-log::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+        .chat-row { font-size: 0.75rem; line-height: 1.4; }
+        .chat-name-me  { font-weight: 600; color: #1DB954; margin-right: 4px; }
+        .chat-name-opp { font-weight: 600; color: #888; margin-right: 4px; }
+        .chat-text { color: #999; }
+        .chat-bar { border-top: 1px solid rgba(255,255,255,0.05); padding: 7px 10px; display: flex; gap: 5px; align-items: center; }
+        .chat-quick { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); color: #888; border-radius: 7px; padding: 3px 8px; font-size: 0.72rem; cursor: pointer; transition: background 0.15s, color 0.15s; font-family: 'Inter', sans-serif; }
+        .chat-quick:hover { background: rgba(255,255,255,0.1); color: #ccc; }
+        #chat-input { flex: 1; min-width: 0; background: #111; border: 1px solid rgba(255,255,255,0.07); color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 0.78rem; outline: none; font-family: 'Inter', sans-serif; }
+        #chat-input::placeholder { color: #333; }
+        #chat-input:focus { border-color: rgba(255,255,255,0.15); }
+        .chat-send { background: rgba(29,185,84,0.08); border: 1px solid rgba(29,185,84,0.18); color: #1DB954; border-radius: 8px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer; transition: background 0.15s; }
+        .chat-send:hover { background: rgba(29,185,84,0.18); }
+        html.light #chat-log { background: transparent; }
+        html.light .chat-text { color: #666; }
+        html.light .chat-quick { border-color: rgba(0,0,0,0.1); color: #666; }
+        html.light #chat-input { background: #f4f4f4; border-color: rgba(0,0,0,0.1); color: #111; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-5">
@@ -433,6 +455,19 @@
 
     <!-- Opponent status -->
     <div id="opponent-status"></div>
+
+    <!-- Chat -->
+    <div id="duel-chat" class="card w-full rounded-2xl">
+        <div id="chat-log"></div>
+        <div class="chat-bar">
+            <button onclick="sendQuick('gg')" class="chat-quick">gg</button>
+            <button onclick="sendQuick('🔥')" class="chat-quick">🔥</button>
+            <button onclick="sendQuick('😅')" class="chat-quick">😅</button>
+            <button onclick="sendQuick('🤝')" class="chat-quick">🤝</button>
+            <input id="chat-input" type="text" maxlength="80" placeholder="message…" onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="chat-send" onclick="sendChat()">→</button>
+        </div>
+    </div>
 
     <p class="note">Powered by Deezer &amp; lyrics.ovh</p>
 </div>
@@ -635,6 +670,7 @@ socket.on('game_start', ({ players, userIds }) => {
 
     document.getElementById('my-name-label').innerText  = myName;
     document.getElementById('opp-name-label').innerText = oppName;
+    document.getElementById('chat-log').innerHTML = '';
     updatePips(0, 0);
 
     // Store for reconnection
@@ -1266,6 +1302,31 @@ function showFlex(id) { const el = document.getElementById(id); el.style.display
 function hide(id)     { document.getElementById(id).style.display = 'none'; }
 function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+// CHAT
+function appendChatMsg(name, msg, fromSelf) {
+    const log = document.getElementById('chat-log');
+    const div = document.createElement('div');
+    div.className = 'chat-row';
+    div.innerHTML = `<span class="${fromSelf ? 'chat-name-me' : 'chat-name-opp'}">${esc(name)}</span><span class="chat-text">${esc(msg)}</span>`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg   = input.value.trim();
+    if (!msg) return;
+    socket.emit('duel_chat', { msg });
+    input.value = '';
+}
+
+function sendQuick(msg) {
+    socket.emit('duel_chat', { msg });
+}
+
+socket.on('duel_chat', ({ name, msg, fromSelf }) => {
+    appendChatMsg(name, msg, fromSelf);
+});
 
 // SUPABASE
 const { createClient } = window.supabase;

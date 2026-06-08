@@ -221,6 +221,11 @@
             <div class="stat-label">Round</div>
             <div class="stat-val" id="round-val">1</div>
         </div>
+        <div class="stat-divider"></div>
+        <div style="text-align:center;">
+            <div class="stat-label">PB</div>
+            <div class="stat-val" id="pb-val" style="color:#444;">—</div>
+        </div>
     </div>
 </div>
 
@@ -394,6 +399,7 @@ let timerRAF        = null;
 let searchDebounce  = null;
 let score           = 0;
 let streak          = 0;
+let lastFailedTrack = null;
 
 let decks   = { easy: [], medium: [], hard: [] };
 let deckPtr = { easy: 0,  medium: 0,  hard: 0  };
@@ -669,14 +675,20 @@ function showLb() { document.getElementById('lb-global').classList.add('visible'
 function hideLb() { document.getElementById('lb-global').classList.remove('visible'); }
 
 function startGame() {
-    score    = 0;
-    streak   = 0;
-    roundNum = 0;
-    skipUsed = false;
+    score           = 0;
+    streak          = 0;
+    roundNum        = 0;
+    skipUsed        = false;
+    lastFailedTrack = null;
     initDecks();
     document.getElementById('score-val').innerText  = '0';
     document.getElementById('streak-val').innerText = '0';
     document.getElementById('round-val').innerText  = '1';
+    const pb = getGlobalBest();
+    const pbEl = document.getElementById('pb-val');
+    pbEl.innerText   = pb ? pb.score : '—';
+    pbEl.style.color = '#444';
+    document.getElementById('score-val').style.color = '';
     document.getElementById('score-area').style.display = 'flex';
     document.getElementById('pre-game-stats').style.display = 'none';
     hide('game-over-box');
@@ -850,6 +862,11 @@ async function pickSong(track) {
             streak += 1;
             document.getElementById('score-val').innerText  = score;
             document.getElementById('streak-val').innerText = streak;
+            const _pb = getGlobalBest();
+            if (_pb && score > _pb.score) {
+                document.getElementById('score-val').style.color = '#1DB954';
+                document.getElementById('pb-val').style.color    = '#1DB954';
+            }
             // Highlight matched chip(s)
             validIdxs.forEach(({ i }) => document.getElementById(`word-chip-${i}`).classList.add('matched'));
             endRound('win', track, points, validIdxs[0].w);
@@ -932,6 +949,7 @@ function endRound(result, track, pointsEarned, matchedWord) {
         fb.innerHTML     = reasonHtml;
         fb.style.display = 'block';
 
+        lastFailedTrack = track || null;
         showGameOver();
     }
 }
@@ -1032,15 +1050,31 @@ function showGameOver() {
         ? `<div style="font-size:0.72rem;color:#333;letter-spacing:0.08em;margin-bottom:6px;">Best: ${prev.score} pts</div>`
         : '';
 
+    const revealHtml = (() => {
+        if (!lastFailedTrack) return '';
+        const art    = lastFailedTrack.album?.images?.[1]?.url || lastFailedTrack.album?.images?.[0]?.url || '';
+        const artist = lastFailedTrack.artists?.map(a => a.name).join(', ') || '';
+        const imgTag = art ? `<img src="${esc(art)}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0;">` : '';
+        return `<div style="display:flex;align-items:center;gap:10px;background:#1a1a1a;border-radius:10px;padding:10px 14px;margin:0 auto 16px;max-width:260px;text-align:left;">
+            ${imgTag}
+            <div style="min-width:0;">
+                <div style="font-size:0.6rem;color:#555;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">That was</div>
+                <div style="font-size:0.8rem;font-weight:600;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(lastFailedTrack.name)}</div>
+                <div style="font-size:0.72rem;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(artist)}</div>
+            </div>
+        </div>`;
+    })();
+
     const box = document.getElementById('game-over-box');
     box.innerHTML = `
         <div class="go-title">GAME OVER</div>
         ${recordHtml}
         <div class="go-score" style="margin:6px 0 4px;">${score} <span style="font-size:1.2rem;color:#555;">pts</span></div>
-        <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:20px;">
+        <div style="display:flex;justify-content:center;gap:24px;font-size:0.82rem;color:#555;margin-bottom:16px;">
             <span>Streak &nbsp;<strong style="color:#ccc;">${streak}</strong></span>
             <span>Rounds &nbsp;<strong style="color:#ccc;">${roundNum}</strong></span>
         </div>
+        ${revealHtml}
     `;
     box.style.display = 'block';
     document.getElementById('score-area').style.display = 'none';

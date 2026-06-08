@@ -612,6 +612,18 @@ io.on('connection', socket => {
         rooms.delete(code);
     });
 
+    socket.on('duel_chat', ({ msg }) => {
+        if (socketRateLimit(socket, 'duel_chat', 8, 8_000)) return;
+        const code = socket.roomCode;
+        const room = rooms.get(code);
+        if (!room || !room.players.includes(socket.id)) return;
+        const name = room.names[socket.id] || 'Player';
+        const safe = String(msg || '').replace(/[<>"']/g, '').slice(0, 80).trim();
+        if (!safe) return;
+        socket.to(code).emit('duel_chat', { name, msg: safe, fromSelf: false });
+        socket.emit('duel_chat', { name, msg: safe, fromSelf: true });
+    });
+
     socket.on('disconnect', () => {
         const code = socket.roomCode;
         if (!code) return;
