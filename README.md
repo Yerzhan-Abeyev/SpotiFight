@@ -6,6 +6,74 @@ A music lyrics word-guessing game. A word is given — find a song where that wo
 
 ---
 
+## Tech Stack
+
+| Layer | Tools |
+|-------|-------|
+| Backend | Node.js, Express, Socket.io |
+| Music data | [Deezer API](https://developers.deezer.com) — search, artist catalog, previews (no key needed) |
+| Lyrics | [lyrics.ovh](https://lyrics.ovh) + [lrclib.net](https://lrclib.net) (dual fallback, server-side cache) |
+| Auth & DB | [Supabase](https://supabase.com) — Google OAuth, profiles, scores, friends, duel invites, match history |
+| Frontend | Vanilla JS, Tailwind CSS via CDN (no build step) |
+
+---
+
+## Setup
+
+**Prerequisites:** Node.js 18+
+
+```bash
+git clone https://github.com/Yerzhan-Abeyev/SpotiFight.git
+cd SpotiFight
+npm install
+```
+
+Create a `.env` file (only needed for local dev):
+
+```
+PORT=3000
+```
+
+No third-party API keys required for music/lyrics.
+
+```bash
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+**Supabase:** run `supabase_migration.sql` in your Supabase SQL Editor to create all required tables (profiles, scores, friends, duel invites, match history, favorites).
+
+---
+
+## Project Structure
+
+```
+├── server.js               # Express + Socket.io server, Deezer proxy, duel logic, daily word, lyrics cache
+├── home.html               # Home — mode selector, leaderboard, profile, daily challenge, friends
+├── globalmode.html         # Global mode (any song)
+├── localmode.html          # Local / artist mode
+├── duel.html               # Online Duel (real-time 1v1 with chat)
+├── theme.css               # Light / dark theme overrides
+├── daily-words.json        # Word pools for daily challenges (weekday / weekend)
+├── supabase_migration.sql  # SQL to run in Supabase dashboard
+└── package.json
+```
+
+---
+
+## Security
+
+- HTTP security headers via [Helmet](https://helmetjs.github.io)
+- Content Security Policy (CSP) on all pages
+- Rate limiting on all API routes (60 req/min)
+- Socket.io events rate-limited per connection
+- All user input sanitized and length-capped server-side
+- XSS-safe rendering throughout (all user-sourced strings HTML-escaped)
+- Crypto-random room codes
+
+---
+
 ## Modes
 
 ### Global Mode
@@ -84,74 +152,6 @@ When signed in:
 - **Volume** — vertical slider (0–100%), saved to `localStorage`
 - **Calendar** — daily challenge history
 - **Google sign-in** — persists scores and unlocks social features
-
----
-
-## Security
-
-- HTTP security headers via [Helmet](https://helmetjs.github.io)
-- Content Security Policy (CSP) on all pages
-- Rate limiting on all API routes (60 req/min)
-- Socket.io events rate-limited per connection
-- All user input sanitized and length-capped server-side
-- XSS-safe rendering throughout (all user-sourced strings HTML-escaped)
-- Crypto-random room codes
-
----
-
-## Tech Stack
-
-| Layer | Tools |
-|-------|-------|
-| Backend | Node.js, Express, Socket.io |
-| Music data | [Deezer API](https://developers.deezer.com) — search, artist catalog, previews (no key needed) |
-| Lyrics | [lyrics.ovh](https://lyrics.ovh) + [lrclib.net](https://lrclib.net) (dual fallback, server-side cache) |
-| Auth & DB | [Supabase](https://supabase.com) — Google OAuth, profiles, scores, friends, duel invites, match history |
-| Frontend | Vanilla JS, Tailwind CSS via CDN (no build step) |
-
----
-
-## Setup
-
-**Prerequisites:** Node.js 18+
-
-```bash
-git clone https://github.com/Yerzhan-Abeyev/SpotiFight.git
-cd SpotiFight
-npm install
-```
-
-Create a `.env` file (only needed for local dev):
-
-```
-PORT=3000
-```
-
-No third-party API keys required for music/lyrics.
-
-```bash
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-**Supabase:** run `supabase_migration.sql` in your Supabase SQL Editor to create all required tables (profiles, scores, friends, duel invites, match history, favorites).
-
----
-
-## Project Structure
-
-```
-├── server.js               # Express + Socket.io server, Deezer proxy, duel logic, daily word, lyrics cache
-├── home.html               # Home — mode selector, leaderboard, profile, daily challenge, friends
-├── globalmode.html         # Global mode (any song)
-├── localmode.html          # Local / artist mode
-├── duel.html               # Online Duel (real-time 1v1 with chat)
-├── theme.css               # Light / dark theme overrides
-├── daily-words.json        # Word pools for daily challenges (weekday / weekend)
-├── supabase_migration.sql  # SQL to run in Supabase dashboard
-└── package.json
-```
 
 ---
 
